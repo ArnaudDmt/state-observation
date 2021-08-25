@@ -712,6 +712,15 @@ int main()
   double error;
   std::cout << "Starting" << std::endl;
 
+  std::cout << "RAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOM" << std::endl;
+  for(size_t i = 0; i < 5; i++)
+  {
+    std::cout
+        << stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<stateObservation::Vector3>().transpose()
+        << std::endl;
+  }
+  std::cout << "FINISHHHHHHHHHHHHHEDRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOM" << std::endl;
+
   if((error = testKalmanFilter()) < 0.1)
   {
     std::cout << "Test Kalman filter SUCCEEDED: estimationError = " << error << std::endl;

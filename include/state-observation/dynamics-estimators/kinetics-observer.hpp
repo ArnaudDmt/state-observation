@@ -632,7 +632,7 @@ public:
   /// @details can be used for initialization of the estimator
   ///
   /// @param newvalue The new value for the state vector
-  /// @param resetCovariance set if the state covariaance should be reset
+  /// @param resetCovariance set if the state covariance should be reset
   void setStateVector(const Vector & newvalue, bool resetCovariance = true);
 
   /// @brief Get the Measurement Vector

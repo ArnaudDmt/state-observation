@@ -705,7 +705,7 @@ void KineticsObserver::updateContactWithNoSensor(const Kinematics & localKine, u
   {
     contacts_[contactNumber].localKine.update(localKine, dt_, Contact::localKineFlags);
   }
-  else /// the contact is newlyset
+  else /// the contact is newly set
   {
     contacts_[contactNumber].localKine = localKine;
   }
@@ -868,7 +868,8 @@ int KineticsObserver::addContact(const Kinematics & pose,
   BOOST_ASSERT(pose.position.isSet() && pose.orientation.isSet()
                && "The added contact pose is not initialized correctly (position and orientation)");
 
-  if(contactNumber < 0)
+  if(contactNumber < 0)   /// attributes the contact an index called contactNumber. Automatically attributes the 
+                          /// first available number in the range defined by the maximum amount of contacts
   {
     contactNumber = 0;
 
@@ -936,7 +937,7 @@ int KineticsObserver::addContact(const Kinematics & pose,
     contact.angularDamping = angularDampingMatDefault_;
   }
 
-  /// update the state vector
+  /// update the state vector. The contact forces and moments are initialized to zero but are updated in update()
   stateVector_.segment<sizeContact>(contact.stateIndex) << pose.toVector(flagsContactKine), Vector6::Zero();
 
   /// sets the initial covariance matrix

@@ -35,7 +35,7 @@ public:
   DynamicalSystemFunctorBase();
   virtual ~DynamicalSystemFunctorBase();
 
-  /// The function to oberload to describe the dynamics of the state
+  /// The function to overload to describe the dynamics of the state
   virtual Vector stateDynamics(const Vector & x, const Vector & u, TimeIndex k) = 0;
 
   /// The function to overload to describe the dynamics of the sensor (measurements)

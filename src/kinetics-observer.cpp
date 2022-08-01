@@ -502,7 +502,7 @@ void KineticsObserver::setWithGyroBias(bool b)
 
 int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const Kinematics & localKine, int num)
 {
-  /// ensure the measuements are labeled with the good time stamp
+  /// ensure the measurements are labeled with the good time stamp
   startNewIteration_();
 
   if(num < 0)
@@ -1330,7 +1330,183 @@ NoiseBase * KineticsObserver::getMeasurementNoise() const
 
 Matrix KineticsObserver::computeAMatrix_()
 {
-  return ekf_.getAMatrixFD(stateVectorDx_);
+  const Vector & statePrediction = ekf_.updateStatePrediction();
+  const Vector3 & predictedStatePos = statePrediction.segment<sizePos>(posIndex());
+  const Orientation & predictedStateOri(Orientation(Quaternion(statePrediction.segment<sizeOri>(oriIndex())).toRotationMatrix()));
+  const Vector3 & predictedStateLinVel = statePrediction.segment<sizeLinVel>(linVelIndex());
+  const Vector3 & predictedStateAngVel = statePrediction.segment<sizeAngVel>(angVelIndex());
+
+  Matrix A = Eigen::MatrixXd::Zero(stateTangentSize_);
+
+  double dt2_2 = pow(dt_, 2)/2;
+
+
+  // Jacobians of the angular acceleration
+  Matrix3 I_inv = I_().inverse();
+  Matrix3 J_omegadot_ext_torque = I_inv; // we can merge the two last lines
+                                         // not to create a new variable.
+                                         // We consider that the inertia matrix is given in the local frame.
+  
+  Matrix3 J_omegadot_omega = I_inv*(kine::skewSymmetric(I_()*stateKinematics_.angVel())-Id_()-kine::skewSymmetric(stateKinematics_.angVel())*I_()+kine::skewSymmetric(sigma_()));
+
+
+  // Jacobians of the linear acceleration
+  Matrix3 J_al_R = -gravityAccelerationConstant*(stateKinematics_.orientation*kine::skewSymmetric(Vector3(0,0,1)));
+  Matrix3 J_al_ext_force = Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent)/mass_;
+
+
+  // Jacobians of the local position
+  Matrix3 J_pl_pl = Matrix::Identity(sizePosTangent, sizePosTangent)-dt_*kine::skewSymmetric(stateKinematics_.angVel())+dt2_2*(kine::skewSymmetric2(stateKinematics_.angVel())-kine::skewSymmetric(stateKinematics_.angAcc()));
+  A.block<sizePosTangent, sizePosTangent>(posIndexTangent(), posIndexTangent()) = J_pl_pl;  // For optimization, we can merge the two last operations into one
+  Matrix3 J_pl_R = dt2_2*J_al_R;
+  A.block<sizePosTangent, sizeOriTangent>(posIndexTangent(), oriIndexTangent()) = J_pl_R;
+  Matrix3 J_pl_vl = dt_*Matrix::Identity(sizePosTangent, sizeLinVelTangent)-2*dt2_2*kine::skewSymmetric(stateKinematics_.angVel());
+  A.block<sizePosTangent, sizeLinVelTangent>(posIndexTangent(), linVelIndexTangent()) = J_pl_vl;
+  Matrix3 J_pl_omega = kine::skewSymmetric(dt_*stateKinematics_.position()+2*dt2_2*stateKinematics_.linVel())+dt2_2*(kine::skewSymmetric(stateKinematics_.position())*J_omegadot_omega+kine::skewSymmetric(kine::skewSymmetric(stateKinematics_.position())*stateKinematics_.angVel())-kine::skewSymmetric(stateKinematics_.angVel())*kine::skewSymmetric(stateKinematics_.position()));
+  A.block<sizePosTangent, sizeAngVelTangent>(posIndexTangent(), angVelIndexTangent()) = J_pl_omega;
+  Matrix3 J_pl_ext_force = dt2_2/mass_*Matrix::Identity(sizePosTangent, sizeForceTangent);
+  A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), unmodeledForceIndexTangent()) = J_pl_ext_force;
+  
+
+  // Jacobians of the orientation
+  Vector delta = dt_*stateKinematics_.angVel() + dt2_2*stateKinematics_.angAcc();
+  double sq_norm_delta = delta.squaredNorm();
+  double norm_delta = delta.norm();
+  double sin_delta_2 = sin(norm_delta/2);
+  Matrix3 J_R_delta = 1/norm_delta*(((norm_delta-2*sin_delta_2)/(2*sq_norm_delta))*
+      (stateKinematics_.orientation*delta*delta.transpose())+sin_delta_2*(stateKinematics_.orientation*kine::rotationVectorToRotationMatrix(delta/2)));  
+      // the intermediate jacobian used to compute the ones with respect to the angular velocity and acceleration
+  Matrix3 J_R_omegadot = J_R_delta*dt2_2; // used in other Jacobians
+
+  Matrix3 J_R_R = Matrix::Identity(sizeOriTangent, sizeOriTangent);
+  A.block<sizeOriTangent, sizeOriTangent>(oriIndexTangent(), oriIndexTangent()) = J_R_R;
+  Matrix3 J_R_omega = J_R_delta*(dt_*Matrix::Identity(sizeAngVelTangent, sizeAngVelTangent)+dt2_2*J_omegadot_omega);
+  A.block<sizeOriTangent, sizeAngVelTangent>(oriIndexTangent(), angVelIndexTangent()) = J_R_omega;
+  Matrix3 J_R_ext_torque = J_R_omegadot*J_omegadot_ext_torque;
+  A.block<sizeOriTangent, sizeTorqueTangent>(oriIndexTangent(), unmodeledTorqueIndexTangent()) = J_R_ext_torque;
+
+
+  // Jacobians of the linear velocity
+  Matrix3 J_vl_R = dt_*J_al_R;
+  A.block<sizeLinVelTangent, sizeOriTangent>(linVelIndexTangent(), oriIndexTangent()) = J_vl_R;
+  Matrix3 J_vl_vl = Matrix::Identity(sizeLinVelTangent, sizeLinVelTangent)-dt_*kine::skewSymmetric(stateKinematics_.angVel());
+  A.block<sizeLinVelTangent, sizeLinVelTangent>(linVelIndexTangent(), linVelIndexTangent()) = J_vl_vl;
+  Matrix3 J_vl_omega = dt_*kine::skewSymmetric(stateKinematics_.linVel());
+  A.block<sizeLinVelTangent, sizeAngVelTangent>(linVelIndexTangent(), angVelIndexTangent()) = J_vl_omega;
+  Matrix3 J_vl_ext_force = dt_*J_al_ext_force;
+  A.block<sizeLinVelTangent, sizeAngVelTangent>(linVelIndexTangent(), unmodeledForceIndexTangent()) = J_vl_ext_force;
+
+
+  // Jacobians of the angular velocity
+  Matrix3 J_omega_omega = dt_*J_omegadot_omega;
+  A.block<sizeAngVelTangent, sizeAngVelTangent>(angVelIndexTangent(), angVelIndexTangent()) = J_omega_omega;
+  Matrix3 J_omega_ext_torque = dt_*J_omegadot_ext_torque;
+  A.block<sizeAngVelTangent, sizeTorqueTangent>(angVelIndexTangent(), unmodeledTorqueIndexTangent()) = J_omega_ext_torque;
+
+  // Jacobians of the gyrometer bias
+  if(withGyroBias_)
+  {
+    Matrix3 J_gyrobias_gyrobias = Matrix::Identity(sizeGyroBiasTangent, sizeGyroBiasTangent);
+    for(unsigned i = 0; i < imuSensors_.size(); ++i)
+    {
+      A.block<sizeGyroBiasTangent, sizeGyroBiasTangent>(gyroBiasIndexTangent(i), gyroBiasIndexTangent(i)) = J_gyrobias_gyrobias;
+    }
+  }
+
+  // Jacobians of the unmodeled external force
+  Matrix3 J_ext_force_ext_force = Matrix::Identity(sizeForceTangent, sizeForceTangent);
+  A.block<sizeForceTangent, sizeForceTangent>(unmodeledForceIndexTangent(), unmodeledForceIndexTangent()) = J_ext_force_ext_force;
+
+  // Jacobians of the unmodeled external torque
+  Matrix3 J_ext_torque_ext_torque = Matrix::Identity(sizeTorqueTangent, sizeTorqueTangent);
+  A.block<sizeTorqueTangent, sizeTorqueTangent>(unmodeledTorqueIndexTangent(), unmodeledTorqueIndexTangent()) = J_ext_torque_ext_torque;
+
+  // Jacobians with respect to contacts
+  Matrix3 J_poscontact_poscontact = Matrix::Identity(sizePosTangent, sizePosTangent);  //out of the loop as it is constant 
+                                                                    //but then creates a useless variable if there is no contact 
+  for(VectorContactConstIterator i = contacts_.begin(); i != contacts_.end(); ++i)
+  {
+    if(i->isSet)
+    {
+      const Orientation & RContactInv = i->localKine.orientation.inverse();
+      const Orientation predictedStateContactOri(Orientation(Quaternion(statePrediction.segment<sizeOri>(contactOriIndex(i))).toRotationMatrix()));
+
+      // Jacobian of the linar acceleration with respect to the contact force
+      Matrix3 J_linAcc_Fcis = (1/mass_)*i->localKine.orientation.toMatrix3();
+      // Jacobian of the angular acceleration with respect to the contact force
+      Matrix3 J_omegadot_Fcis = (I_inv*kine::skewSymmetric(i->localKine.position()))*(i->localKine.orientation*i->localKine.orientation).toMatrix3();
+      // Jacobian of the angular acceleration with respect to the contact torque
+      Matrix3 J_omegadot_Tcis = I_inv*i->localKine.orientation.toMatrix3();
+
+      // Jacobian of the local position with respect to the contact force
+      Matrix3 J_pl_contactForce = dt2_2*J_linAcc_Fcis;
+      A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), contactForceIndexTangent(i)) = J_pl_contactForce;
+      // Jacobians of the orientation with respect to the contact force and torque
+      Matrix3 J_R_contactForce = J_R_omegadot*J_omegadot_Fcis;
+      A.block<sizeOriTangent, sizeForceTangent>(oriIndexTangent(), contactForceIndexTangent(i)) = J_R_contactForce;
+      Matrix3 J_R_contactTorque = J_R_omegadot*J_omegadot_Tcis;
+      A.block<sizeOriTangent, sizeTorqueTangent>(oriIndexTangent(), contactTorqueIndexTangent(i)) = J_R_contactTorque;
+      // Jacobian of the linear velocity with respect to the contact force
+      Matrix3 J_vl_contactForce = dt_*J_linAcc_Fcis;
+      A.block<sizeLinVelTangent, sizeForceTangent>(linVelIndexTangent(), contactForceIndexTangent(i)) = J_vl_contactForce;
+      // Jacobian of the angular velocity with respect to the contact force and torque
+      Matrix3 J_omega_contactForce = dt_*J_omegadot_Fcis;
+      A.block<sizeAngVelTangent, sizeForceTangent>(angVelIndexTangent(), contactForceIndexTangent(i)) = J_omega_contactForce;
+      Matrix3 J_omega_contactTorque = dt_*J_omegadot_Tcis;
+      A.block<sizeAngVelTangent, sizeTorqueTangent>(angVelIndexTangent(), contactTorqueIndexTangent(i)) = J_omega_contactTorque;
+
+      // Jacobian of the contact position and orientation with respect to themselves
+      A.block<sizePosTangent, sizePosTangent>(contactPosIndexTangent(i), contactPosIndexTangent(i)) = J_poscontact_poscontact;
+      Matrix3 J_contactOri_contactOri = J_poscontact_poscontact;
+      A.block<sizeOriTangent, sizeOriTangent>(contactOriIndexTangent(i), contactOriIndexTangent(i)) = J_contactOri_contactOri;
+      
+      const Orientation & RContactInv = i->localKine.orientation.inverse(); // remove if no need to check ifSet
+      const Orientation & predictedStateOriInv = predictedStateOri.inverse();
+      const Orientation & RGlobalToContactLocal = RContactInv*predictedStateOriInv; // better to compute it now as it is used in several expressions
+      // Jacobians of the contacts force
+      Matrix3 J_contactForce_pl_at_same_time = -(RGlobalToContactLocal*i->linearStiffness*predictedStateOri.toMatrix3());
+      Matrix3 J_contactForce_R_at_same_time = RGlobalToContactLocal*(
+        i->linearStiffness*kine::skewSymmetric(predictedStateOri*(i->localKine.position()+predictedStatePos))
+        + i->linearDamping*kine::skewSymmetric(predictedStateOri*(i->localKine.linVel()+kine::skewSymmetric(predictedStateAngVel*i->localKine.position()+predictedStateLinVel)))
+        -kine::skewSymmetric(i->linearStiffness*(predictedStateOri*(i->localKine.position()+predictedStatePos))
+          + i->linearDamping*(predictedStateOri*(i->localKine.linVel()+kine::skewSymmetric(predictedStateAngVel)*i->localKine.position()+predictedStateLinVel)) - i->linearStiffness*i->localKine.position()));
+      Matrix3 J_contactForce_vl_at_same_time = -(RGlobalToContactLocal*i->linearDamping*predictedStateOri.toMatrix3());
+      Matrix3 J_contactForce_omega_at_same_time = RGlobalToContactLocal*i->linearDamping*(predictedStateOri*kine::skewSymmetric(i->localKine.position()));
+      Matrix3 J_contactForce_contactPosition_at_same_time = RGlobalToContactLocal*i->linearStiffness*predictedStateOri.toMatrix3();
+    
+      A.block<sizeForceTangent, sizePosTangent>(contactForceIndexTangent(i), posIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_pl;
+      A.block<sizeForceTangent, sizeOriTangent>(contactForceIndexTangent(i), oriIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_R + J_contactForce_R_at_same_time + J_contactForce_vl_at_same_time*J_vl_R;
+      A.block<sizeForceTangent, sizeLinVelTangent>(contactForceIndexTangent(i), linVelIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_vl;
+      A.block<sizeForceTangent, sizeAngVelTangent>(contactForceIndexTangent(i), angVelIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_omega + J_contactForce_R_at_same_time*J_R_omega + J_contactForce_vl_at_same_time*J_vl_omega + J_contactForce_omega_at_same_time*J_omega_omega;
+      A.block<sizeForceTangent, sizeForceTangent>(contactForceIndexTangent(i), unmodeledForceIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_ext_force + J_contactForce_vl_at_same_time*J_vl_ext_force;
+      A.block<sizeForceTangent, sizeTorqueTangent>(contactForceIndexTangent(i), unmodeledTorqueIndexTangent()) = J_contactForce_R_at_same_time*J_R_ext_torque + J_contactForce_omega_at_same_time*J_omega_ext_torque;
+      A.block<sizeForceTangent, sizePosTangent>(contactForceIndexTangent(i), contactPosIndexTangent(i)) = J_contactForce_contactPosition_at_same_time;
+      A.block<sizeForceTangent, sizeForceTangent>(contactForceIndexTangent(i), contactForceIndexTangent(i)) = J_contactForce_pl_at_same_time*J_pl_contactForce + J_contactForce_R_at_same_time*J_R_contactForce + J_contactForce_vl_at_same_time*J_vl_contactForce + J_contactForce_omega_at_same_time*J_omega_contactForce;
+      A.block<sizeForceTangent, sizeTorqueTangent>(contactForceIndexTangent(i), contactTorqueIndexTangent(i)) = J_contactForce_R_at_same_time*J_R_contactTorque + J_contactForce_omega_at_same_time * J_omega_contactTorque;
+    
+      // Jacobians of the contacts torque
+      Vector3 localAngVelSum = predictedStateOri*(i->localKine.angVel()+predictedStateAngVel);
+      Vector3 ex = Vector3(1,0,0);
+      Vector3 ey = Vector3(0,1,0);
+      Vector3 ez = Vector3(0,0,1);
+      Orientation RRefContactToGlobal = predictedStateOri*i->localKine.orientation*predictedStateContactOri.inverse();
+      Orientation RGlobalToRefContact = RRefContactToGlobal.inverse();
+
+      Matrix3 Vk = -ex*ez.transpose()*(kine::skewSymmetric(RRefContactToGlobal*ey)+RGlobalToRefContact*kine::skewSymmetric(ey))-ey*ex.transpose()*(kine::skewSymmetric(RRefContactToGlobal*ez)+RGlobalToRefContact*kine::skewSymmetric(ez))-ez*ey.transpose()*(kine::skewSymmetric(RRefContactToGlobal*ex)+RGlobalToRefContact*kine::skewSymmetric(ex));
+      Matrix3 J_contactTorque_R_at_same_time = -(RGlobalToContactLocal*(kine::skewSymmetric(0.5*i->angularStiffness*(kine::rotationMatrixToRotationVector(RRefContactToGlobal.toMatrix3()-RGlobalToRefContact.toMatrix3()))+i->angularDamping*localAngVelSum)+0.5*i->angularStiffness*Vk-i->angularDamping*kine::skewSymmetric(localAngVelSum)));
+      Matrix3 J_contactTorque_omega_at_same_time = -(RGlobalToContactLocal*i->angularDamping*predictedStateOri.toMatrix3());
+      Matrix3 J_contactTorque_contactOri_at_same_time = -0.5*(RGlobalToContactLocal*i->angularStiffness*(predictedStateOri*Vk));
+
+      A.block<sizeTorqueTangent, sizeOriTangent>(contactTorqueIndexTangent(i), oriIndexTangent()) = J_contactTorque_R_at_same_time;
+      A.block<sizeTorqueTangent, sizeAngVelTangent>(contactTorqueIndexTangent(i), angVelIndexTangent()) = J_contactTorque_R_at_same_time*J_R_omega+J_contactTorque_omega_at_same_time*J_omega_omega;
+      A.block<sizeTorqueTangent, sizeTorqueTangent>(contactTorqueIndexTangent(i), unmodeledTorqueIndexTangent()) = J_contactTorque_R_at_same_time*J_R_ext_torque+J_contactTorque_omega_at_same_time*J_omega_ext_torque;
+      A.block<sizeTorqueTangent, sizeForceTangent>(contactTorqueIndexTangent(i), contactForceIndexTangent(i)) = J_contactTorque_R_at_same_time*J_R_contactForce+J_contactTorque_omega_at_same_time*J_omega_contactForce;
+      A.block<sizeTorqueTangent, sizeTorqueTangent>(contactTorqueIndexTangent(i), contactTorqueIndexTangent(i)) = J_contactTorque_R_at_same_time*J_R_contactTorque+J_contactTorque_omega_at_same_time*J_omega_contactTorque;
+    }
+
+  }
+  return A;
+
 }
 
 Matrix KineticsObserver::computeCMatrix_()
@@ -1633,5 +1809,26 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
 
   return y;
 }
+
+template <typename T>
+Matrix3 expMatrixQfromAxisAngle(const T& v)
+{
+    Eigen::Quaternion<double> q;  
+    q = AngleAxis<double>(v.norm(), v*(1/v.norm()));
+    Matrix3d R(q);
+    return R;
+
+    /*
+    We can also use the Rodrigues formula but the average time taken on 10000 loops was 9ms against 2ms for this function.
+    The average error on the summed coeficients of the matrix between both methods is of magnitude 10^-16.
+    In any case, here is the unused function :
+    Eigen::Matrix3d expMatrix(const Eigen::Vector3d & v)
+    {
+      Eigen::Matrix3d R (Eigen::Matrix3d::Identity(3,3)+sin(v.norm())*(S(v)*(1/v.norm()))+(1-cos(v.norm()))*(S(v)*S(v)*(1/v.squaredNorm())));
+      return R;
+    }
+    */
+}
+
 
 } // namespace stateObservation

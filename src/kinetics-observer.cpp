@@ -1465,11 +1465,12 @@ Matrix KineticsObserver::computeAMatrix_()
       const Orientation & RGlobalToContactLocal = RContactInv*predictedStateOriInv; // better to compute it now as it is used in several expressions
       // Jacobians of the contacts force
       Matrix3 J_contactForce_pl_at_same_time = -(RGlobalToContactLocal*i->linearStiffness*predictedStateOri.toMatrix3());
+      Vector3 sumVelContact = i->localKine.linVel()+predictedStateAngVel.cross(i->localKine.position())+predictedStateLinVel;
       Matrix3 J_contactForce_R_at_same_time = RGlobalToContactLocal*(
         i->linearStiffness*kine::skewSymmetric(predictedStateOri*(i->localKine.position()+predictedStatePos))
-        + i->linearDamping*kine::skewSymmetric(predictedStateOri*(i->localKine.linVel()+kine::skewSymmetric(predictedStateAngVel*i->localKine.position()+predictedStateLinVel)))
+        + i->linearDamping*kine::skewSymmetric(predictedStateOri*sumVelContact)
         -kine::skewSymmetric(i->linearStiffness*(predictedStateOri*(i->localKine.position()+predictedStatePos))
-          + i->linearDamping*(predictedStateOri*(i->localKine.linVel()+kine::skewSymmetric(predictedStateAngVel)*i->localKine.position()+predictedStateLinVel)) - i->linearStiffness*i->localKine.position()));
+          + i->linearDamping*(predictedStateOri*sumVelContact) - i->linearStiffness*i->localKine.position()));
       Matrix3 J_contactForce_vl_at_same_time = -(RGlobalToContactLocal*i->linearDamping*predictedStateOri.toMatrix3());
       Matrix3 J_contactForce_omega_at_same_time = RGlobalToContactLocal*i->linearDamping*(predictedStateOri*kine::skewSymmetric(i->localKine.position()));
       Matrix3 J_contactForce_contactPosition_at_same_time = RGlobalToContactLocal*i->linearStiffness*predictedStateOri.toMatrix3();

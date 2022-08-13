@@ -29,11 +29,6 @@ inline void integrateKinematics(Matrix3 & orientation, const Vector3 & rotationV
   orientation = kine::rotationVectorToRotationMatrix(rotationVelocityVector * dt) * orientation;
 }
 
-inline void integrateKinematicsRight(Matrix3 & orientation, const Vector3 & rotationVelocityVector, double dt)
-{
-  orientation = orientation * kine::rotationVectorToRotationMatrix(rotationVelocityVector * dt);
-}
-
 inline void integrateKinematics(Matrix3 & orientation,
                                 Vector3 & rotationVelocityVector,
                                 const Vector3 & rotationVelocityVectorRate,
@@ -46,26 +41,9 @@ inline void integrateKinematics(Matrix3 & orientation,
   rotationVelocityVector += dt * rotationVelocityVectorRate;
 }
 
-inline void integrateKinematicsRight(Matrix3 & orientation,
-                                     Vector3 & rotationVelocityVector,
-                                     const Vector3 & rotationVelocityVectorRate,
-                                     double dt)
-{
-  orientation =
-      orientation
-      * kine::rotationVectorToRotationMatrix(rotationVelocityVector * dt + 0.5 * dt * dt * rotationVelocityVectorRate);
-
-  rotationVelocityVector += dt * rotationVelocityVectorRate;
-}
-
 inline void integrateKinematics(Quaternion & orientation, const Vector3 & rotationVelocityVector, double dt)
 {
   orientation = kine::rotationVectorToQuaternion(rotationVelocityVector * dt) * orientation;
-}
-
-inline void integrateKinematicsRight(Quaternion & orientation, const Vector3 & rotationVelocityVector, double dt)
-{
-  orientation = orientation * kine::rotationVectorToQuaternion(rotationVelocityVector * dt);
 }
 
 inline void integrateKinematics(Quaternion & orientation,
@@ -80,18 +58,6 @@ inline void integrateKinematics(Quaternion & orientation,
   rotationVelocityVector.noalias() += dt * rotationVelocityVectorRate;
 }
 
-inline void integrateKinematicsRight(Quaternion & orientation,
-                                     Vector3 & rotationVelocityVector,
-                                     const Vector3 & rotationVelocityVectorRate,
-                                     double dt)
-{
-  orientation =
-      orientation 
-      * kine::rotationVectorToQuaternion(rotationVelocityVector * dt + 0.5 * dt * dt * rotationVelocityVectorRate);
-
-  rotationVelocityVector.noalias() += dt * rotationVelocityVectorRate;
-}
-
 inline void integrateKinematics(Vector3 & position,
                                 Vector3 & velocity,
                                 const Vector3 & acceleration,
@@ -104,17 +70,6 @@ inline void integrateKinematics(Vector3 & position,
   integrateKinematics(orientation, rotationVelocityVector, rotationVelocityVectorRate, dt);
 }
 
-inline void integrateKinematicsRight(Vector3 & position,
-                                     Vector3 & velocity,
-                                     const Vector3 & acceleration,
-                                     Quaternion & orientation,
-                                     Vector3 & rotationVelocityVector,
-                                     const Vector3 & rotationVelocityVectorRate,
-                                     double dt)
-{
-  integrateKinematics(position, velocity, acceleration, dt);
-  integrateKinematicsRight(orientation, rotationVelocityVector, rotationVelocityVectorRate, dt);
-}
 
 inline void integrateKinematics(Vector3 & position,
                                 Vector3 & velocity,
@@ -128,18 +83,6 @@ inline void integrateKinematics(Vector3 & position,
   integrateKinematics(orientation, rotationVelocityVector, rotationVelocityVectorRate, dt);
 }
 
-inline void integrateKinematicsRight(Vector3 & position,
-                                     Vector3 & velocity,
-                                     const Vector3 & acceleration,
-                                     Matrix3 & orientation,
-                                     Vector3 & rotationVelocityVector,
-                                     const Vector3 & rotationVelocityVectorRate,
-                                     double dt)
-{
-  integrateKinematics(position, velocity, acceleration, dt);
-  integrateKinematicsRight(orientation, rotationVelocityVector, rotationVelocityVectorRate, dt);
-}
-
 inline void integrateKinematics(Vector3 & position,
                                 const Vector3 & velocity,
                                 Matrix3 & orientation,
@@ -150,16 +93,6 @@ inline void integrateKinematics(Vector3 & position,
   integrateKinematics(orientation, rotationVelocity, dt);
 }
 
-inline void integrateKinematicsRight(Vector3 & position,
-                                     const Vector3 & velocity,
-                                     Matrix3 & orientation,
-                                     const Vector3 & rotationVelocity,
-                                     double dt)
-{
-  integrateKinematics(position, velocity, dt);
-  integrateKinematicsRight(orientation, rotationVelocity, dt);
-}
-
 inline void integrateKinematics(Vector3 & position,
                                 const Vector3 & velocity,
                                 Quaternion & orientation,
@@ -168,16 +101,6 @@ inline void integrateKinematics(Vector3 & position,
 {
   integrateKinematics(position, velocity, dt);
   integrateKinematics(orientation, rotationVelocity, dt);
-}
-
-inline void integrateKinematicsRight(Vector3 & position,
-                                     const Vector3 & velocity,
-                                     Quaternion & orientation,
-                                     const Vector3 & rotationVelocity,
-                                    double dt)
-{
-  integrateKinematics(position, velocity, dt);
-  integrateKinematicsRight(orientation, rotationVelocity, dt);
 }
 
 /// Puts the orientation vector norm between 0 and Pi if it
@@ -781,6 +704,12 @@ inline Orientation::Orientation(const double & roll, const double & pitch, const
 
 inline Orientation::Orientation(const Quaternion & q, const Matrix3 & m) : q_(q), m_(m) {}
 
+inline Orientation::Orientation(const RightOrientation & rightOri)
+{
+  m_ = rightOri.getMatrixRefUnsafe();
+  q_ = rightOri.getQuaternionRefUnsafe();
+}
+
 inline Orientation::Orientation(const Orientation & operand1, const Orientation & operand2) : q_(false), m_(false)
 {
   setToProductNoAlias(operand1, operand2);
@@ -1070,12 +999,12 @@ inline Vector3 Orientation::operator*(const Vector3 & v) const
   return m_() * v;
 }
 
-inline CheckedMatrix3 & Orientation::getMatrixRefUnsafe()
+inline const CheckedMatrix3 & Orientation::getMatrixRefUnsafe()
 {
   return m_;
 }
 
-inline CheckedQuaternion & Orientation::getQuaternionRefUnsafe()
+inline const CheckedQuaternion & Orientation::getQuaternionRefUnsafe()
 {
   return q_;
 }
@@ -1127,6 +1056,12 @@ inline RightOrientation::RightOrientation(const double & roll, const double & pi
 }
 
 inline RightOrientation::RightOrientation(const Quaternion & q, const Matrix3 & m) : q_(q), m_(m) {}
+
+inline RightOrientation::RightOrientation(const Orientation & orientation)
+{
+  m_ = orientation.getMatrixRefUnsafe();
+  q_ = orientation.getQuaternionRefUnsafe();
+}
 
 inline RightOrientation::RightOrientation(const RightOrientation & operand1, const RightOrientation & operand2) : q_(false), m_(false)
 {
@@ -1417,12 +1352,12 @@ inline Vector3 RightOrientation::operator*(const Vector3 & v) const
   return m_() * v;
 }
 
-inline CheckedMatrix3 & RightOrientation::getMatrixRefUnsafe()
+inline const CheckedMatrix3 & RightOrientation::getMatrixRefUnsafe()
 {
   return m_;
 }
 
-inline CheckedQuaternion & RightOrientation::getQuaternionRefUnsafe()
+inline const CheckedQuaternion & RightOrientation::getQuaternionRefUnsafe()
 {
   return q_;
 }
@@ -1463,6 +1398,11 @@ inline Kinematics::Kinematics(const Vector & v, Kinematics::Flags::Byte flags)
 {
   Kinematics::fromVector(v, flags);
 }
+
+inline Kinematics::Kinematics(const CheckedVector3 & position, const CheckedVector3 & linVel, 
+                                                    const CheckedVector3 & linAcc, const Orientation & orientation, const CheckedVector3 & angVel, const CheckedVector3 & angAcc) 
+                                                    : position(position), linVel(linVel), linAcc(linAcc), orientation(orientation), angVel(angVel), angAcc(angAcc) {}
+
 
 inline Kinematics::Kinematics(const Kinematics & multiplier1, const Kinematics & multiplier2)
 {
@@ -2075,6 +2015,48 @@ inline Kinematics Kinematics::getInverse() const
   return inverted;
 }
 
+
+inline LocalRightKinematics switchToLocalFrame(Kinematics& globalKine)  // we consider we can modify directly the globalKine variables as it would then be outdated
+{
+  static const LocalRightKinematics::Flags::Byte vars = BOOST_BINARY(000000);
+
+
+  BOOST_ASSERT(globalKine.orientation.isSet()
+               && "The transformation to the local frame requires the orientation");
+
+  Orientation orientation_T = globalKine.orientation.inverse();
+
+
+  if(globalKine.position.isSet())
+  {
+    globalKine.position() = orientation_T*globalKine.position(); 
+  }
+
+  if(globalKine.linVel.isSet())
+  {
+    globalKine.linVel =  orientation_T*globalKine.linVel(); 
+  }
+
+  if( globalKine.linAcc.isSet())
+  {
+    globalKine.linAcc =  orientation_T*globalKine.linAcc(); 
+  }
+
+  if( globalKine.angVel.isSet())
+  {
+    globalKine.angVel =  orientation_T*globalKine.angVel(); 
+  }
+  
+  if( globalKine.angAcc.isSet())
+  {
+    globalKine.angAcc =  orientation_T*globalKine.angAcc(); 
+  }
+
+  return LocalRightKinematics(globalKine.position, globalKine.linVel, globalKine.linAcc, globalKine.orientation, globalKine.angVel, globalKine.angAcc);
+}
+
+
+
 /// composition of transformation
 inline Kinematics Kinematics::operator*(const Kinematics & multiplier) const
 {
@@ -2553,6 +2535,10 @@ inline LocalRightKinematics::LocalRightKinematics(const Vector & v, LocalRightKi
   LocalRightKinematics::fromVector(v, flags);
 }
 
+inline LocalRightKinematics::LocalRightKinematics(const CheckedVector3 & position, const CheckedVector3 & linVel, 
+                                                    const CheckedVector3 & linAcc, const Orientation & orientation, const CheckedVector3 & angVel, const CheckedVector3 & angAcc) 
+                                                    : locPosition(position), locLinVel(linVel), locLinAcc(linAcc), rightOrientation(orientation), locAngVel(angVel), locAngAcc(angAcc) {}
+
 inline LocalRightKinematics::LocalRightKinematics(const LocalRightKinematics & multiplier1, const LocalRightKinematics & multiplier2)
 {
   setToProductNoAlias(multiplier1, multiplier2);
@@ -2563,7 +2549,7 @@ inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v,
   int index = 0;
 
   bool flagPos = flags & Flags::position;
-  bool flagLinVel = flags & Flags::position;
+  bool flagLinVel = flags & Flags::linVel;
   bool flagLinAcc = flags & Flags::linAcc;
   bool flagOri = flags & Flags::orientation;
   bool flagAngVel = flags & Flags::angVel;
@@ -2681,47 +2667,106 @@ inline LocalRightKinematics & LocalRightKinematics::setZero(LocalRightKinematics
   return setZero<Quaternion>(flags);
 }
 
+
+
 inline const LocalRightKinematics & LocalRightKinematics::integrate(double dt)
 {
-  if(locAngVel.isSet())
-  {
-    if(locAngAcc.isSet())
-    {
-      if(rightOrientation.isSet())
-      {
-        rightOrientation.integrate(locAngVel() * dt + locAngAcc() * dt * dt / 2);
-      }
-      locAngVel() += locAngAcc() * dt;
-    }
-    else
-    {
-      if(rightOrientation.isSet())
-      {
-        rightOrientation.integrate(locAngVel() * dt);
-      }
-    }
-  }
+  /*
+  Linear part
+  */
 
-  if(locLinVel.isSet())
+
+  if (locLinVel.isSet())
   {
-    if(locLinAcc.isSet())
+    if (locLinAcc.isSet())
     {
-      if(locPosition.isSet())
+      if (locPosition.isSet())
       {
-        locPosition() += locLinVel() * dt + locLinAcc() * dt * dt / 2;
+        if (locAngVel.isSet())
+        {
+          locLinVel() += dt* (-locAngVel().cross(locLinVel())+locLinAcc());
+          if (locAngAcc.isSet())
+          {
+            locPosition() += -locAngVel().cross(dt*(locPosition()+dt*(0.5*locAngVel().cross(locPosition()) - locLinVel()))) + dt*(locLinVel()+dt*(locLinAcc()-locAngAcc().cross(locPosition()))/2);
+          }
+          else
+          {
+            locPosition() += -locAngVel().cross(dt*(locPosition()+dt*(0.5*locAngVel().cross(locPosition()) - locLinVel()))) + dt*(locLinVel()+dt*locLinAcc()/2);
+          }
+        }
+        else
+        {
+          locLinVel() += dt* locLinAcc();
+          if (locAngAcc.isSet())
+          {
+            locPosition() += dt*(locLinVel()+dt*(locLinAcc()-locAngAcc().cross(locPosition()))/2);
+          }
+          else
+          {
+            locPosition() += dt*(locLinVel()+dt*locLinAcc()/2);
+          }
+        }
       }
-      locLinVel() += locLinAcc() * dt;
+      
     }
     else
     {
-      if(locPosition.isSet())
+
+      if (locPosition.isSet())
       {
-        locPosition() += locLinVel() * dt;
+        if (locAngVel.isSet())
+        {
+          locLinVel() -= locAngVel().cross(locLinVel());
+          if (locAngAcc.isSet())
+          {
+            locPosition() += -locAngVel().cross(dt*(locPosition()+dt*(0.5*locAngVel().cross(locPosition()) - locLinVel()))) + dt*(locLinVel()-dt*(locAngAcc().cross(locPosition()))/2);
+          }
+          else
+          {
+            locPosition() += -locAngVel().cross(dt*(locPosition()+dt*(0.5*locAngVel().cross(locPosition()) - locLinVel()))) + dt*locLinVel();
+          }
+        }
+        else
+        {
+          if (locAngAcc.isSet())
+          {
+            locPosition() += dt*(locLinVel()-dt/2*locAngAcc().cross(locPosition()));
+          }
+          else
+          {
+            locPosition() += dt*locLinVel();
+          }
+        }
       }
     }
+    /*
+    Angular part
+    */
+
+    if(locAngVel.isSet())
+    {
+      if(locAngAcc.isSet())
+      {
+        if(rightOrientation.isSet())
+        {
+          rightOrientation.integrate(locAngVel() * dt + locAngAcc() * dt * dt / 2);
+        }
+        locAngVel() += locAngAcc() * dt;
+      }
+      else
+      {
+        if(rightOrientation.isSet())
+        {
+          rightOrientation.integrate(locAngVel() * dt);
+        }
+      }
+    }
+
   }
 
   return *this;
+
+
 }
 
 inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRightKinematics & newValue, double dt, Flags::Byte flags)
@@ -3484,57 +3529,41 @@ inline LocalRightKinematics LocalRightKinematics::getInverse() const // TO MODIF
   return inverted;
 }
 
-/*
-inline Kinematics& switchToLocalFrame(const Orientation& orientation, const CheckedVector3& locAngVel, const CheckedVector3& locAngAcc) 
+inline Kinematics switchToGlobalFrame(LocalRightKinematics& localKine)  // we consider we can modify directly the localKine variables as it would then be outdated
 {
-  Orientation orientation_T = orientation.inverse();
-  Kinematics::Flags::Byte all = BOOST_BINARY(000000);
- 
 
-  if(flagPos)
+  BOOST_ASSERT(localKine.rightOrientation.isSet()
+               && "The transformation to the local frame requires the orientation");
+
+
+  if(localKine.locPosition.isSet())
   {
-    locPosition = orientation_T*locPosition;
-    all = all | BOOST_BINARY(000001);
+    localKine.locPosition() = localKine.rightOrientation*localKine.locPosition(); 
   }
 
-    if(flagLinVel)
+  if(localKine.locLinVel.isSet())
   {
-    locLinVel = -skewSymmetric(locAngVel)*orientation_T*locPosition+orientation_T*locLinVel; 
-     all = all | BOOST_BINARY(000001);
-    //pas besoin de recalculer pl si on doit deja le calculer, modifier avec tests
+    localKine.locLinVel =  localKine.rightOrientation*localKine.locLinVel(); 
   }
 
-  if(flagAngVel)ddd
+  if( localKine.locLinAcc.isSet())
   {
-    locLinAcc = 
-    all = all | BOOST_BINARY(000100);
-    // sans prise en compte des forces
+    localKine.locLinAcc =  localKine.rightOrientation*localKine.locLinAcc(); 
   }
 
-  if(flagLinAcc)
+  if( localKine.locAngVel.isSet())
   {
-    BOOST_ASSERT(v.size() >= index + 3 && "The kinematics vector size is incorrect (loading linear acceleration)");
-    if(v.size() >= index + 3)
-    {
-      locLinAcc = v.segment<3>(index);
-      index += 3;
-    }
+    localKine.locAngVel =  localKine.rightOrientation*localKine.locAngVel(); 
+  }
+  
+  if( localKine.locAngAcc.isSet())
+  {
+    localKine.locAngAcc =  localKine.rightOrientation*localKine.locAngAcc(); 
   }
 
-  if(flagAngAcc)
-  {
-    BOOST_ASSERT(v.size() >= index + 3 && "The kinematics vector size is incorrect (loading angular acceleration)");
-    if(v.size() >= index + 3)
-    {
-      locAngAcc = v.segment<3>(index);
-      // index+=3; ///useless
-    }
-  }
-
-  return LocalRightKinematics(const Vector & v, all);
+  return Kinematics(localKine.locPosition, localKine.locLinVel, localKine.locLinAcc, localKine.rightOrientation, localKine.locAngVel, localKine.locAngAcc);
 }
 
-*/
 
 inline LocalRightKinematics LocalRightKinematics::operator*(const LocalRightKinematics & multiplier) const
 {

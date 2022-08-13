@@ -1428,7 +1428,7 @@ Matrix KineticsObserver::computeAMatrix_()
   {
     if(i->isSet)
     {
-      const Orientation & RContactInv = i->localKine.orientation.inverse();
+      Orientation RContactInv = i->localKine.orientation.inverse();
       const Orientation predictedStateContactOri(Orientation(Quaternion(statePrediction.segment<sizeOri>(contactOriIndex(i))).toRotationMatrix()));
 
       // Jacobian of the linar acceleration with respect to the contact force
@@ -1460,9 +1460,9 @@ Matrix KineticsObserver::computeAMatrix_()
       Matrix3 J_contactOri_contactOri = J_poscontact_poscontact;
       A.block<sizeOriTangent, sizeOriTangent>(contactOriIndexTangent(i), contactOriIndexTangent(i)) = J_contactOri_contactOri;
       
-      const Orientation & RContactInv = i->localKine.orientation.inverse(); // remove if no need to check ifSet
-      const Orientation & predictedStateOriInv = predictedStateOri.inverse();
-      const Orientation & RGlobalToContactLocal = RContactInv*predictedStateOriInv; // better to compute it now as it is used in several expressions
+      Orientation RContactInv = i->localKine.orientation.inverse(); // remove if no need to check ifSet
+      Orientation predictedStateOriInv = predictedStateOri.inverse();
+      Orientation RGlobalToContactLocal = RContactInv*predictedStateOriInv; // better to compute it now as it is used in several expressions
       // Jacobians of the contacts force
       Matrix3 J_contactForce_pl_at_same_time = -(RGlobalToContactLocal*i->linearStiffness*predictedStateOri.toMatrix3());
       Vector3 sumVelContact = i->localKine.linVel()+predictedStateAngVel.cross(i->localKine.position())+predictedStateLinVel;

@@ -64,12 +64,14 @@ inline void integrateKinematics(Vector3 & position,
                                 const Vector3 & rotationAcceleration,
                                 double dt);
 
+
 /// integrates the postition/orientation given the velocities
 inline void integrateKinematics(Vector3 & position,
                                 const Vector3 & velocity,
                                 Matrix3 & orientation,
                                 const Vector3 & rotationVelocity,
                                 double dt);
+                            
 
 /// integrates the postition/orientation given the velocities
 inline void integrateKinematics(Vector3 & position,
@@ -78,26 +80,27 @@ inline void integrateKinematics(Vector3 & position,
                                 const Vector3 & rotationVelocity,
                                 double dt);
 
+
 /// Puts the orientation vector norm between 0 and Pi if it
 /// gets close to 2pi
 inline Vector regulateRotationVector(const Vector3 & v);
 
-/// Transform the rotation vector into angle axis
+/// Transforms the rotation vector into angle axis
 inline AngleAxis rotationVectorToAngleAxis(const Vector3 & v);
 
-/// Tranbsform the rotation vector into rotation matrix
+/// Transforms the rotation vector into rotation matrix
 inline Matrix3 rotationVectorToRotationMatrix(const Vector3 & v);
 
-/// Tranbsform the rotation vector into quaternion
+/// Transforms the rotation vector into quaternion
 inline Quaternion rotationVectorToQuaternion(const Vector3 & v);
 
-/// Tranbsform the rotation matrix into rotation vector
+/// Transforms the rotation matrix into rotation vector
 inline Vector3 rotationMatrixToRotationVector(const Matrix3 & R);
 
 /// Tranbsform a quaternion into rotation vector
 inline Vector3 quaternionToRotationVector(const Quaternion & q);
 
-/// Tranbsform a quaternion into rotation vector
+/// Transforms a quaternion into rotation vector
 inline Vector3 quaternionToRotationVector(const Vector4 & v);
 
 /// scalar component of a quaternion
@@ -106,7 +109,7 @@ inline double scalarComponent(const Quaternion & q);
 /// vector part of the quaternion
 inline Vector3 vectorComponent(const Quaternion & q);
 
-/// Transform the rotation matrix into roll pitch yaw
+/// Transforms the rotation matrix into roll pitch yaw
 ///(decompose R into Ry*Rp*Rr)
 inline Vector3 rotationMatrixToRollPitchYaw(const Matrix3 & R, Vector3 & v);
 
@@ -370,6 +373,8 @@ public:
 
   Orientation(const Quaternion & q, const Matrix3 & m);
 
+  Orientation(const RightOrientation & rightOri);
+
   Orientation(const double & roll, const double & pitch, const double & yaw);
 
   Orientation(const Orientation & multiplier1, const Orientation & multiplier2);
@@ -440,8 +445,8 @@ public:
 
   /// no checks are performed for these functions, use with caution
 
-  inline CheckedMatrix3 & getMatrixRefUnsafe();
-  inline CheckedQuaternion & getQuaternionRefUnsafe();
+  inline const CheckedMatrix3 & getMatrixRefUnsafe();
+  inline const CheckedQuaternion & getQuaternionRefUnsafe();
 
   /// synchronizes the representations (quaternion and rotation matrix)
   inline void synchronize();
@@ -489,6 +494,8 @@ struct Kinematics
   /// use the flags to define the structure of the vector
   Kinematics(const Vector & v, Flags::Byte = Flags::all);
 
+  Kinematics(const CheckedVector3 & position, const CheckedVector3 & linVel, const CheckedVector3 & linAcc, const Orientation & orientation, const CheckedVector3 & angVel, const CheckedVector3 & angAcc);
+
   Kinematics(const Kinematics & multiplier1, const Kinematics & multiplier2);
 
   /// Fills from vector
@@ -511,6 +518,8 @@ struct Kinematics
   inline const Kinematics & update(const Kinematics & newValue, double dt, Flags::Byte = Flags::all);
 
   inline Kinematics getInverse() const;
+
+  inline LocalRightKinematics switchToLocalFrame() const;
 
   /// converts the object to a vector
   /// the order of the vector is
@@ -543,8 +552,219 @@ protected:
   Vector3 tempVec_;
 };
 
+
+
+class RightOrientation
+{
+public:
+  /// The parameter initialize should be set to true except when it is
+  /// certain that the initial value will not be used
+  /// And that the first operation would be to set its value
+  explicit RightOrientation(bool initialize = true);
+
+  /// this is the rotation vector and NOT Euler angles
+  explicit RightOrientation(const Vector3 & v);
+
+  explicit RightOrientation(const Quaternion & q);
+
+  explicit RightOrientation(const Matrix3 & m);
+
+  explicit RightOrientation(const AngleAxis & aa);
+
+  RightOrientation(const Quaternion & q, const Matrix3 & m);
+
+  RightOrientation(const Orientation & orientation);
+
+  RightOrientation(const double & roll, const double & pitch, const double & yaw);
+
+  RightOrientation(const RightOrientation & multiplier1, const RightOrientation & multiplier2);
+
+  inline RightOrientation & operator=(const Vector3 & v);
+
+  inline RightOrientation & operator=(const Quaternion & q);
+
+  inline RightOrientation & operator=(const Matrix3 & m);
+
+  inline RightOrientation & operator=(const AngleAxis & aa);
+
+  inline RightOrientation & setValue(const Quaternion & q, const Matrix3 & m);
+
+  inline RightOrientation & fromVector4(const Vector4 & v);
+
+  inline RightOrientation & setRandom();
+
+  template<typename t>
+  inline RightOrientation & setZeroRotation();
+
+  inline RightOrientation & setZeroRotation();
+
+  /// get a const reference on the matrix or the quaternion
+  inline const Matrix3 & toMatrix3() const;
+  inline const Quaternion & toQuaternion() const;
+
+  inline operator const Matrix3 &() const;
+  inline operator const Quaternion &() const;
+
+  inline Vector4 toVector4() const;
+
+  inline Vector3 toRotationVector() const;
+  inline Vector3 toRollPitchYaw() const;
+  inline AngleAxis toAngleAxis() const;
+
+  /// Multiply the rotation (orientation) by another rotation R2
+  /// the non const versions allow to use more optimized methods
+
+  inline RightOrientation operator*(const RightOrientation & R2) const;
+
+  /// Noalias versions of the operator*
+  inline const RightOrientation & setToProductNoAlias(const RightOrientation & R1, const RightOrientation & R2);
+
+  inline RightOrientation inverse() const;
+
+  /// use the vector dt_x_omega as the increment of rotation expressed in the
+  /// world frame. Which gives R_{k+1}=R_k\exp(S(dtxomega))
+  inline const RightOrientation & integrate(Vector3 dt_x_omega);
+
+  /// gives the log (rotation vector) of the difference of orientation
+  /// gives log of (*this)*R_k1.inverse()
+  inline Vector3 differentiate(RightOrientation R_k1) const;
+
+  /// Rotate a vector
+  inline Vector3 operator*(const Vector3 & v) const;
+
+  inline bool isSet() const;
+  inline void reset();
+
+  inline bool isMatrixSet() const;
+  inline bool isQuaternionSet() const;
+
+  /// switch the state of the Matrix or quaternion to set or not
+  /// this can be used for forward initialization
+  inline void setMatrix(bool b = true);
+  inline void setQuaternion(bool b = true);
+
+  /// no checks are performed for these functions, use with caution
+
+  inline const CheckedMatrix3 & getMatrixRefUnsafe();
+  inline const CheckedQuaternion & getQuaternionRefUnsafe();
+
+  /// synchronizes the representations (quaternion and rotation matrix)
+  inline void synchronize();
+
+  /// retruns a zero rotation
+  static inline RightOrientation zeroRotation();
+
+  /// Returns a uniformly distributed random rotation
+  static inline RightOrientation randomRotation();
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+protected:
+  void check_() const;
+
+  inline const Matrix3 & quaternionToMatrix_() const;
+  inline const Quaternion & matrixToQuaternion_() const;
+
+  mutable CheckedQuaternion q_;
+  mutable CheckedMatrix3 m_;
+};
+
+
+
+struct LocalRightKinematics
+{
+  /*
+  This structure is similar to the Kinematics one, but all the state variables are expressed in the local frame. 
+  (They correspond to the kinematics of the local frame in the global frame, but expressed in this local frame)
+  */
+  struct Flags
+  {
+    typedef unsigned char Byte;
+
+    static const Byte position = BOOST_BINARY(000001);
+    static const Byte orientation = BOOST_BINARY(000010);
+    static const Byte linVel = BOOST_BINARY(000100);
+    static const Byte angVel = BOOST_BINARY(001000);
+    static const Byte linAcc = BOOST_BINARY(010000);
+    static const Byte angAcc = BOOST_BINARY(100000);
+
+    static const Byte all = position | orientation | linVel | angVel | linAcc | angAcc;
+  };
+
+  LocalRightKinematics() {}
+
+  /// Constructor from a vector
+  /// the flags show which parts of the kinematics to be loaded from the vector
+  /// the order of the vector is
+  /// position orientation (quaternion) linevel angvel linAcc angAcc
+  /// use the flags to define the structure of the vector
+  LocalRightKinematics(const Vector & v, Flags::Byte = Flags::all);
+
+  LocalRightKinematics(const CheckedVector3 & position, const CheckedVector3 & linVel, const CheckedVector3 & linAcc, const Orientation & orientation, const CheckedVector3 & angVel, const CheckedVector3 & angAcc);
+
+  LocalRightKinematics(const LocalRightKinematics & multiplier1, const LocalRightKinematics & multiplier2);
+
+  /// Fills from vector
+  /// the flags show which parts of the kinematics to be loaded from the vector
+  /// the order of the vector is
+  /// position orientation (quaternion) linevel angvel linAcc angAcc
+  /// use the flags to define the structure of the vector
+  LocalRightKinematics & fromVector(const Vector & v, Flags::Byte = Flags::all);
+
+  /// initializes at zero all the flagged fields
+  /// the typename allows to set if the prefered type for rotation
+  /// is a Matrix3 or a Quaternion (Quaternion by default)
+  template<typename t>
+  LocalRightKinematics & setZero(Flags::Byte = Flags::all);
+
+  LocalRightKinematics & setZero(Flags::Byte = Flags::all);
+
+  inline const LocalRightKinematics & integrate(double dt);
+
+  /// updates the LocalRightKinematics given its new values
+  inline const LocalRightKinematics & update(const LocalRightKinematics & newValue, double dt, Flags::Byte = Flags::all);
+
+  inline LocalRightKinematics getInverse() const;
+
+  inline Kinematics switchToGlobalFrame() const;
+
+  /// converts the object to a vector
+  /// the order of the vector is
+  /// position orientation (quaternion) linevel angvel linAcc angAcc
+  /// use the flags to define the structure of the vector
+  inline Vector toVector(Flags::Byte) const;
+  inline Vector toVector() const;
+
+  /// composition of transformation
+  inline LocalRightKinematics operator*(const LocalRightKinematics &)const;
+
+  inline LocalRightKinematics setToProductNoAlias(const LocalRightKinematics & operand1,
+                                                  const LocalRightKinematics & operand2);
+
+  inline void reset();
+
+  CheckedVector3 locPosition;  // position of the frame in the destination frame of the Kinematic object, expressed in the original frame
+  RightOrientation rightOrientation;
+
+  CheckedVector3 locLinVel;
+  CheckedVector3 locAngVel;
+
+  CheckedVector3 locLinAcc;
+  CheckedVector3 locAngAcc;
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+protected:
+  inline const LocalRightKinematics & update_deprecated(const LocalRightKinematics & newValue, double dt, Flags::Byte = Flags::all);
+
+  Vector3 tempVec_;
+  Vector3 tempVec_2;
+};
+
 } // namespace kine
 } // namespace stateObservation
+
+
 
 inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::Kinematics & k);
 

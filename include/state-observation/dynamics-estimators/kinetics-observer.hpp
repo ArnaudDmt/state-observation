@@ -1092,6 +1092,7 @@ protected:
   inline unsigned contactWrenchIndexTangent(VectorContactConstIterator i) const;
 
 public:
+  static const double gravityAccelerationConstant = 9.8;
   ///////////SIZE OF VECTORS
 
   static const unsigned sizeAcceleroSignal = 3;
@@ -1099,14 +1100,21 @@ public:
   static const unsigned sizeIMUSignal = sizeAcceleroSignal + sizeGyroSignal;
 
   static const unsigned sizePos = 3;
+  static const unsigned sizePosTangent = 3;
   static const unsigned sizeOri = 4;
   static const unsigned sizeOriTangent = 3;
   static const unsigned sizeLinVel = sizePos;
+  static const unsigned sizeLinVelTangent = sizeLinVel;
+  static const unsigned sizeLinAccTangent = sizeLinVelTangent;
   static const unsigned sizeAngVel = sizeOriTangent;
+  static const unsigned sizeAngVelTangent = sizeAngVel;
   static const unsigned sizeGyroBias = sizeGyroSignal;
+  static const unsigned sizeGyroBiasTangent = sizeGyroBias;
 
   static const unsigned sizeForce = 3;
+  static const unsigned sizeForceTangent = sizeForce;
   static const unsigned sizeTorque = 3;
+  static const unsigned sizeTorqueTangent = sizeTorque;
 
   static const unsigned sizeWrench = sizeForce + sizeTorque;
 

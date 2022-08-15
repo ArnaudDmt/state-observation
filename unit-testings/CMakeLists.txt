@@ -22,6 +22,7 @@ add_so_test(test_model-base-ekf-flex-estimator-imu)
 add_so_test(test-kinetics-observer)
 add_so_test(test-dcm-bias-estimation)
 add_so_test(test-kinematics)
+add_so_test(test-local-kinematics)
 
 add_custom_command(
   TARGET test_model-base-ekf-flex-estimator-imu

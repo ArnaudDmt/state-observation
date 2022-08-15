@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.tcc": "cpp",
+        "cmath": "cpp",
+        "complex": "cpp",
+        "core": "cpp",
+        "unordered_map": "cpp"
+    },
+    "window.zoomLevel": 1
+}

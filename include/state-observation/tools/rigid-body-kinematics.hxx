@@ -70,7 +70,6 @@ inline void integrateKinematics(Vector3 & position,
   integrateKinematics(orientation, rotationVelocityVector, rotationVelocityVectorRate, dt);
 }
 
-
 inline void integrateKinematics(Vector3 & position,
                                 Vector3 & velocity,
                                 const Vector3 & acceleration,
@@ -323,7 +322,7 @@ inline Matrix3 twoVectorsToRotationMatrix(const Vector3 & v1, const Vector3 Rv1)
   }
   else if(1 + v1dotRv1 < cst::epsilon1)
   {
-    ///it is a singularity
+    /// it is a singularity
     throw std::invalid_argument("twoVectorsToRotationMatrix Vectors are opposite: there is an infinity of rotation "
                                 "matrices with minimal angle between them");
   }
@@ -355,7 +354,7 @@ inline Vector3 getInvariantHorizontalVector(const Matrix3 & R)
 inline Vector3 getInvariantOrthogonalVector(const Matrix3 & Rhat, const Vector3 & Rtez)
 {
   Vector3 Rhat_Rtez = Rhat * Rtez;
-  if (Rhat_Rtez.head<2>().isZero(cst::epsilon1))
+  if(Rhat_Rtez.head<2>().isZero(cst::epsilon1))
   { /// any vector is a solution
     return Vector3::UnitX();
   }
@@ -704,12 +703,6 @@ inline Orientation::Orientation(const double & roll, const double & pitch, const
 
 inline Orientation::Orientation(const Quaternion & q, const Matrix3 & m) : q_(q), m_(m) {}
 
-inline Orientation::Orientation(const RightOrientation & rightOri)
-{
-  m_ = rightOri.getMatrixRefUnsafe();
-  q_ = rightOri.getQuaternionRefUnsafe();
-}
-
 inline Orientation::Orientation(const Orientation & operand1, const Orientation & operand2) : q_(false), m_(false)
 {
   setToProductNoAlias(operand1, operand2);
@@ -933,10 +926,39 @@ inline const Orientation & Orientation::integrate(Vector3 dt_x_omega)
   return *this;
 }
 
+inline const Orientation & Orientation::integrateRightSide(Vector3 dt_x_omega)
+{
+  check_();
+  if(q_.isSet())
+  {
+    if(isMatrixSet())
+    {
+      Quaternion q = kine::rotationVectorToQuaternion(dt_x_omega);
+      q_ = q_() * q;
+      m_ = m_() * q.toRotationMatrix();
+    }
+    else
+    {
+      q_ = q_() * kine::rotationVectorToQuaternion(dt_x_omega);
+    }
+  }
+  else
+  {
+    m_ = m_() * kine::rotationVectorToRotationMatrix(dt_x_omega);
+  }
+  return *this;
+}
+
 inline Vector3 Orientation::differentiate(Orientation R_k1) const
 {
   check_();
   return (Orientation(R_k1, inverse())).toRotationVector();
+}
+
+inline Vector3 Orientation::differentiateRightSide(Orientation R_k1) const
+{
+  check_();
+  return (Orientation(inverse(), R_k1)).toRotationVector();
 }
 
 inline bool Orientation::isSet() const
@@ -999,12 +1021,12 @@ inline Vector3 Orientation::operator*(const Vector3 & v) const
   return m_() * v;
 }
 
-inline const CheckedMatrix3 & Orientation::getMatrixRefUnsafe()
+inline CheckedMatrix3 & Orientation::getMatrixRefUnsafe() const
 {
   return m_;
 }
 
-inline const CheckedQuaternion & Orientation::getQuaternionRefUnsafe()
+inline CheckedQuaternion & Orientation::getQuaternionRefUnsafe() const
 {
   return q_;
 }
@@ -1037,376 +1059,62 @@ inline Orientation Orientation::randomRotation()
 }
 
 ///////////////////////////////////////////////////////////////////////
-/// -------------------RightOrientation structure implementation-------------
-///////////////////////////////////////////////////////////////////////
-
-inline RightOrientation::RightOrientation(bool b) : q_(b), m_(b) {}
-
-inline RightOrientation::RightOrientation(const Vector3 & v) : q_(rotationVectorToQuaternion(v)) {}
-
-inline RightOrientation::RightOrientation(const Quaternion & q) : q_(q) {}
-
-inline RightOrientation::RightOrientation(const Matrix3 & m) : m_(m) {}
-
-inline RightOrientation::RightOrientation(const AngleAxis & aa) : q_(Quaternion(aa)) {}
-
-inline RightOrientation::RightOrientation(const double & roll, const double & pitch, const double & yaw)
-: q_(kine::rollPitchYawToQuaternion(roll, pitch, yaw))
-{
-}
-
-inline RightOrientation::RightOrientation(const Quaternion & q, const Matrix3 & m) : q_(q), m_(m) {}
-
-inline RightOrientation::RightOrientation(const Orientation & orientation)
-{
-  m_ = orientation.getMatrixRefUnsafe();
-  q_ = orientation.getQuaternionRefUnsafe();
-}
-
-inline RightOrientation::RightOrientation(const RightOrientation & operand1, const RightOrientation & operand2) : q_(false), m_(false)
-{
-  setToProductNoAlias(operand1, operand2);
-}
-
-inline RightOrientation & RightOrientation::operator=(const Vector3 & v)
-{
-  m_.reset();
-  q_ = rotationVectorToQuaternion(v);
-  return *this;
-}
-
-inline RightOrientation & RightOrientation::operator=(const Quaternion & q)
-{
-  m_.reset();
-  q_ = q;
-  return *this;
-}
-
-inline RightOrientation & RightOrientation::operator=(const Matrix3 & m)
-{
-  q_.reset();
-  m_ = m;
-  return *this;
-}
-
-inline RightOrientation & RightOrientation::operator=(const AngleAxis & aa)
-{
-  m_.reset();
-  q_ = Quaternion(aa);
-  return *this;
-}
-
-inline RightOrientation & RightOrientation::setValue(const Quaternion & q, const Matrix3 & m)
-{
-  q_ = q;
-  m_ = m;
-  return *this;
-}
-
-inline RightOrientation & RightOrientation::fromVector4(const Vector4 & v)
-{
-  return (*this) = Quaternion(v);
-}
-
-inline RightOrientation & RightOrientation::setRandom()
-{
-  return (*this) = randomRotationQuaternion();
-}
-
-template<>
-inline RightOrientation & RightOrientation::setZeroRotation<Quaternion>()
-{
-  return (*this) = zeroRotationQuaternion();
-}
-
-template<>
-inline RightOrientation & RightOrientation::setZeroRotation<Matrix3>()
-{
-  return (*this) = Matrix3(Matrix3::Identity());
-}
-
-inline RightOrientation & RightOrientation::setZeroRotation()
-{
-  return setZeroRotation<Quaternion>();
-}
-
-inline Vector4 RightOrientation::toVector4() const
-{
-  return toQuaternion().coeffs();
-}
-
-inline Vector3 RightOrientation::toRotationVector() const
-{
-  check_();
-  if(isQuaternionSet())
-  {
-    return kine::quaternionToRotationVector(q_());
-  }
-  else
-  {
-    return kine::rotationMatrixToRotationVector(m_());
-  }
-}
-
-inline Vector3 RightOrientation::toRollPitchYaw() const
-{
-  check_();
-  if(!isMatrixSet())
-  {
-    quaternionToMatrix_();
-  }
-  return kine::rotationMatrixToRollPitchYaw(m_());
-}
-
-inline AngleAxis RightOrientation::toAngleAxis() const
-{
-  check_();
-  if(isMatrixSet())
-  {
-    return AngleAxis(m_());
-  }
-  else
-  {
-    return AngleAxis(q_());
-  }
-}
-
-inline const Matrix3 & RightOrientation::toMatrix3() const
-{
-  check_();
-  if(!isMatrixSet())
-  {
-    quaternionToMatrix_();
-  }
-  return m_;
-}
-
-inline const Quaternion & RightOrientation::toQuaternion() const
-{
-  check_();
-  if(!isQuaternionSet())
-  {
-    matrixToQuaternion_();
-  }
-  return q_;
-}
-
-inline RightOrientation::operator const Matrix3 &() const
-{
-  return toMatrix3();
-}
-
-inline RightOrientation::operator const Quaternion &() const
-{
-  return toQuaternion();
-}
-
-inline const RightOrientation & RightOrientation::setToProductNoAlias(const RightOrientation & R1, const RightOrientation & R2) // To modify
-{
-  R1.check_();
-  R2.check_();
-  if(R1.isQuaternionSet() && R2.isQuaternionSet())
-  {
-    if(R1.isMatrixSet() && R2.isMatrixSet())
-    {
-      m_.set().noalias() = R1.m_() * R2.m_();
-    }
-    else
-    {
-      m_.reset();
-    }
-    q_ = R1.q_() * R2.q_();
-  }
-  else
-  {
-    m_.set(true); /// we set the matrix as initialized before giving the value
-    if(!R1.isMatrixSet())
-    {
-      m_().noalias() = R1.quaternionToMatrix_() * R2.m_();
-    }
-    else if(!R2.isMatrixSet())
-    {
-      m_().noalias() = R1.m_() * R2.quaternionToMatrix_();
-    }
-    else
-    {
-      m_().noalias() = R1.m_() * R2.m_();
-    }
-    q_.reset();
-  }
-
-  return *this;
-}
-
-inline RightOrientation RightOrientation::operator*(const RightOrientation & R2) const
-{
-  return RightOrientation(*this, R2);
-}
-
-inline RightOrientation RightOrientation::inverse() const
-{
-  check_();
-  if(q_.isSet())
-  {
-    if(isMatrixSet())
-    {
-      return RightOrientation(q_().inverse(), m_().transpose());
-    }
-    else
-    {
-      return RightOrientation(q_().inverse());
-    }
-  }
-  else
-  {
-    return RightOrientation(Matrix3(m_().transpose()));
-  }
-}
-
-inline const RightOrientation & RightOrientation::integrate(Vector3 dt_x_omega)
-{
-  check_();
-  if(q_.isSet())
-  {
-    if(isMatrixSet())
-    {
-      Quaternion q = kine::rotationVectorToQuaternion(dt_x_omega);
-      q_ = q_() * q;
-      m_ = m_() * q.toRotationMatrix();
-    }
-    else
-    {
-      q_ = q_() * kine::rotationVectorToQuaternion(dt_x_omega);
-    }
-  }
-  else
-  {
-    m_ = m_() * kine::rotationVectorToRotationMatrix(dt_x_omega);
-  }
-  return *this;
-}
-
-inline Vector3 RightOrientation::differentiate(RightOrientation R_k1) const
-{
-  check_();
-  return (RightOrientation(*this, R_k1.inverse())).toRotationVector();
-}
-
-inline bool RightOrientation::isSet() const
-{
-  return (isMatrixSet() || q_.isSet());
-}
-
-inline void RightOrientation::synchronize()
-{
-  check_();
-  if(isMatrixSet())
-  {
-    if(!isQuaternionSet())
-    {
-      matrixToQuaternion_();
-    }
-  }
-  else
-  {
-    if(isQuaternionSet())
-    {
-      quaternionToMatrix_();
-    }
-  }
-}
-
-inline void RightOrientation::reset()
-{
-  q_.reset();
-  m_.reset();
-}
-
-inline bool RightOrientation::isMatrixSet() const
-{
-  return (m_.isSet());
-}
-
-inline bool RightOrientation::isQuaternionSet() const
-{
-  return (q_.isSet());
-}
-
-inline void RightOrientation::setMatrix(bool b)
-{
-  m_.set(b);
-}
-
-inline void RightOrientation::setQuaternion(bool b)
-{
-  q_.set(b);
-}
-
-inline Vector3 RightOrientation::operator*(const Vector3 & v) const
-{
-  check_();
-  if(!isMatrixSet())
-  {
-    quaternionToMatrix_();
-  }
-  return m_() * v;
-}
-
-inline const CheckedMatrix3 & RightOrientation::getMatrixRefUnsafe()
-{
-  return m_;
-}
-
-inline const CheckedQuaternion & RightOrientation::getQuaternionRefUnsafe()
-{
-  return q_;
-}
-
-inline void RightOrientation::check_() const
-{
-  BOOST_ASSERT((isQuaternionSet() || isMatrixSet()) && "The orientation is not initialized");
-}
-
-inline const Matrix3 & RightOrientation::quaternionToMatrix_() const
-{
-  return m_ = q_().toRotationMatrix();
-}
-
-inline const Quaternion & RightOrientation::matrixToQuaternion_() const
-{
-  return q_ = Quaternion(m_());
-}
-
-inline RightOrientation RightOrientation::zeroRotation()
-{
-  return RightOrientation(Quaternion::Identity(), Matrix3::Identity());
-}
-
-inline RightOrientation RightOrientation::randomRotation()
-{
-  RightOrientation o;
-  o.setRandom();
-  return o;
-}
-
-///////////////////////////////////////////////////////////////////////
 /// -------------------Kinematics structure implementation-------------
 ///////////////////////////////////////////////////////////////////////
-
 
 inline Kinematics::Kinematics(const Vector & v, Kinematics::Flags::Byte flags)
 {
   Kinematics::fromVector(v, flags);
 }
 
-inline Kinematics::Kinematics(const CheckedVector3 & position, const CheckedVector3 & linVel, 
-                                                    const CheckedVector3 & linAcc, const Orientation & orientation, const CheckedVector3 & angVel, const CheckedVector3 & angAcc) 
-                                                    : position(position), linVel(linVel), linAcc(linAcc), orientation(orientation), angVel(angVel), angAcc(angAcc) {}
-
+inline Kinematics::Kinematics(const CheckedVector3 & position,
+                              const CheckedVector3 & linVel,
+                              const CheckedVector3 & linAcc,
+                              const Orientation & orientation,
+                              const CheckedVector3 & angVel,
+                              const CheckedVector3 & angAcc)
+: position(position), linVel(linVel), linAcc(linAcc), orientation(orientation), angVel(angVel), angAcc(angAcc)
+{
+}
 
 inline Kinematics::Kinematics(const Kinematics & multiplier1, const Kinematics & multiplier2)
 {
   setToProductNoAlias(multiplier1, multiplier2);
+}
+
+inline Kinematics::Kinematics(const LocalKinematics & locK)
+{
+  BOOST_ASSERT(locK.orientation.isSet() && "The transformation to the local frame requires the orientation");
+
+  locK.orientation.toMatrix3();
+
+  orientation = locK.orientation;
+
+  if(locK.position.isSet())
+  {
+    position = orientation * locK.position();
+  }
+
+  if(locK.linVel.isSet())
+  {
+    linVel = orientation * locK.linVel();
+  }
+
+  if(locK.linAcc.isSet())
+  {
+    linAcc = orientation * locK.linAcc();
+  }
+
+  if(locK.angVel.isSet())
+  {
+    angVel = orientation * locK.angVel();
+  }
+
+  if(locK.angAcc.isSet())
+  {
+    angAcc = orientation * locK.angAcc();
+  }
+  
 }
 
 inline Kinematics & Kinematics::fromVector(const Vector & v, Kinematics::Flags::Byte flags)
@@ -1686,7 +1394,7 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
             {
               BOOST_ASSERT(thisAcc.isSet() && "The linear accleration cannot be updated without initial value");
             }
-          }
+          }bool flagOri = flags & Flags::orientation;
         }
       }
     }
@@ -1802,6 +1510,8 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
     method velMethod = noUpdate;
     method accMethod = noUpdate;
 
+    BOOST_ASSERT(thisOri.isSet() && "The orientation is essential to the Kinematics object");
+    BOOST_ASSERT(flagOri && "The new orientation has to be computed as it is essential to the Kinematics object");
     if(flagOri)
     {
       if(newOri.isSet())
@@ -1897,7 +1607,7 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
     {
       if(accMethod == useOrientation) // then velocity cannot use accelerations
       {
-        thisAcc = 2 * newOri.differentiate(thisOri) / (dt * dt);
+        thisAcc = 2 * thisOri.differentiateRightSide(newOri) / (dt * dt);
       }
     }
 
@@ -1906,13 +1616,13 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
       if(accMethod == useVelAndAcc)
       {
         thisAcc = -thisVel();
-        thisVel = thisOri.differentiate(newOri) / dt;
+        thisVel = thisOri.differentiateRightSide(newOri) / dt;
         thisAcc() += thisVel();
         thisAcc() /= dt;
       }
       else
       {
-        thisVel = thisOri.differentiate(newOri) / dt;
+        thisVel = thisOri.differentiateRightSide(newOri) / dt;
       }
     }
 
@@ -1924,19 +1634,19 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
     {
       if(posMethod == useVelocity)
       {
-        thisOri.integrate(thisVel() * dt);
+        thisOri.integrateRightSide(thisVel() * dt);
       }
       else
       {
         if(posMethod == useVelAndAcc)
         {
-          thisOri.integrate(thisVel() * dt + thisAcc() * dt * dt / 2);
+          thisOri.integrateRightSide(thisVel() * dt + thisAcc() * dt * dt / 2);
         }
         else
         {
           if(posMethod == useAcceleration)
           {
-            thisOri.integrate(thisAcc() * dt * dt / 0.5);
+            thisOri.integrateRightSide(thisAcc() * dt * dt / 0.5);
           }
         }
       }
@@ -2002,60 +1712,19 @@ inline Kinematics Kinematics::getInverse() const
     {
 
       Vector3 omegaxp = angVel().cross(position());
-      inverted.linVel = r2 * (omegaxp - linVel()); // t2dot
+      inverted.linVel = r2.toMatrix3() * (omegaxp - linVel()); // t2dot
       if(linAcc.isSet() && (angAcc.isSet()))
       {
 
         inverted.linAcc =
-            r2 * (angVel().cross(2 * linVel - omegaxp) - linAcc() + angAcc().cross(position())); // t2dotdot
+            r2.toMatrix3()
+            * (angVel().cross(2 * linVel() - omegaxp) - linAcc() + angAcc().cross(position())); // t2dotdot
       }
     }
   }
 
   return inverted;
 }
-
-
-inline LocalRightKinematics switchToLocalFrame(Kinematics& globalKine)  // we consider we can modify directly the globalKine variables as it would then be outdated
-{
-  static const LocalRightKinematics::Flags::Byte vars = BOOST_BINARY(000000);
-
-
-  BOOST_ASSERT(globalKine.orientation.isSet()
-               && "The transformation to the local frame requires the orientation");
-
-  Orientation orientation_T = globalKine.orientation.inverse();
-
-
-  if(globalKine.position.isSet())
-  {
-    globalKine.position() = orientation_T*globalKine.position(); 
-  }
-
-  if(globalKine.linVel.isSet())
-  {
-    globalKine.linVel =  orientation_T*globalKine.linVel(); 
-  }
-
-  if( globalKine.linAcc.isSet())
-  {
-    globalKine.linAcc =  orientation_T*globalKine.linAcc(); 
-  }
-
-  if( globalKine.angVel.isSet())
-  {
-    globalKine.angVel =  orientation_T*globalKine.angVel(); 
-  }
-  
-  if( globalKine.angAcc.isSet())
-  {
-    globalKine.angAcc =  orientation_T*globalKine.angAcc(); 
-  }
-
-  return LocalRightKinematics(globalKine.position, globalKine.linVel, globalKine.linAcc, globalKine.orientation, globalKine.angVel, globalKine.angAcc);
-}
-
-
 
 /// composition of transformation
 inline Kinematics Kinematics::operator*(const Kinematics & multiplier) const
@@ -2103,7 +1772,6 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
       }
 
       linVel() += multiplier1.linVel();
-
     }
     else
     {
@@ -2159,8 +1827,6 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
 
   return *this;
 }
-
-
 
 inline Vector Kinematics::toVector(Flags::Byte flags) const
 {
@@ -2524,27 +2190,59 @@ inline const Kinematics & Kinematics::update_deprecated(const Kinematics & newVa
   return *this;
 }
 
-
 ///////////////////////////////////////////////////////////////////////
-/// -------------------Kinematics structure implementation-------------
+/// -------------------LocalKinematics structure implementation-------------
 ///////////////////////////////////////////////////////////////////////
 
-
-inline LocalRightKinematics::LocalRightKinematics(const Vector & v, LocalRightKinematics::Flags::Byte flags)
+inline LocalKinematics::LocalKinematics(const Vector & v, LocalKinematics::Flags::Byte flags)
 {
-  LocalRightKinematics::fromVector(v, flags);
+  LocalKinematics::fromVector(v, flags);
 }
 
-inline LocalRightKinematics::LocalRightKinematics(const CheckedVector3 & position, const CheckedVector3 & linVel, 
-                                                    const CheckedVector3 & linAcc, const Orientation & orientation, const CheckedVector3 & angVel, const CheckedVector3 & angAcc) 
-                                                    : locPosition(position), locLinVel(linVel), locLinAcc(linAcc), rightOrientation(orientation), locAngVel(angVel), locAngAcc(angAcc) {}
-
-inline LocalRightKinematics::LocalRightKinematics(const LocalRightKinematics & multiplier1, const LocalRightKinematics & multiplier2)
+inline LocalKinematics::LocalKinematics(const LocalKinematics & multiplier1, const LocalKinematics & multiplier2)
 {
   setToProductNoAlias(multiplier1, multiplier2);
 }
 
-inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v, LocalRightKinematics::Flags::Byte flags)
+inline LocalKinematics::LocalKinematics(const Kinematics & kin) // we consider we can modify directly the globalKine variables
+                                                        // as it would then be outdated
+{
+
+  BOOST_ASSERT(kin.orientation.isSet() && "The transformation to the local frame requires the orientation");
+
+  orientation = kin.orientation;
+
+  kin.orientation.toMatrix3();
+
+  Orientation orientation_T = kin.orientation.inverse();
+
+  if(kin.position.isSet())
+  {
+    position = orientation_T * kin.position();
+  }
+
+  if(kin.linVel.isSet())
+  {
+    linVel = orientation_T * kin.linVel();
+  }
+
+  if(kin.linAcc.isSet())
+  {
+    linAcc = orientation_T * kin.linAcc();
+  }
+
+  if(kin.angVel.isSet())
+  {
+    angVel = orientation_T * kin.angVel();
+  }
+
+  if(kin.angAcc.isSet())
+  {
+    angAcc = orientation_T * kin.angAcc();
+  }
+}
+
+inline LocalKinematics & LocalKinematics::fromVector(const Vector & v, LocalKinematics::Flags::Byte flags)
 {
   int index = 0;
 
@@ -2560,7 +2258,7 @@ inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v,
     BOOST_ASSERT(v.size() >= index + 3 && "The kinematics vector size is incorrect (loading position)");
     if(v.size() >= index + 3)
     {
-      locPosition = v.segment<3>(index);
+      position = v.segment<3>(index);
       index += 3;
     }
   }
@@ -2570,7 +2268,7 @@ inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v,
     BOOST_ASSERT(v.size() >= index + 4 && "The kinematics vector size is incorrect (loading orientaTion)");
     if(v.size() >= index + 4)
     {
-      rightOrientation.fromVector4(v.segment<4>(index));
+      orientation.fromVector4(v.segment<4>(index));
       index += 4;
     }
   }
@@ -2580,7 +2278,7 @@ inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v,
     BOOST_ASSERT(v.size() >= index + 3 && "The kinematics vector size is incorrect (loading linear velocity)");
     if(v.size() >= index + 3)
     {
-      locLinVel = v.segment<3>(index);
+      linVel = v.segment<3>(index);
       index += 3;
     }
   }
@@ -2590,7 +2288,7 @@ inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v,
     BOOST_ASSERT(v.size() >= index + 3 && "The kinematics vector size is incorrect (loading angular velocity)");
     if(v.size() >= index + 3)
     {
-      locAngVel = v.segment<3>(index);
+      angVel = v.segment<3>(index);
       index += 3;
     }
   }
@@ -2600,7 +2298,7 @@ inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v,
     BOOST_ASSERT(v.size() >= index + 3 && "The kinematics vector size is incorrect (loading linear acceleration)");
     if(v.size() >= index + 3)
     {
-      locLinAcc = v.segment<3>(index);
+      linAcc = v.segment<3>(index);
       index += 3;
     }
   }
@@ -2610,7 +2308,7 @@ inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v,
     BOOST_ASSERT(v.size() >= index + 3 && "The kinematics vector size is incorrect (loading angular acceleration)");
     if(v.size() >= index + 3)
     {
-      locAngAcc = v.segment<3>(index);
+      angAcc = v.segment<3>(index);
       // index+=3; ///useless
     }
   }
@@ -2619,19 +2317,19 @@ inline LocalRightKinematics & LocalRightKinematics::fromVector(const Vector & v,
 }
 
 template<typename t>
-inline LocalRightKinematics & LocalRightKinematics::setZero(LocalRightKinematics::Flags::Byte flags)
+inline LocalKinematics & LocalKinematics::setZero(LocalKinematics::Flags::Byte flags)
 {
 
   bool flagPos = flags & Flags::position;
   bool flagLinVel = flags & Flags::linVel;
   bool flagLinAcc = flags & Flags::linAcc;
-  bool flagOri = flags & Flags::rightOrientation;
+  bool flagOri = flags & Flags::orientation;
   bool flagAngVel = flags & Flags::angVel;
   bool flagAngAcc = flags & Flags::angAcc;
 
   if(flagPos)
   {
-    locPosition.set().setZero();
+    position.set().setZero();
   }
 
   if(flagOri)
@@ -2641,100 +2339,104 @@ inline LocalRightKinematics & LocalRightKinematics::setZero(LocalRightKinematics
 
   if(flagLinVel)
   {
-    locLinVel.set().setZero();
+    linVel.set().setZero();
   }
 
   if(flagAngVel)
   {
-    locAngVel.set().setZero();
+    angVel.set().setZero();
   }
 
   if(flagLinAcc)
   {
-    locLinAcc.set().setZero();
+    linAcc.set().setZero();
   }
 
   if(flagAngAcc)
   {
-    locAngAcc.set().setZero();
+    angAcc.set().setZero();
   }
 
   return *this;
 }
 
-inline LocalRightKinematics & LocalRightKinematics::setZero(LocalRightKinematics::Flags::Byte flags)
+inline LocalKinematics & LocalKinematics::setZero(LocalKinematics::Flags::Byte flags)
 {
   return setZero<Quaternion>(flags);
 }
 
-
-
-inline const LocalRightKinematics & LocalRightKinematics::integrate(double dt)
+inline const LocalKinematics & LocalKinematics::integrate(double dt)
 {
   /*
   Linear part
   */
 
-
-  if (locLinVel.isSet())
+  if(linVel.isSet())
   {
-    if (locLinAcc.isSet())
+    if(linAcc.isSet())
     {
-      if (locPosition.isSet())
+      if(position.isSet())
       {
-        if (locAngVel.isSet())
+        if(angVel.isSet())
         {
-          locLinVel() += dt* (-locAngVel().cross(locLinVel())+locLinAcc());
-          if (locAngAcc.isSet())
+          linVel() += dt * (-angVel().cross(linVel()) + linAcc());
+          if(angAcc.isSet())
           {
-            locPosition() += -locAngVel().cross(dt*(locPosition()+dt*(0.5*locAngVel().cross(locPosition()) - locLinVel()))) + dt*(locLinVel()+dt*(locLinAcc()-locAngAcc().cross(locPosition()))/2);
+            position() +=
+                -angVel().cross(dt * (position() + dt * (0.5 * angVel().cross(position()) - linVel())))
+                + dt * (linVel() + dt * (linAcc() - angAcc().cross(position())) / 2);
           }
           else
           {
-            locPosition() += -locAngVel().cross(dt*(locPosition()+dt*(0.5*locAngVel().cross(locPosition()) - locLinVel()))) + dt*(locLinVel()+dt*locLinAcc()/2);
+            position() +=
+                -angVel().cross(dt * (position() + dt * (0.5 * angVel().cross(position()) - linVel())))
+                + dt * (linVel() + dt * linAcc() / 2);
           }
         }
         else
         {
-          locLinVel() += dt* locLinAcc();
-          if (locAngAcc.isSet())
+          linVel() += dt * linAcc();
+          if(angAcc.isSet())
           {
-            locPosition() += dt*(locLinVel()+dt*(locLinAcc()-locAngAcc().cross(locPosition()))/2);
+            position() += dt * (linVel() + dt * (linAcc() - angAcc().cross(position())) / 2);
           }
           else
           {
-            locPosition() += dt*(locLinVel()+dt*locLinAcc()/2);
+            position() += dt * (linVel() + dt * linAcc() / 2);
           }
         }
       }
-      
     }
     else
     {
 
-      if (locPosition.isSet())
+      if(position.isSet())
       {
-        if (locAngVel.isSet())
+        if(angVel.isSet())
         {
-          locLinVel() -= locAngVel().cross(locLinVel());
-          if (locAngAcc.isSet())
+          linVel() -= angVel().cross(linVel());
+          if(angAcc.isSet())
           {
-            locPosition() += -locAngVel().cross(dt*(locPosition()+dt*(0.5*locAngVel().cross(locPosition()) - locLinVel()))) + dt*(locLinVel()-dt*(locAngAcc().cross(locPosition()))/2);
+            position() +=
+                -angVel().cross(dt * (position() + dt * (0.5 * angVel().cross(position()) - linVel())))
+                + dt * (linVel() - dt * (angAcc().cross(position())) / 2);
           }
           else
           {
-            locPosition() += -locAngVel().cross(dt*(locPosition()+dt*(0.5*locAngVel().cross(locPosition()) - locLinVel()))) + dt*locLinVel();
+            position() +=
+                -angVel().cross(dt * (position() + dt * (0.5 * angVel().cross(position()) - linVel())))
+                + dt * linVel();
           }
         }
         else
         {
-          if (locAngAcc.isSet())
+          if(angAcc.isSet())
           {
-            locPosition() += dt*(locLinVel()-dt/2*locAngAcc().cross(locPosition()));
+            position() += dt * (linVel() - dt / 2 * angAcc().cross(position()));
           }
           else
           {
-            locPosition() += dt*locLinVel();
+            position() += dt * linVel();
           }
         }
       }
@@ -2743,37 +2445,34 @@ inline const LocalRightKinematics & LocalRightKinematics::integrate(double dt)
     Angular part
     */
 
-    if(locAngVel.isSet())
+    if(angVel.isSet())
     {
-      if(locAngAcc.isSet())
+      if(angAcc.isSet())
       {
-        if(rightOrientation.isSet())
+        if(orientation.isSet())
         {
-          rightOrientation.integrate(locAngVel() * dt + locAngAcc() * dt * dt / 2);
+          orientation.integrateRightSide(angVel() * dt + angAcc() * dt * dt / 2);
         }
-        locAngVel() += locAngAcc() * dt;
+        angVel() += angAcc() * dt;
       }
       else
       {
-        if(rightOrientation.isSet())
+        if(orientation.isSet())
         {
-          rightOrientation.integrate(locAngVel() * dt);
+          orientation.integrateRightSide(angVel() * dt);
         }
       }
     }
-
   }
 
   return *this;
-
-
 }
 
-inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRightKinematics & newValue, double dt, Flags::Byte flags)
+inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & newValue, double dt, Flags::Byte flags)
 {
   {
-    bool backup_AngVel =  false;
-    bool backup_AngAcc =  false;
+    bool backup_AngVel = false;
+    bool backup_AngAcc = false;
 
     bool flagPos = flags & Flags::position;
     bool flagLinVel = flags & Flags::linVel;
@@ -2783,26 +2482,24 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
     bool flagAngVel = flags & Flags::angVel;
     bool flagAngAcc = flags & Flags::angAcc;
 
+    CheckedVector3 & thisLinPos = position; // linear variables to be updated
+    CheckedVector3 & thisLinVel = linVel;
+    CheckedVector3 & thisLinAcc = linAcc;
 
-    CheckedVector3 & thisLocLinPos = locPosition; // linear variables to be updated
-    CheckedVector3 & thisLocLinVel = locLinVel;
-    CheckedVector3 & thisLocLinAcc = locLinAcc;
+    const CheckedVector3 & newLinPos = newValue.position; // new linear variables used for the update
+    const CheckedVector3 & newLinVel = newValue.linVel;
+    const CheckedVector3 & newLinAcc = newValue.linAcc;
 
-    const CheckedVector3 & newLocLinPos = newValue.locPosition;  // new linear variables used for the update
-    const CheckedVector3 & newLocLinVel = newValue.locLinVel;
-    const CheckedVector3 & newLocLinAcc = newValue.locLinAcc;
-
-
-    RightOrientation & thisOri = rightOrientation;  // angular variables to be updated
-    CheckedVector3 & thisLocAngVel = locAngVel;
-    CheckedVector3 & thisLocAngAcc = locAngAcc;
+    Orientation & thisOri = orientation; // angular variables to be updated
+    CheckedVector3 & thisAngVel = angVel;
+    CheckedVector3 & thisAngAcc = angAcc;
 
     Vector3 currentAngVel;
     Vector3 currentAngAcc;
 
-    const RightOrientation & newOri = newValue.rightOrientation;  // new angular variables used for the update
-    const CheckedVector3 & newLocAngVel = newValue.locAngVel;
-    const CheckedVector3 & newLocAngAcc = newValue.locAngAcc;
+    const Orientation & newOri = newValue.orientation; // new angular variables used for the update
+    const CheckedVector3 & newAngVel = newValue.angVel;
+    const CheckedVector3 & newAngAcc = newValue.angAcc;
 
     enum method
     {
@@ -2838,7 +2535,8 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
     /*
     Determination of the computation methods for the angular variables
     */
-
+    BOOST_ASSERT(thisOri.isSet() && "The orientation is essential to the Kinematics object");
+    BOOST_ASSERT(flagOri && "The new orientation has to be computed as it is essential to the LocalKinematics object");
     if(flagOri)
     {
       if(newOri.isSet())
@@ -2848,9 +2546,9 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
       else
       {
         BOOST_ASSERT(thisOri.isSet() && "The orientation is trying to be updated without initial value");
-        if(thisLocAngVel.isSet())
+        if(thisAngVel.isSet())
         {
-          if(newLocAngAcc.isSet())
+          if(thisAngAcc.isSet())
           {
             oriMethod = useAngVelAndAcc;
           }
@@ -2861,7 +2559,7 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
         }
         else
         {
-          if(newLocAngAcc.isSet())
+          if(thisAngAcc.isSet())
           {
             oriMethod = useAngAcceleration;
           }
@@ -2871,7 +2569,7 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
 
     if(flagAngVel)
     {
-      if(thisLocAngVel.isSet())
+      if(newAngVel.isSet())
       {
         angVelMethod = useAngVelocity;
       }
@@ -2883,9 +2581,9 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
         }
         else
         {
-          BOOST_ASSERT(thisLocAngVel.isSet() && "The angular velocity is trying to be updated without initial value");
+          BOOST_ASSERT(thisAngVel.isSet() && "The angular velocity is trying to be updated without initial value");
 
-          if(newLocAngAcc.isSet())
+          if(thisAngAcc.isSet())
           {
             angVelMethod = useAngAcceleration;
           }
@@ -2895,19 +2593,19 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
 
     if(flagAngAcc)
     {
-      if(newLocAngAcc.isSet())
+      if(newAngAcc.isSet())
       {
         angAccMethod = useAngAcceleration;
       }
       else
       {
-        if(thisLocAngVel.isSet() && thisLocAngVel.isSet())
+        if(thisAngVel.isSet() && newAngVel.isSet())
         {
           angAccMethod = useAngVelocity;
         }
         else
         {
-          if(thisLocAngVel.isSet() && angVelMethod == useOrientation)
+          if(thisAngVel.isSet() && angVelMethod == useOrientation)
           {
             angAccMethod = useOriAndAngVel;
           }
@@ -2919,7 +2617,8 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
             }
             else
             {
-              BOOST_ASSERT(newLocAngAcc.isSet() && "The angular accleration is trying to be updated without initial value");
+              BOOST_ASSERT(newAngAcc.isSet()
+                           && "The angular accleration is trying to be updated without initial value");
             }
           }
         }
@@ -2932,31 +2631,31 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
 
     if(flagPos)
     {
-      if(newLocLinPos.isSet())
+      if(newLinPos.isSet())
       {
         posMethod = usePosition;
       }
       else
       {
-        if(thisLocAngVel.isSet()) // we will need a backup of the angular velocity
+        if(thisAngVel.isSet()) // we will need a backup of the angular velocity
         {
-            backup_AngVel =  true; 
-            if (thisLocAngAcc.isSet()) // we will need a backup of the angular acceleration
-            {
-                backup_AngAcc =  true; 
-            }
-        }   
+          backup_AngVel = true;
+          if(thisAngAcc.isSet()) // we will need a backup of the angular acceleration
+          {
+            backup_AngAcc = true;
+          }
+        }
         else
         {
-            if (thisLocAngAcc.isSet()) // we will need a backup of the angular acceleration
-            {
-              backup_AngAcc =  true;
-            }
+          if(thisAngAcc.isSet()) // we will need a backup of the angular acceleration
+          {
+            backup_AngAcc = true;
+          }
         }
-        BOOST_ASSERT(thisLocLinPos.isSet() && "The position cannot be updated without initial value");
-        if(thisLocLinVel.isSet())
+        BOOST_ASSERT(thisLinPos.isSet() && "The position cannot be updated without initial value");
+        if(thisLinVel.isSet())
         {
-          if(thisLocLinAcc.isSet())
+          if(thisLinAcc.isSet())
           {
             posMethod = useLinVelAndAcc;
           }
@@ -2964,19 +2663,18 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
           {
             posMethod = useLinVelocity;
           }
-          
         }
         else
         {
-          if(thisLocLinAcc.isSet())
+          if(thisLinAcc.isSet())
           {
             posMethod = useLinAcceleration;
           }
-          else 
+          else
           {
-            if (thisLocAngVel.isSet())
+            if(thisAngVel.isSet())
             {
-              if (thisLocAngAcc.isSet())
+              if(thisAngAcc.isSet())
               {
                 posMethod = useAngVelAndAcc;
               }
@@ -2987,8 +2685,8 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
             }
             else
             {
-              BOOST_ASSERT(thisLocAngAcc.isSet() && "The position cannot be updated with so few information");
-              if (thisLocAngAcc.isSet())
+              BOOST_ASSERT(thisAngAcc.isSet() && "The position cannot be updated with so few information");
+              if(thisAngAcc.isSet())
               {
                 posMethod = useAngAcceleration;
               }
@@ -3000,13 +2698,13 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
 
     if(flagLinVel)
     {
-      if(newLocLinVel.isSet())
+      if(newLinVel.isSet())
       {
         linVelMethod = useLinVelocity;
       }
       else
       {
-        if(thisLocLinPos.isSet())
+        if(thisLinPos.isSet())
         {
           if(posMethod == usePosition)
           {
@@ -3027,19 +2725,19 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
         }
         else
         {
-          BOOST_ASSERT(thisLocLinVel.isSet() && "The linear velocity cannot be updated without initial value");
-          if (thisLocAngVel.isSet()) // we will need a backup of the angular velocity
+          BOOST_ASSERT(thisLinVel.isSet() && "The linear velocity cannot be updated without initial value");
+          if(thisAngVel.isSet()) // we will need a backup of the angular velocity
           {
-              backup_AngVel =  true; 
+            backup_AngVel = true;
           }
-          if(thisLocLinAcc.isSet())
+          if(thisLinAcc.isSet())
           {
             linVelMethod = useLinAcceleration;
           }
           else
           {
-            BOOST_ASSERT(thisLocAngVel.isSet() && "The linear velocity cannot be updated withso few information");
-            if(thisLocAngVel.isSet())
+            BOOST_ASSERT(thisAngVel.isSet() && "The linear velocity cannot be updated withso few information");
+            if(thisAngVel.isSet())
             {
               linVelMethod = useAngVelocity;
             }
@@ -3050,15 +2748,15 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
 
     if(flagLinAcc)
     {
-      if(newLocLinAcc.isSet())
+      if(newLinAcc.isSet())
       {
         linAccMethod = useLinAcceleration;
       }
       else
       {
-        if(thisLocLinVel.isSet())
+        if(thisLinVel.isSet())
         {
-          if(newLocLinVel.isSet())
+          if(newLinVel.isSet())
           {
             linAccMethod = useLinVelocity;
           }
@@ -3077,8 +2775,8 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
 
         else /// velocity is not available
         {
-          BOOST_ASSERT(thisLocLinAcc.isSet() && "The linear accleration cannot be updated withso few information");
-          if(thisLocLinPos.isSet())
+          BOOST_ASSERT(thisLinPos.isSet() && "The linear accleration cannot be updated withso few information");
+          if(thisLinPos.isSet())
           {
             if(posMethod == usePosition)
             {
@@ -3097,7 +2795,6 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
               linAccMethod = usePosFromAngAcc;
             }
           }
-          
         }
       }
     }
@@ -3106,24 +2803,24 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
     Computations for angular variables
     */
 
-    if (backup_AngVel)
+    if(backup_AngVel)
     {
-      currentAngVel = thisLocAngVel();
+      currentAngVel = thisAngVel();
     }
-    if (backup_AngAcc)
+    if(backup_AngAcc)
     {
-      currentAngAcc = thisLocAngAcc();
+      currentAngAcc = thisAngAcc();
     }
 
     if(angAccMethod == useAngVelocity) // then velocity cannot use accelerations
     {
-      thisLocAngAcc = (newLocAngVel() - thisLocAngVel()) / dt;
+      thisAngAcc = (newAngVel() - thisAngVel()) / dt;
     }
     else
     {
       if(angAccMethod == useOrientation) // then velocity cannot use accelerations
       {
-        thisLocAngAcc = 2 * newOri.differentiate(thisOri) / (dt * dt);
+        thisAngAcc = 2 * thisOri.differentiateRightSide(newOri) / (dt * dt);
       }
     }
 
@@ -3131,14 +2828,14 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
     {
       if(angAccMethod == useAngVelAndAcc)
       {
-        thisLocAngAcc = -thisLocAngVel();
-        thisLocAngVel = thisOri.differentiate(newOri) / dt;
-        thisLocAngAcc() += thisLocAngVel();
-        thisLocAngAcc() /= dt;
+        thisAngAcc = -thisAngVel();
+        thisAngVel = thisOri.differentiateRightSide(newOri) / dt;
+        thisAngAcc() += thisAngVel();
+        thisAngAcc() /= dt;
       }
       else
       {
-        thisLocAngVel = thisOri.differentiate(newOri) / dt;
+        thisAngVel = thisOri.differentiateRightSide(newOri) / dt;
       }
     }
 
@@ -3150,19 +2847,19 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
     {
       if(oriMethod == useAngVelocity)
       {
-        thisOri.integrate(thisLocAngVel() * dt);
+        thisOri.integrateRightSide(thisAngVel() * dt);
       }
       else
       {
         if(oriMethod == useLinVelAndAcc)
         {
-          thisOri.integrate(thisLocAngVel() * dt + thisLocAngAcc() * dt * dt / 2);
+          thisOri.integrateRightSide(thisAngVel() * dt + thisAngAcc() * dt * dt / 2);
         }
         else
         {
           if(oriMethod == useAngAcceleration)
           {
-            thisOri.integrate(thisLocAngAcc() * dt * dt / 0.5);
+            thisOri.integrateRightSide(thisAngAcc() * dt * dt / 0.5);
           }
         }
       }
@@ -3170,35 +2867,38 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
 
     if(angVelMethod == useAngVelocity)
     {
-      thisLocAngVel = newLocAngVel;
+      thisAngVel = newAngVel;
     }
     else
     {
       if(angVelMethod == useAngAcceleration)
       {
-        thisLocAngVel() += thisLocAngAcc() * dt;
+        thisAngVel() += thisAngAcc() * dt;
       }
     }
 
-    if(angAccMethod == useLinAcceleration)
+    if(angAccMethod == useAngAcceleration)
     {
-      thisLocAngAcc = newLocAngAcc;
+      thisAngAcc = newAngAcc;
     }
 
     /*
     Computations for linear variables
     */
 
-
     if(linAccMethod == useLinVelocity) // then velocity cannot use accelerations
     {
-      thisLocLinAcc() = thisLocAngVel().cross(newLocLinVel())+(newLocLinVel()-thisLocLinVel())/dt;
+      thisLinAcc = thisAngVel().cross(newLinVel()) + (newLinVel() - thisLinVel()) / dt;
     }
     else
     {
       if(linAccMethod == usePosition) // then velocity cannot use accelerations
       {
-        thisLocLinAcc() = 2*(newLocLinPos()-thisLocLinPos())/dt/dt + thisLocAngAcc().cross(newLocLinPos()) + thisLocAngVel().cross(thisLocAngVel().cross(thisLocLinPos())+2*(newLocLinPos()-thisLocLinPos())/dt);
+        BOOST_ASSERT(thisAngVel.isSet() && "AngVel");
+        BOOST_ASSERT(thisAngAcc.isSet() && "AngAcc");
+        thisLinAcc = 2 * (newLinPos() - thisLinPos()) / dt / dt + thisAngAcc().cross(newLinPos())
+                          + thisAngVel().cross(thisAngVel().cross(thisLinPos())
+                                                  + 2 * (newLinPos() - thisLinPos()) / dt);
       }
     }
 
@@ -3206,13 +2906,31 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
     {
       if(linAccMethod == useLinVelFromPos) // use position and velocity to get the accelerations
       {
-        thisLocLinAcc() = -thisLocLinVel()/dt;
-        thisLocLinVel() = thisLocAngVel().cross(newLocLinPos()) + (newLocLinPos()-thisLocLinPos())/dt;
-        thisLocLinAcc() += thisLocAngVel().cross(thisLocLinVel()) + thisLocLinVel()/dt;
+        if (backup_AngVel)
+        {
+          thisLinAcc = -thisLinVel() / dt;
+          thisLinVel = thisAngVel().cross(newLinPos()) + (newLinPos() - thisLinPos()) / dt;
+          thisLinAcc() += thisAngVel().cross(thisLinVel()) + thisLinVel() / dt;
+        }
+        else
+        {
+          thisLinAcc = -thisLinVel() / dt;
+          thisLinVel = (newLinPos() - thisLinPos()) / dt;
+          thisLinAcc() += thisLinVel() / dt;
+        }
+        
       }
       else
       {
-        thisLocLinVel() = thisLocAngVel().cross(newLocLinPos()) + (newLocLinPos()-thisLocLinPos())/dt;
+        if (backup_AngVel)
+        {
+          thisLinVel = thisAngVel().cross(newLinPos()) + (newLinPos() - thisLinPos()) / dt;
+        }
+        else
+        {
+          thisLinVel = (newLinPos() - thisLinPos()) / dt;
+        }
+        
       }
     }
 
@@ -3220,130 +2938,134 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
     {
       if(linAccMethod == useLinVelFromAngVel) // use position and velocity to get the accelerations
       {
-        thisLocLinAcc() = -thisLocLinVel()/dt;
-        thisLocLinVel() -= dt*currentAngVel.cross(thisLocLinVel());
-        thisLocLinAcc() += thisLocAngVel().cross(thisLocLinVel()) + thisLocLinVel()/dt;
+        thisLinAcc = -thisLinVel() / dt;
+        thisLinVel() -= dt * currentAngVel.cross(thisLinVel());
+        thisLinAcc() += thisAngVel().cross(thisLinVel()) + thisLinVel() / dt;
       }
       else
       {
-        thisLocLinVel() -= dt*currentAngVel.cross(thisLocLinVel());
+        thisLinVel() -= dt * currentAngVel.cross(thisLinVel());
       }
     }
-
 
     if(posMethod == useAngVelAndAcc)
     {
-      if (linVelMethod == usePosFromAngVelAndAcc || linAccMethod == usePosFromAngVelAndAcc)
+      if(linVelMethod == usePosFromAngVelAndAcc || linAccMethod == usePosFromAngVelAndAcc)
       {
-        if (linVelMethod == usePosFromAngVelAndAcc)
+        if(linVelMethod == usePosFromAngVelAndAcc)
         {
           if(linAccMethod == useLinVelFromPos) // use position and velocity to get the accelerations
           {
-            thisLocLinAcc() = -thisLocLinVel()/dt;
-            thisLocLinVel() =  -thisLocLinPos()/dt;
-            thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos() + dt*(0.5*currentAngVel.cross(thisLocLinPos())))) - 0.5*dt*dt*currentAngAcc.cross(thisLocLinPos()); //newpos
-            thisLocLinVel() += thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt; // f(newpos)
-            thisLocLinAcc() += thisLocAngVel().cross(thisLocLinVel()) + thisLocLinVel()/dt;
+            thisLinAcc = -thisLinVel() / dt;
+            thisLinVel = -thisLinPos() / dt;
+            thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))))
+                                - 0.5 * dt * dt * currentAngAcc.cross(thisLinPos()); // newpos
+            thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt; // f(newpos)
+            thisLinAcc() += thisAngVel().cross(thisLinVel()) + thisLinVel() / dt;
           }
           else
           {
-            thisLocLinVel() = -thisLocLinPos()/dt;
-            thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos() + dt*(0.5*currentAngVel.cross(thisLocLinPos())))) - 0.5*dt*dt*currentAngAcc.cross(thisLocLinPos());
-            thisLocLinVel() += thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt;
+            thisLinVel = -thisLinPos() / dt;
+            thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))))
+                                 - 0.5 * dt * dt * currentAngAcc.cross(thisLinPos());
+            thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;
           }
         }
-        if (linAccMethod == usePosFromAngVelAndAcc)
+        if(linAccMethod == usePosFromAngVelAndAcc)
         {
-          thisLocLinAcc() = -2 * (thisLocLinPos() + thisLocAngVel().cross(thisLocLinPos())/dt)/dt;
-          thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos() + dt*(0.5*currentAngVel.cross(thisLocLinPos())))) - 0.5*dt*dt*currentAngAcc.cross(thisLocLinPos());
-          thisLocLinAcc() += thisLocAngAcc().cross(thisLocLinPos()) + thisLocAngVel().cross(thisLocAngVel().cross(thisLocLinPos())) + 2 * (thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt)/dt;
+          thisLinAcc = -2 * (thisLinPos() + thisAngVel().cross(thisLinPos()) / dt) / dt;
+          thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))))
+                               - 0.5 * dt * dt * currentAngAcc.cross(thisLinPos());
+          thisLinAcc() += thisAngAcc().cross(thisLinPos())
+                             + thisAngVel().cross(thisAngVel().cross(thisLinPos()))
+                             + 2 * (thisAngVel().cross(thisLinPos()) + thisLinPos() / dt) / dt;
         }
       }
       else
       {
-        thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos() + dt*(0.5*currentAngVel.cross(thisLocLinPos())))) - 0.5*dt*dt*currentAngAcc.cross(thisLocLinPos());
+        thisLinPos() +=
+            -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))))
+            - 0.5 * dt * dt * currentAngAcc.cross(thisLinPos());
       }
-      
     }
-
 
     if(posMethod == useAngVelocity)
     {
-      if (linVelMethod == usePosFromAngVel || linAccMethod == usePosFromAngVel)
+      if(linVelMethod == usePosFromAngVel || linAccMethod == usePosFromAngVel)
       {
-        if (linVelMethod == usePosFromAngVel)
+        if(linVelMethod == usePosFromAngVel)
         {
           if(linAccMethod == useLinVelFromPos) // use position and velocity to get the accelerations
           {
-            thisLocLinAcc() = -thisLocLinVel()/dt;
-            thisLocLinVel() =  -thisLocLinPos()/dt;
-            thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos()))));
-            thisLocLinVel() += thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt; 
-            thisLocLinAcc() += thisLocAngVel().cross(thisLocLinVel()) + thisLocLinVel()/dt;
+            thisLinAcc = -thisLinVel() / dt;
+            thisLinVel = -thisLinPos() / dt;
+            thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))));
+            thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;
+            thisLinAcc() += thisAngVel().cross(thisLinVel()) + thisLinVel() / dt;
           }
           else
           {
-            thisLocLinVel() = -thisLocLinPos()/dt;
-            thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos()))));
-            thisLocLinVel() += thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt; 
+            thisLinVel = -thisLinPos() / dt;
+            thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))));
+            thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;
           }
         }
-        if (linAccMethod == usePosFromAngVel)
+        if(linAccMethod == usePosFromAngVel)
         {
-          thisLocLinAcc() = -2 * (thisLocLinPos() + thisLocAngVel().cross(thisLocLinPos())/dt)/dt;
-          thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos()))));
-          thisLocLinAcc() += thisLocAngAcc().cross(thisLocLinPos()) + thisLocAngVel().cross(thisLocAngVel().cross(thisLocLinPos())) + 2 * (thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt)/dt;
+          thisLinAcc = -2 * (thisLinPos() + thisAngVel().cross(thisLinPos()) / dt) / dt;
+          thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))));
+          thisLinAcc() += thisAngAcc().cross(thisLinPos())
+                             + thisAngVel().cross(thisAngVel().cross(thisLinPos()))
+                             + 2 * (thisAngVel().cross(thisLinPos()) + thisLinPos() / dt) / dt;
         }
       }
       else
       {
-        thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos()))));
+        thisLinPos() +=
+            -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))));
       }
-        
-      
     }
-
 
     if(posMethod == useAngAcceleration)
     {
-      if (linVelMethod == usePosFromAngAcc || linAccMethod == usePosFromAngAcc)
+      if(linVelMethod == usePosFromAngAcc || linAccMethod == usePosFromAngAcc)
       {
-        if (linVelMethod == usePosFromAngAcc)
+        if(linVelMethod == usePosFromAngAcc)
         {
           if(linAccMethod == useLinVelFromPos) // use position and velocity to get the accelerations
           {
-            thisLocLinAcc() = -thisLocLinVel()/dt;
-            thisLocLinVel() =  -thisLocLinPos()/dt;
-            thisLocLinPos() -= 0.5*dt*dt*currentAngAcc.cross(thisLocLinPos());
-            thisLocLinVel() += thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt; 
-            thisLocLinAcc() += thisLocAngVel().cross(thisLocLinVel()) + thisLocLinVel()/dt;
+            thisLinAcc = -thisLinVel() / dt;
+            thisLinVel = -thisLinPos() / dt;
+            thisLinPos() -= 0.5 * dt * dt * currentAngAcc.cross(thisLinPos());
+            thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;
+            thisLinAcc() += thisAngVel().cross(thisLinVel()) + thisLinVel() / dt;
           }
           else
           {
-            thisLocLinVel() = -thisLocLinPos()/dt;
-            thisLocLinPos() -= 0.5*dt*dt*currentAngAcc.cross(thisLocLinPos());
-            thisLocLinVel() += thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt;
+            thisLinVel = -thisLinPos() / dt;
+            thisLinPos() -= 0.5 * dt * dt * currentAngAcc.cross(thisLinPos());
+            thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;
           }
         }
-        if (linAccMethod == usePosFromAngAcc)
+        if(linAccMethod == usePosFromAngAcc)
         {
-          thisLocLinAcc() = -2 * (thisLocLinPos() + thisLocAngVel().cross(thisLocLinPos())/dt)/dt;
-          thisLocLinPos() -= 0.5*dt*dt*currentAngAcc.cross(thisLocLinPos());
-          thisLocLinAcc() += thisLocLinAcc() += thisLocAngAcc().cross(thisLocLinPos()) + thisLocAngVel().cross(thisLocAngVel().cross(thisLocLinPos())) + 2 * (thisLocAngVel().cross(thisLocLinPos()) + thisLocLinPos()/dt)/dt;
+          thisLinAcc = -2 * (thisLinPos() + thisAngVel().cross(thisLinPos()) / dt) / dt;
+          thisLinPos() -= 0.5 * dt * dt * currentAngAcc.cross(thisLinPos());
+          thisLinAcc() += thisLinAcc() +=
+              thisAngAcc().cross(thisLinPos()) + thisAngVel().cross(thisAngVel().cross(thisLinPos()))
+              + 2 * (thisAngVel().cross(thisLinPos()) + thisLinPos() / dt) / dt;
         }
       }
-        
+
       else
       {
-        thisLocLinPos() -= 0.5*dt*dt*currentAngAcc.cross(thisLocLinPos());
+        thisLinPos() -= 0.5 * dt * dt * currentAngAcc.cross(thisLinPos());
       }
-      
     }
-
 
     if(posMethod == usePosition)
     {
-      thisLocLinPos = newLocLinPos;
+      thisLinPos = newLinPos;
     }
     else
     {
@@ -3351,27 +3073,28 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
       {
         if(backup_AngVel)
         {
-          if (backup_AngAcc)
+          if(backup_AngAcc)
           {
-            thisLocLinPos() += - currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos())-thisLocLinVel()))) + dt*(thisLocLinVel()-0.5*dt*currentAngAcc.cross(thisLocLinPos()));
+            thisLinPos() +=  -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()) - thisLinVel())))
+                + dt * (thisLinVel() - 0.5 * dt * currentAngAcc.cross(thisLinPos()));
           }
           else
           {
-            thisLocLinPos() += - currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos())-thisLocLinVel()))) + dt*thisLocLinVel();
+            thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()) - thisLinVel())))
+                + dt * thisLinVel();
           }
         }
         else
         {
-          if (backup_AngAcc)
+          if(backup_AngAcc)
           {
-            thisLocLinPos() += dt*(thisLocLinVel()-0.5*dt*currentAngAcc.cross(thisLocLinPos()));
+            thisLinPos() += dt * (thisLinVel() - 0.5 * dt * currentAngAcc.cross(thisLinPos()));
           }
           else
           {
-            thisLocLinPos() += dt*thisLocLinVel();
+            thisLinPos() += dt * thisLinVel();
           }
         }
-        
       }
 
       else
@@ -3380,61 +3103,65 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
         {
           if(backup_AngVel)
           {
-            if (backup_AngAcc)
+            if(backup_AngAcc)
             {
-              thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos())-thisLocLinVel()))) + dt* (thisLocLinVel()+0.5*dt*(thisLocLinAcc()-currentAngAcc.cross(thisLocLinPos())));
+              thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()) - thisLinVel())))
+                  + dt * (thisLinVel() + 0.5 * dt * (thisLinAcc() - currentAngAcc.cross(thisLinPos())));
             }
             else
             {
-              thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos())-thisLocLinVel()))) + dt* (thisLocLinVel()+0.5*dt*(thisLocLinAcc()));
+              thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()) - thisLinVel())))
+                  + dt * (thisLinVel() + 0.5 * dt * (thisLinAcc()));
             }
           }
           else
           {
-            if (backup_AngAcc)
+            if(backup_AngAcc)
             {
-              thisLocLinPos() += dt*(thisLocLinVel()+0.5*dt*(thisLocLinAcc()-currentAngAcc*thisLocLinPos()));
+              thisLinPos() += dt * (thisLinVel() + 0.5 * dt * (thisLinAcc() - currentAngAcc.cross(thisLinPos())));
             }
             else
             {
-              thisLocLinPos() += dt*(thisLocLinVel()+0.5*dt*thisLocLinAcc());
+              thisLinPos() += dt * (thisLinVel() + 0.5 * dt * thisLinAcc());
             }
           }
         }
         else
         {
-          if (posMethod == useLinAcceleration)
+          if(posMethod == useLinAcceleration)
           {
             if(backup_AngVel)
             {
-              if (backup_AngAcc)
+              if(backup_AngAcc)
               {
-                thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos())))) + 0.5*dt*dt* (thisLocLinAcc()-currentAngAcc.cross(thisLocLinPos()));
+                thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))))
+                    + 0.5 * dt * dt * (thisLinAcc() - currentAngAcc.cross(thisLinPos()));
               }
               else
               {
-                thisLocLinPos() += -currentAngVel.cross(dt*(thisLocLinPos()+dt*(0.5*currentAngVel.cross(thisLocLinPos())))) + 0.5*dt*dt* (thisLocLinAcc());
+                thisLinPos() += -currentAngVel.cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel.cross(thisLinPos()))))
+                    + 0.5 * dt * dt * (thisLinAcc());
               }
             }
             else
             {
-              if (backup_AngAcc)
+              if(backup_AngAcc)
               {
-                thisLocLinPos() += + 0.5*dt*dt* (thisLocLinAcc()-currentAngAcc.cross(thisLocLinPos()));
+                thisLinPos() += +0.5 * dt * dt * (thisLinAcc() - currentAngAcc.cross(thisLinPos()));
               }
               else
               {
-                thisLocLinPos() += 0.5*dt*dt*thisLocLinAcc();
+                thisLinPos() += 0.5 * dt * dt * thisLinAcc();
               }
             }
-          } 
+          }
         }
       }
     }
 
     if(linVelMethod == useLinVelocity)
     {
-      thisLocLinVel = newLocLinVel;
+      thisLinVel = newLinVel;
     }
     else
     {
@@ -3442,36 +3169,32 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
       {
         if(backup_AngVel)
         {
-          thisLocLinVel() += dt*(-currentAngVel.cross(thisLocLinVel())+thisLocLinAcc());
-          
+          thisLinVel() += dt * (-currentAngVel.cross(thisLinVel()) + thisLinAcc());
         }
         else
         {
-          thisLocLinVel() += dt*thisLocLinAcc();
+          thisLinVel() += dt * thisLinAcc();
         }
       }
     }
 
     if(linAccMethod == useLinAcceleration)
     {
-      thisLocLinAcc = newLocLinAcc;
+      thisLinAcc = newLinAcc;
     }
-
 
     if(!flagPos)
     {
-      thisLocLinPos.reset();
+      thisLinPos.reset();
     }
     if(!flagLinVel)
     {
-      thisLocLinVel.reset();
+      thisLinVel.reset();
     }
     if(!flagLinAcc)
     {
-      thisLocLinAcc.reset();
+      thisLinAcc.reset();
     }
-
-    
 
     if(!flagOri)
     {
@@ -3479,49 +3202,49 @@ inline const LocalRightKinematics & LocalRightKinematics::update(const LocalRigh
     }
     if(!flagAngVel)
     {
-      thisLocAngVel.reset();
+      thisAngVel.reset();
     }
     if(!flagAngAcc)
     {
-      thisLocAngAcc.reset();
+      thisAngAcc.reset();
     }
   }
   return *this;
-
 }
 
-inline LocalRightKinematics LocalRightKinematics::getInverse() const // TO MODIFY
+inline LocalKinematics LocalKinematics::getInverse() const // TO MODIFY
 {
-  LocalRightKinematics inverted;
+  LocalKinematics inverted;
 
-  BOOST_ASSERT(rightOrientation.isSet() && "The orientation is not initialized, the kinematics cannot be inverted.");
+  BOOST_ASSERT(orientation.isSet() && "The orientation is not initialized, the kinematics cannot be inverted.");
 
-  inverted.rightOrientation = rightOrientation.inverse();
+  inverted.orientation = orientation.inverse();
 
-  if(locAngVel.isSet())
+  if(angVel.isSet())
   {
-    inverted.locAngVel = -(rightOrientation * locAngVel()); // omega2
+    inverted.angVel = -(orientation * angVel()); // omega2
 
-    if(locAngAcc.isSet())
+    if(angAcc.isSet())
     {
-      inverted.locAngAcc = - (rightOrientation * locAngAcc()); // omega2dot
+      inverted.angAcc = -(orientation * angAcc()); // omega2dot
     }
   }
 
-  if(locPosition.isSet())
+  if(position.isSet())
   {
-    inverted.locPosition = -(rightOrientation * locPosition());
+    inverted.position = -(orientation * position());
 
-    if(locLinVel.isSet() && locAngVel.isSet())
+    if(linVel.isSet() && angVel.isSet())
     {
 
-      Vector3 omegaxp = locAngVel().cross(locPosition());
-      inverted.locLinVel = rightOrientation * (omegaxp - locLinVel()); // t2dot
-      if(locLinAcc.isSet() && (locAngAcc.isSet()))
+      Vector3 omegaxp = angVel().cross(position());
+      inverted.linVel = orientation * (omegaxp - linVel()); // t2dot
+      if(linAcc.isSet() && (angAcc.isSet()))
       {
 
-        inverted.locLinAcc =
-            rightOrientation * (locAngVel().cross(2 * locLinVel - omegaxp) - locLinAcc() + locAngAcc().cross(locPosition())); // t2dotdot
+        inverted.linAcc =
+            orientation
+            * (angVel().cross(2 * linVel - omegaxp) - linAcc() + angAcc().cross(position())); // t2dotdot
       }
     }
   }
@@ -3529,151 +3252,116 @@ inline LocalRightKinematics LocalRightKinematics::getInverse() const // TO MODIF
   return inverted;
 }
 
-inline Kinematics switchToGlobalFrame(LocalRightKinematics& localKine)  // we consider we can modify directly the localKine variables as it would then be outdated
+inline LocalKinematics LocalKinematics::operator*(const LocalKinematics & multiplier) const
 {
-
-  BOOST_ASSERT(localKine.rightOrientation.isSet()
-               && "The transformation to the local frame requires the orientation");
-
-
-  if(localKine.locPosition.isSet())
-  {
-    localKine.locPosition() = localKine.rightOrientation*localKine.locPosition(); 
-  }
-
-  if(localKine.locLinVel.isSet())
-  {
-    localKine.locLinVel =  localKine.rightOrientation*localKine.locLinVel(); 
-  }
-
-  if( localKine.locLinAcc.isSet())
-  {
-    localKine.locLinAcc =  localKine.rightOrientation*localKine.locLinAcc(); 
-  }
-
-  if( localKine.locAngVel.isSet())
-  {
-    localKine.locAngVel =  localKine.rightOrientation*localKine.locAngVel(); 
-  }
-  
-  if( localKine.locAngAcc.isSet())
-  {
-    localKine.locAngAcc =  localKine.rightOrientation*localKine.locAngAcc(); 
-  }
-
-  return Kinematics(localKine.locPosition, localKine.locLinVel, localKine.locLinAcc, localKine.rightOrientation, localKine.locAngVel, localKine.locAngAcc);
+  return LocalKinematics(*this, multiplier);
 }
 
-
-inline LocalRightKinematics LocalRightKinematics::operator*(const LocalRightKinematics & multiplier) const
+inline LocalKinematics LocalKinematics::setToProductNoAlias(const LocalKinematics & multiplier1,
+                                                            const LocalKinematics & multiplier2)
 {
-  return LocalRightKinematics(*this, multiplier);
-}
-
-inline LocalRightKinematics LocalRightKinematics::setToProductNoAlias(const LocalRightKinematics & multiplier1, const LocalRightKinematics & multiplier2)
-{
-  BOOST_ASSERT(multiplier1.rightOrientation.isSet()
+  BOOST_ASSERT(multiplier1.orientation.isSet()
                && "The multiplier 1 orientation is not initialized, the multiplication is not possible.");
 
-  BOOST_ASSERT((multiplier2.locPosition.isSet() || multiplier2.rightOrientation.isSet())
+  BOOST_ASSERT((multiplier2.position.isSet() || multiplier2.orientation.isSet())
                && "The multiplier 2 kinematics is not initialized, the multiplication is not possible.");
 
-  RightOrientation R1t = multiplier1.rightOrientation.inverse();
-  RightOrientation R2t = multiplier2.rightOrientation.inverse();
+  Orientation R1t = multiplier1.orientation.inverse();
+  Orientation R2t = multiplier2.orientation.inverse();
 
-  if(multiplier2.locPosition.isSet() && multiplier1.locPosition.isSet())
+  if(multiplier2.position.isSet() && multiplier1.position.isSet())
   {
-    locPosition.set(true);
-    Vector3 & R2tp1 = locPosition(); /// reference ( Vector3&  )
-    R2tp1.noalias() = R2t * multiplier1.locPosition();
+    position.set(true);
+    Vector3 & R2tp1 = position(); /// reference ( Vector3&  )
+    R2tp1.noalias() = R2t * multiplier1.position();
 
-    if(multiplier2.locLinVel.isSet() && multiplier1.locLinVel.isSet() && multiplier1.locAngVel.isSet())
+    if(multiplier2.linVel.isSet() && multiplier1.linVel.isSet() && multiplier1.angVel.isSet())
     {
       Vector3 & R2tp1d = tempVec_; /// reference
-      R2tp1d.noalias() = R2t * multiplier1.locLinVel();
+      R2tp1d.noalias() = R2t * multiplier1.linVel();
 
       Vector3 & R2tw1 = tempVec_2; /// reference
-      R2tw1.noalias() = R2t * multiplier1.locAngVel();
+      R2tw1.noalias() = R2t * multiplier1.angVel();
 
-      locLinVel.set(true);
-      
-      Vector3 & R2tw1p2 = locLinVel(); /// reference
-      R2tw1p2.noalias() = R2tw1.cross(multiplier2.locPosition());
+      linVel.set(true);
 
-      Vector3 & R2tw1p2_p2d = R2tw1p2; ///  reference ( =locLinVel() )
-      R2tw1p2_p2d += multiplier2.locLinVel();
+      Vector3 & R2tw1p2 = linVel(); /// reference
+      R2tw1p2.noalias() = R2tw1.cross(multiplier2.position());
 
-      if(multiplier2.locLinAcc.isSet() && multiplier1.locLinAcc.isSet() && multiplier1.locAngAcc.isSet())
+      Vector3 & R2tw1p2_p2d = R2tw1p2; ///  reference ( =linVel() )
+      R2tw1p2_p2d += multiplier2.linVel();
+
+      if(multiplier2.linAcc.isSet() && multiplier1.linAcc.isSet() && multiplier1.angAcc.isSet())
       {
-        locLinAcc.set(true);
-        locLinAcc().noalias() = R2t * multiplier1.locLinAcc();
-        locLinAcc().noalias() += (R2t*multiplier1.locAngAcc()).cross(multiplier2.locPosition());
-        locLinAcc().noalias() += R2tw1.cross(R2tw1p2_p2d + multiplier2.locLinVel());
-        locLinAcc() += multiplier2.locLinAcc();
+        linAcc.set(true);
+        linAcc().noalias() = R2t * multiplier1.linAcc();
+        linAcc().noalias() += (R2t * multiplier1.angAcc()).cross(multiplier2.position());
+        linAcc().noalias() += R2tw1.cross(R2tw1p2_p2d + multiplier2.linVel());
+        linAcc() += multiplier2.linAcc();
       }
       else
       {
-        locLinAcc.reset();
+        linAcc.reset();
       }
 
-      locLinVel() += R2tp1d;
+      linVel() += R2tp1d;
     }
     else
     {
-      locLinVel.reset();
-      locLinAcc.reset();
+      linVel.reset();
+      linAcc.reset();
     }
 
-    locPosition() += multiplier2.locPosition();
+    position() += multiplier2.position();
   }
   else
   {
-    locPosition.reset();
-    locLinVel.reset();
-    locLinAcc.reset();
+    position.reset();
+    linVel.reset();
+    linAcc.reset();
   }
 
-  if(multiplier2.rightOrientation.isSet()) // Is it useful to check it as it is already checked in the assert?
+  if(multiplier2.orientation.isSet()) 
   {
-    rightOrientation.setToProductNoAlias(multiplier1.rightOrientation, multiplier2.rightOrientation);
+    orientation.setToProductNoAlias(multiplier1.orientation, multiplier2.orientation);
 
-    if(multiplier2.locAngVel.isSet() && multiplier1.locAngVel.isSet())
+    if(multiplier2.angVel.isSet() && multiplier1.angVel.isSet())
     {
-      locAngVel.set(true);
-      Vector3 & R2tw1 = locAngVel(); /// reference
-      R2tw1.noalias() = R2t * multiplier1.locAngVel();
+      angVel.set(true);
+      Vector3 & R2tw1 = angVel(); /// reference
+      R2tw1.noalias() = R2t * multiplier1.angVel();
 
-      if(multiplier2.locAngAcc.isSet() && multiplier1.locAngAcc.isSet())
+      if(multiplier2.angAcc.isSet() && multiplier1.angAcc.isSet())
       {
-        locAngAcc.set(true);
-        locAngAcc().noalias() = R2t * multiplier1.locAngAcc();
-        locAngAcc().noalias() += R2tw1.cross(multiplier2.locAngVel());
-        locAngAcc() += multiplier2.locAngAcc();
+        angAcc.set(true);
+        angAcc().noalias() = R2t * multiplier1.angAcc();
+        angAcc().noalias() += R2tw1.cross(multiplier2.angVel());
+        angAcc() += multiplier2.angAcc();
       }
       else
       {
-        locAngAcc.reset();
+        angAcc.reset();
       }
 
-      locAngVel() += multiplier2.locAngVel();
+      angVel() += multiplier2.angVel();
     }
     else
     {
-      locAngVel.reset();
-      locAngAcc.reset();
+      angVel.reset();
+      angAcc.reset();
     }
   }
   else
   {
-    rightOrientation.reset();
-    locAngVel.reset();
-    locAngAcc.reset();
+    orientation.reset();
+    angVel.reset();
+    angAcc.reset();
   }
 
   return *this;
 }
 
-inline Vector LocalRightKinematics::toVector(Flags::Byte flags) const
+inline Vector LocalKinematics::toVector(Flags::Byte flags) const
 {
   int size = 0;
 
@@ -3707,61 +3395,61 @@ inline Vector LocalRightKinematics::toVector(Flags::Byte flags) const
   int curIndex = 0;
   if((flags & Flags::position))
   {
-    output.segment<3>(curIndex) = locPosition();
+    output.segment<3>(curIndex) = position();
     curIndex += 3;
   }
   if((flags & Flags::orientation))
   {
-    output.segment<4>(curIndex) = rightOrientation.toVector4();
+    output.segment<4>(curIndex) = orientation.toVector4();
     curIndex += 4;
   }
   if((flags & Flags::linVel))
   {
-    output.segment<3>(curIndex) = locLinVel();
+    output.segment<3>(curIndex) = linVel();
     curIndex += 3;
   }
   if((flags & Flags::angVel))
   {
-    output.segment<3>(curIndex) = locAngVel();
+    output.segment<3>(curIndex) = angVel();
     curIndex += 3;
   }
   if((flags & Flags::linAcc))
   {
-    output.segment<3>(curIndex) = locLinAcc();
+    output.segment<3>(curIndex) = linAcc();
     curIndex += 3;
   }
   if((flags & Flags::angAcc))
   {
-    output.segment<3>(curIndex) = locAngAcc();
+    output.segment<3>(curIndex) = angAcc();
   }
 
   return output;
 }
 
-inline Vector LocalRightKinematics::toVector() const
+inline Vector LocalKinematics::toVector() const
 {
   int size = 0;
-  if(locPosition.isSet())
+  if(position.isSet())
   {
     size += 3;
   }
-  if(rightOrientation.isSet())
+  if(orientation.isSet())
   {
     size += 4;
   }
-  if(locLinVel.isSet())
+  if(linVel.isSet())
   {
     size += 3;
   }
-  if(locAngVel.isSet())
+  if(angVel.isSet())
   {
     size += 3;
   }
-  if(locLinAcc.isSet())
+  if(linAcc.isSet())
   {
     size += 3;
   }
-  if(locAngAcc.isSet())
+  if(angAcc.isSet())
   {
     size += 3;
   }
@@ -3769,47 +3457,47 @@ inline Vector LocalRightKinematics::toVector() const
   Vector output(size);
 
   int curIndex = 0;
-  if(locPosition.isSet())
+  if(position.isSet())
   {
-    output.segment<3>(curIndex) = locPosition();
+    output.segment<3>(curIndex) = position();
     curIndex += 3;
   }
-  if(rightOrientation.isSet())
+  if(orientation.isSet())
   {
-    output.segment<4>(curIndex) = rightOrientation.toQuaternion().coeffs();
+    output.segment<4>(curIndex) = orientation.toQuaternion().coeffs();
     curIndex += 4;
   }
-  if(locLinVel.isSet())
+  if(linVel.isSet())
   {
-    output.segment<3>(curIndex) = locLinVel();
+    output.segment<3>(curIndex) = linVel();
     curIndex += 3;
   }
-  if(locAngVel.isSet())
+  if(angVel.isSet())
   {
-    output.segment<3>(curIndex) = locAngVel();
+    output.segment<3>(curIndex) = angVel();
     curIndex += 3;
   }
-  if(locLinAcc.isSet())
+  if(linAcc.isSet())
   {
-    output.segment<3>(curIndex) = locLinAcc();
+    output.segment<3>(curIndex) = linAcc();
     curIndex += 3;
   }
-  if(locAngAcc.isSet())
+  if(angAcc.isSet())
   {
-    output.segment<3>(curIndex) = locAngAcc();
+    output.segment<3>(curIndex) = angAcc();
   }
 
   return output;
 }
 
-inline void LocalRightKinematics::reset()
+inline void LocalKinematics::reset()
 {
-  locPosition.reset();
-  rightOrientation.reset();
-  locLinVel.reset();
-  locAngVel.reset();
-  locLinAcc.reset();
-  locAngAcc.reset();
+  position.reset();
+  orientation.reset();
+  linVel.reset();
+  angVel.reset();
+  linAcc.reset();
+  angAcc.reset();
 }
 
 } // namespace kine
@@ -3890,28 +3578,28 @@ inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine
   return os;
 }
 
-inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalRightKinematics & k)
+inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalKinematics & k)
 {
-  if(!k.locPosition.isSet() && !k.rightOrientation.isSet() && !k.locLinVel.isSet() && !k.locAngVel.isSet() && !k.locLinAcc.isSet()
-     && !k.locAngAcc.isSet())
+  if(!k.position.isSet() && !k.orientation.isSet() && !k.linVel.isSet() && !k.angVel.isSet()
+     && !k.linAcc.isSet() && !k.angAcc.isSet())
   {
     os << "empty kinematics" << std::endl;
   }
 
-  if(k.locPosition.isSet() || k.rightOrientation.isSet())
+  if(k.position.isSet() || k.orientation.isSet())
   {
-    if(k.locPosition.isSet())
+    if(k.position.isSet())
     {
-      os << "pos   : " << k.locPosition().transpose() << "   ";
+      os << "pos   : " << k.position().transpose() << "   ";
     }
     else
     {
       os << "pos   :                                  ";
     }
 
-    if(k.rightOrientation.isSet())
+    if(k.orientation.isSet())
     {
-      os << "ori   : " << k.rightOrientation.toRotationVector().transpose() << std::endl;
+      os << "ori   : " << k.orientation.toRotationVector().transpose() << std::endl;
     }
     else
     {
@@ -3919,45 +3607,45 @@ inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine
     }
   }
 
-  if(k.locLinVel.isSet() || k.locAngVel.isSet())
+  if(k.linVel.isSet() || k.angVel.isSet())
   {
-    if(k.locLinVel.isSet())
+    if(k.linVel.isSet())
     {
-      os << "locLinVel: " << k.locLinVel().transpose() << "   ";
+      os << "linVel: " << k.linVel().transpose() << "   ";
     }
     else
     {
-      os << "locLinVel:                                  ";
+      os << "linVel:                                  ";
     }
 
-    if(k.locAngVel.isSet())
+    if(k.angVel.isSet())
     {
-      os << "locAngVel: " << k.locAngVel().transpose() << std::endl;
+      os << "angVel: " << k.angVel().transpose() << std::endl;
     }
     else
     {
-      os << "locAngVel:" << std::endl;
+      os << "angVel:" << std::endl;
     }
   }
 
-  if(k.locLinAcc.isSet() || k.locAngAcc.isSet())
+  if(k.linAcc.isSet() || k.angAcc.isSet())
   {
-    if(k.locLinAcc.isSet())
+    if(k.linAcc.isSet())
     {
-      os << "locLinAcc: " << k.locLinAcc().transpose() << "   ";
+      os << "linAcc: " << k.linAcc().transpose() << "   ";
     }
     else
     {
-      os << "locLinAcc:                                  ";
+      os << "linAcc:                                  ";
     }
 
-    if(k.locAngAcc.isSet())
+    if(k.angAcc.isSet())
     {
-      os << "locAngAcc: " << k.locAngAcc().transpose() << std::endl;
+      os << "angAcc: " << k.angAcc().transpose() << std::endl;
     }
     else
     {
-      os << "locAngAcc:" << std::endl;
+      os << "angAcc:" << std::endl;
     }
   }
 

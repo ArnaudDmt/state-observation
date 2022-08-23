@@ -1607,7 +1607,7 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
     {
       if(accMethod == useOrientation) // then velocity cannot use accelerations
       {
-        thisAcc = 2 * thisOri.differentiateRightSide(newOri) / (dt * dt);
+        thisAcc = 2 * thisOri.differentiate(newOri) / (dt * dt);
       }
     }
 
@@ -1616,13 +1616,13 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
       if(accMethod == useVelAndAcc)
       {
         thisAcc = -thisVel();
-        thisVel = thisOri.differentiateRightSide(newOri) / dt;
+        thisVel = thisOri.differentiate(newOri) / dt;
         thisAcc() += thisVel();
         thisAcc() /= dt;
       }
       else
       {
-        thisVel = thisOri.differentiateRightSide(newOri) / dt;
+        thisVel = thisOri.differentiate(newOri) / dt;
       }
     }
 
@@ -1634,19 +1634,19 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
     {
       if(posMethod == useVelocity)
       {
-        thisOri.integrateRightSide(thisVel() * dt);
+        thisOri.integrate(thisVel() * dt);
       }
       else
       {
         if(posMethod == useVelAndAcc)
         {
-          thisOri.integrateRightSide(thisVel() * dt + thisAcc() * dt * dt / 2);
+          thisOri.integrate(thisVel() * dt + thisAcc() * dt * dt / 2);
         }
         else
         {
           if(posMethod == useAcceleration)
           {
-            thisOri.integrateRightSide(thisAcc() * dt * dt / 0.5);
+            thisOri.integrate(thisAcc() * dt * dt / 0.5);
           }
         }
       }
@@ -2566,6 +2566,7 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
         }
         else
         {
+          BOOST_ASSERT(thisAngAcc.isSet() && "The orientation cannot be updated with so few information");
           if(thisAngAcc.isSet())
           {
             oriMethod = useAngAcceleration;
@@ -2590,7 +2591,7 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
         else
         {
           BOOST_ASSERT(thisAngVel.isSet() && "The angular velocity is trying to be updated without initial value");
-
+          BOOST_ASSERT(thisAngAcc.isSet() && "The angular velocity cannot be updated with so few information");
           if(thisAngAcc.isSet())
           {
             angVelMethod = useAngAcceleration;

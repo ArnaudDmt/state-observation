@@ -1091,9 +1091,7 @@ protected:
   inline unsigned contactTorqueIndexTangent(VectorContactConstIterator i) const;
   inline unsigned contactWrenchIndexTangent(VectorContactConstIterator i) const;
 
-public:
-  static const double gravityAccelerationConstant = 9.8;
-  ///////////SIZE OF VECTORS
+public:  ///////////SIZE OF VECTORS
 
   static const unsigned sizeAcceleroSignal = 3;
   static const unsigned sizeGyroSignal = 3;

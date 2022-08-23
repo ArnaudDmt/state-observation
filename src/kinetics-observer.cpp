@@ -1336,7 +1336,7 @@ Matrix KineticsObserver::computeAMatrix_()
   const Vector3 & predictedStateLinVel = statePrediction.segment<sizeLinVel>(linVelIndex());
   const Vector3 & predictedStateAngVel = statePrediction.segment<sizeAngVel>(angVelIndex());
 
-  Matrix A = Eigen::MatrixXd::Zero(stateTangentSize_);
+  Matrix A = Eigen::MatrixXd::Zero(stateTangentSize_, stateTangentSize_);
 
   double dt2_2 = pow(dt_, 2)/2;
 
@@ -1351,7 +1351,7 @@ Matrix KineticsObserver::computeAMatrix_()
 
 
   // Jacobians of the linear acceleration
-  Matrix3 J_al_R = -gravityAccelerationConstant*(stateKinematics_.orientation*kine::skewSymmetric(Vector3(0,0,1)));
+  Matrix3 J_al_R = -cst::gravityConstant*(stateKinematics_.orientation.toMatrix3()*kine::skewSymmetric(Vector3(0,0,1)));
   Matrix3 J_al_ext_force = Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent)/mass_;
 
 
@@ -1374,7 +1374,7 @@ Matrix KineticsObserver::computeAMatrix_()
   double norm_delta = delta.norm();
   double sin_delta_2 = sin(norm_delta/2);
   Matrix3 J_R_delta = 1/norm_delta*(((norm_delta-2*sin_delta_2)/(2*sq_norm_delta))*
-      (stateKinematics_.orientation*delta*delta.transpose())+sin_delta_2*(stateKinematics_.orientation*kine::rotationVectorToRotationMatrix(delta/2)));  
+      (stateKinematics_.orientation.toMatrix3()*delta*delta.transpose())+sin_delta_2*(stateKinematics_.orientation.toMatrix3()*kine::rotationVectorToRotationMatrix(delta/2)));  
       // the intermediate jacobian used to compute the ones with respect to the angular velocity and acceleration
   Matrix3 J_R_omegadot = J_R_delta*dt2_2; // used in other Jacobians
 
@@ -1460,20 +1460,19 @@ Matrix KineticsObserver::computeAMatrix_()
       Matrix3 J_contactOri_contactOri = J_poscontact_poscontact;
       A.block<sizeOriTangent, sizeOriTangent>(contactOriIndexTangent(i), contactOriIndexTangent(i)) = J_contactOri_contactOri;
       
-      Orientation RContactInv = i->localKine.orientation.inverse(); // remove if no need to check ifSet
       Orientation predictedStateOriInv = predictedStateOri.inverse();
       Orientation RGlobalToContactLocal = RContactInv*predictedStateOriInv; // better to compute it now as it is used in several expressions
       // Jacobians of the contacts force
-      Matrix3 J_contactForce_pl_at_same_time = -(RGlobalToContactLocal*i->linearStiffness*predictedStateOri.toMatrix3());
+      Matrix3 J_contactForce_pl_at_same_time = -(RGlobalToContactLocal.toMatrix3()*i->linearStiffness*predictedStateOri.toMatrix3());
       Vector3 sumVelContact = i->localKine.linVel()+predictedStateAngVel.cross(i->localKine.position())+predictedStateLinVel;
-      Matrix3 J_contactForce_R_at_same_time = RGlobalToContactLocal*(
-        i->linearStiffness*kine::skewSymmetric(predictedStateOri*(i->localKine.position()+predictedStatePos))
-        + i->linearDamping*kine::skewSymmetric(predictedStateOri*sumVelContact)
-        -kine::skewSymmetric(i->linearStiffness*(predictedStateOri*(i->localKine.position()+predictedStatePos))
-          + i->linearDamping*(predictedStateOri*sumVelContact) - i->linearStiffness*i->localKine.position()));
-      Matrix3 J_contactForce_vl_at_same_time = -(RGlobalToContactLocal*i->linearDamping*predictedStateOri.toMatrix3());
-      Matrix3 J_contactForce_omega_at_same_time = RGlobalToContactLocal*i->linearDamping*(predictedStateOri*kine::skewSymmetric(i->localKine.position()));
-      Matrix3 J_contactForce_contactPosition_at_same_time = RGlobalToContactLocal*i->linearStiffness*predictedStateOri.toMatrix3();
+      Matrix3 J_contactForce_R_at_same_time = RGlobalToContactLocal.toMatrix3()*(
+        i->linearStiffness*kine::skewSymmetric(predictedStateOri.toMatrix3()*(i->localKine.position()+predictedStatePos))
+        + i->linearDamping*kine::skewSymmetric(predictedStateOri.toMatrix3()*sumVelContact)
+        -kine::skewSymmetric(i->linearStiffness*(predictedStateOri.toMatrix3()*(i->localKine.position()+predictedStatePos))
+          + i->linearDamping*(predictedStateOri.toMatrix3()*sumVelContact) - i->linearStiffness*i->localKine.position()));
+      Matrix3 J_contactForce_vl_at_same_time = -(RGlobalToContactLocal.toMatrix3()*i->linearDamping*predictedStateOri.toMatrix3());
+      Matrix3 J_contactForce_omega_at_same_time = RGlobalToContactLocal.toMatrix3()*i->linearDamping*(predictedStateOri.toMatrix3()*kine::skewSymmetric(i->localKine.position()));
+      Matrix3 J_contactForce_contactPosition_at_same_time = RGlobalToContactLocal.toMatrix3()*i->linearStiffness*predictedStateOri.toMatrix3();
     
       A.block<sizeForceTangent, sizePosTangent>(contactForceIndexTangent(i), posIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_pl;
       A.block<sizeForceTangent, sizeOriTangent>(contactForceIndexTangent(i), oriIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_R + J_contactForce_R_at_same_time + J_contactForce_vl_at_same_time*J_vl_R;
@@ -1493,14 +1492,15 @@ Matrix KineticsObserver::computeAMatrix_()
       Orientation RRefContactToGlobal = predictedStateOri*i->localKine.orientation*predictedStateContactOri.inverse();
       Orientation RGlobalToRefContact = RRefContactToGlobal.inverse();
 
-      Matrix3 Vk = -ex*ez.transpose()*(kine::skewSymmetric(RRefContactToGlobal*ey)+RGlobalToRefContact*kine::skewSymmetric(ey))-ey*ex.transpose()*(kine::skewSymmetric(RRefContactToGlobal*ez)+RGlobalToRefContact*kine::skewSymmetric(ez))-ez*ey.transpose()*(kine::skewSymmetric(RRefContactToGlobal*ex)+RGlobalToRefContact*kine::skewSymmetric(ex));
-      Matrix3 J_contactTorque_R_at_same_time = -(RGlobalToContactLocal*(kine::skewSymmetric(0.5*i->angularStiffness*(kine::rotationMatrixToRotationVector(RRefContactToGlobal.toMatrix3()-RGlobalToRefContact.toMatrix3()))+i->angularDamping*localAngVelSum)+0.5*i->angularStiffness*Vk-i->angularDamping*kine::skewSymmetric(localAngVelSum)));
-      Matrix3 J_contactTorque_omega_at_same_time = -(RGlobalToContactLocal*i->angularDamping*predictedStateOri.toMatrix3());
-      Matrix3 J_contactTorque_contactOri_at_same_time = -0.5*(RGlobalToContactLocal*i->angularStiffness*(predictedStateOri*Vk));
+      Matrix3 Vk = -ex*ez.transpose()*(kine::skewSymmetric(RRefContactToGlobal.toMatrix3()*ey)+RGlobalToRefContact.toMatrix3()*kine::skewSymmetric(ey))-ey*ex.transpose()*(kine::skewSymmetric(RRefContactToGlobal.toMatrix3()*ez)+RGlobalToRefContact.toMatrix3()*kine::skewSymmetric(ez))-ez*ey.transpose()*(kine::skewSymmetric(RRefContactToGlobal.toMatrix3()*ex)+RGlobalToRefContact.toMatrix3()*kine::skewSymmetric(ex));
+      Matrix3 J_contactTorque_R_at_same_time = -(RGlobalToContactLocal.toMatrix3()*(kine::skewSymmetric(0.5*i->angularStiffness*(kine::rotationMatrixToRotationVector(RRefContactToGlobal.toMatrix3()-RGlobalToRefContact.toMatrix3()))+i->angularDamping*localAngVelSum)+0.5*i->angularStiffness*Vk-i->angularDamping*kine::skewSymmetric(localAngVelSum)));
+      Matrix3 J_contactTorque_omega_at_same_time = -(RGlobalToContactLocal.toMatrix3()*i->angularDamping*predictedStateOri.toMatrix3());
+      Matrix3 J_contactTorque_contactOri_at_same_time = -0.5*(RGlobalToContactLocal.toMatrix3()*i->angularStiffness*(predictedStateOri.toMatrix3()*Vk));
 
       A.block<sizeTorqueTangent, sizeOriTangent>(contactTorqueIndexTangent(i), oriIndexTangent()) = J_contactTorque_R_at_same_time;
       A.block<sizeTorqueTangent, sizeAngVelTangent>(contactTorqueIndexTangent(i), angVelIndexTangent()) = J_contactTorque_R_at_same_time*J_R_omega+J_contactTorque_omega_at_same_time*J_omega_omega;
       A.block<sizeTorqueTangent, sizeTorqueTangent>(contactTorqueIndexTangent(i), unmodeledTorqueIndexTangent()) = J_contactTorque_R_at_same_time*J_R_ext_torque+J_contactTorque_omega_at_same_time*J_omega_ext_torque;
+      A.block<sizeTorqueTangent, sizeForceTangent>(contactTorqueIndexTangent(i), contactOriIndexTangent(i)) = J_contactTorque_contactOri_at_same_time;
       A.block<sizeTorqueTangent, sizeForceTangent>(contactTorqueIndexTangent(i), contactForceIndexTangent(i)) = J_contactTorque_R_at_same_time*J_R_contactForce+J_contactTorque_omega_at_same_time*J_omega_contactForce;
       A.block<sizeTorqueTangent, sizeTorqueTangent>(contactTorqueIndexTangent(i), contactTorqueIndexTangent(i)) = J_contactTorque_R_at_same_time*J_R_contactTorque+J_contactTorque_omega_at_same_time*J_omega_contactTorque;
     }
@@ -1809,26 +1809,6 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
   }
 
   return y;
-}
-
-template <typename T>
-Matrix3 expMatrixQfromAxisAngle(const T& v)
-{
-    Eigen::Quaternion<double> q;  
-    q = AngleAxis<double>(v.norm(), v*(1/v.norm()));
-    Matrix3d R(q);
-    return R;
-
-    /*
-    We can also use the Rodrigues formula but the average time taken on 10000 loops was 9ms against 2ms for this function.
-    The average error on the summed coeficients of the matrix between both methods is of magnitude 10^-16.
-    In any case, here is the unused function :
-    Eigen::Matrix3d expMatrix(const Eigen::Vector3d & v)
-    {
-      Eigen::Matrix3d R (Eigen::Matrix3d::Identity(3,3)+sin(v.norm())*(S(v)*(1/v.norm()))+(1-cos(v.norm()))*(S(v)*S(v)*(1/v.squaredNorm())));
-      return R;
-    }
-    */
 }
 
 

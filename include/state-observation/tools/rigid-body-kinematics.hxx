@@ -1248,7 +1248,7 @@ inline const Kinematics & Kinematics::integrate(double dt)
     {
       if(orientation.isSet())
       {
-        orientation.integrate(angVel() * dt + angAcc() * dt * dt / 2);
+        orientation.integrate(angVel() * dt + angAcc() * dt * dt * 0.5);
       }
       angVel() += angAcc() * dt;
     }
@@ -1267,7 +1267,7 @@ inline const Kinematics & Kinematics::integrate(double dt)
     {
       if(position.isSet())
       {
-        position() += linVel() * dt + linAcc() * dt * dt / 2;
+        position() += linVel() * dt + linAcc() * dt * dt * 0.5;
       }
       linVel() += linAcc() * dt;
     }
@@ -1438,7 +1438,7 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
       }
       if(posMethod == useVelAndAcc || posMethod == useAcceleration)
       {
-        thisPos() += thisAcc() * dt * dt / 0.5;
+        thisPos() += thisAcc() * dt * dt * 0.5;
       }
     }
 
@@ -1628,13 +1628,13 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
       {
         if(posMethod == useVelAndAcc)
         {
-          thisOri.integrate(thisVel() * dt + thisAcc() * dt * dt / 2);
+          thisOri.integrate(thisVel() * dt + thisAcc() * dt * dt * 0.5);
         }
         else
         {
           if(posMethod == useAcceleration)
           {
-            thisOri.integrate(thisAcc() * dt * dt / 0.5);
+            thisOri.integrate(thisAcc() * dt * dt * 0.5);
           }
         }
       }
@@ -1986,7 +1986,7 @@ inline const Kinematics & Kinematics::update_deprecated(const Kinematics & newVa
             position() += linVel() * dt;
             if(linAcc.isSet())
             {
-              position() += linAcc() * dt * dt / 2;
+              position() += linAcc() * dt * dt *0.5;
             }
           }
         }
@@ -2092,7 +2092,7 @@ inline const Kinematics & Kinematics::update_deprecated(const Kinematics & newVa
             increment += angVel() * dt;
             if(angAcc.isSet())
             {
-              increment += angAcc() * dt * dt / 2;
+              increment += angAcc() * dt * dt * 0.5;
             }
             orientation.integrate(increment);
           }
@@ -2890,7 +2890,7 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
         {
           if(oriMethod == useAngAcceleration)
           {
-            thisOri.integrateRightSide(thisAngAcc() * dt * dt / 0.5);
+            thisOri.integrateRightSide(thisAngAcc() * dt * dt * 0.5);
           }
         }
       }

@@ -10,6 +10,7 @@ using namespace kine;
 ///
 /// @param errorCode
 /// @return int
+
 int testRotationOperations(int errorCode)
 {
   unsigned numberOfTests = 1000;
@@ -372,37 +373,37 @@ int testOrientation(int errcode)
     kine::Orientation ori17(ori3, ori2);
 
     err += (ori00.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  1 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  1 done. Current error " << err << std::endl;
     err += (ori01.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  2 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  2 done. Current error " << err << std::endl;
     err += (ori02.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  3 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  3 done. Current error " << err << std::endl;
     err += (ori03.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  4 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  4 done. Current error " << err << std::endl;
     err += (ori04.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  5 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  5 done. Current error " << err << std::endl;
     err += (ori05.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  6 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  6 done. Current error " << err << std::endl;
     err += (ori06.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  7 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  7 done. Current error " << err << std::endl;
     err += (ori07.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  8 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  8 done. Current error " << err << std::endl;
     err += (ori10.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  9 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  9 done. Current error " << err << std::endl;
     err += (ori11.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  10 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  10 done. Current error " << err << std::endl;
     err += (ori12.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  11 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  11 done. Current error " << err << std::endl;
     err += (ori13.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  12 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  12 done. Current error " << err << std::endl;
     err += (ori14.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  13 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  13 done. Current error " << err << std::endl;
     err += (ori15.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  14 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  14 done. Current error " << err << std::endl;
     err += (ori16.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  15 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  15 done. Current error " << err << std::endl;
     err += (ori17.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  16 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  16 done. Current error " << err << std::endl;
   }
 
   {
@@ -468,37 +469,37 @@ int testOrientation(int errcode)
     kine::Orientation ori17(ori3, ori2);
 
     err += (ori00.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  17 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  17 done. Current error " << err << std::endl;
     err += (ori01.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  18 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  18 done. Current error " << err << std::endl;
     err += (ori02.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  19 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  19 done. Current error " << err << std::endl;
     err += (ori03.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  20 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  20 done. Current error " << err << std::endl;
     err += (ori04.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  21 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  21 done. Current error " << err << std::endl;
     err += (ori05.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  22 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  22 done. Current error " << err << std::endl;
     err += (ori06.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  23 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  23 done. Current error " << err << std::endl;
     err += (ori07.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  24 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  24 done. Current error " << err << std::endl;
     err += (ori10.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  25 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  25 done. Current error " << err << std::endl;
     err += (ori11.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  26 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  26 done. Current error " << err << std::endl;
     err += (ori12.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  27 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  27 done. Current error " << err << std::endl;
     err += (ori13.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  28 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  28 done. Current error " << err << std::endl;
     err += (ori14.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  29 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  29 done. Current error " << err << std::endl;
     err += (ori15.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  30 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  30 done. Current error " << err << std::endl;
     err += (ori16.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  31 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  31 done. Current error " << err << std::endl;
     err += (ori17.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  32 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  32 done. Current error " << err << std::endl;
   }
 
   {
@@ -567,37 +568,37 @@ int testOrientation(int errcode)
     kine::Orientation ori17(ori3, ori2);
 
     err += (ori00.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  33 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  33 done. Current error " << err << std::endl;
     err += (ori01.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  34 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  34 done. Current error " << err << std::endl;
     err += (ori02.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  35 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  35 done. Current error " << err << std::endl;
     err += (ori03.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  36 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  36 done. Current error " << err << std::endl;
     err += (ori04.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  37 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  37 done. Current error " << err << std::endl;
     err += (ori05.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  38 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  38 done. Current error " << err << std::endl;
     err += (ori06.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  39 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  39 done. Current error " << err << std::endl;
     err += (ori07.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  40 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  40 done. Current error " << err << std::endl;
     err += (ori10.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  41 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  41 done. Current error " << err << std::endl;
     err += (ori11.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  42 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  42 done. Current error " << err << std::endl;
     err += (ori12.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  43 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  43 done. Current error " << err << std::endl;
     err += (ori13.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  44 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  44 done. Current error " << err << std::endl;
     err += (ori14.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  45 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  45 done. Current error " << err << std::endl;
     err += (ori15.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  46 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  46 done. Current error " << err << std::endl;
     err += (ori16.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  47 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  47 done. Current error " << err << std::endl;
     err += (ori17.toMatrix3() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  48 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  48 done. Current error " << err << std::endl;
   }
 
   {
@@ -607,7 +608,7 @@ int testOrientation(int errcode)
     kine::Orientation ori3 = ori2.inverse() * ori1;
 
     err += (Quaternion(ori3.toVector4()).toRotationMatrix() - Matrix3::Identity()).norm();
-    std::cout << "Multiplication test  49 done. Current error " << err << std::endl;
+    // std::cout << "Multiplication test  49 done. Current error " << err << std::endl;
   }
 
   {
@@ -785,6 +786,13 @@ int testKinematics(int errcode)
 
   for(int i = 0; i < count; i++)
   {
+    /*
+    std::cout << std::endl << "-----------------------------------------" << std::endl 
+                          << "New iteration" 
+              << std::endl << "-----------------------------------------" << std::endl;
+    std::cout << "err: " << err << std::endl;
+    */
+
     Vector3 pos0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
     kine::Orientation ori0 = kine::Orientation::randomRotation();
     Vector3 linvel0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
@@ -803,7 +811,9 @@ int testKinematics(int errcode)
     l = k;
 
     double dt = 0.001;
+    // std::cout << std::endl << "k before integrate: " << std::endl << k << std::endl;
     k.integrate(dt);
+    // std::cout << std::endl << "k after integrate: " << std::endl << k << std::endl;
 
     k0.reset();
     k1.reset();
@@ -812,7 +822,7 @@ int testKinematics(int errcode)
     {
       k0.position = l.position;
     }
-    if(flag0 & Flags::orientation)
+    if(true)
     {
       k0.orientation = l.orientation;
     }
@@ -891,7 +901,10 @@ int testKinematics(int errcode)
       flag = flag | kine::Kinematics::Flags::angAcc;
     }
 
+    //  << std::endl << "k0 before update: " << std::endl << k0 << std::endl;
+    // std::cout << std::endl << "k1 before update: " << std::endl << k1 << std::endl;
     k0.update(k1, dt, flag);
+    // std::cout << std::endl << "k0 after update: " << std::endl << k0 << std::endl;
 
     if(k0.position.isSet())
     {
@@ -969,7 +982,7 @@ int main()
 {
   int returnVal;
   int errorcode = 0;
-
+  
   if((returnVal = testRotationOperations(++errorcode)))
   {
     std::cout << "testRotationOperations Failed, error code: " << returnVal << std::endl;
@@ -1000,6 +1013,6 @@ int main()
     std::cout << "Kinematics test succeeded" << std::endl;
   }
 
-  std::cout << "test succeeded" << std::endl;
+  std::cout << "Every tests succeeded" << std::endl;
   return 0;
 }

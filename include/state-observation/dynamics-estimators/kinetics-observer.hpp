@@ -31,17 +31,18 @@ namespace stateObservation
 
 /// @brief This observer estimated the kinematics and the external forces.
 
-/// @details  The provided kinematics is the position, the orientation, the velocities and even the accelerations of a
-/// local frame, called also observed frame in the global frame. This local frame can be any frame that is attached to
-/// the robot with a known transformation. It could be attached to the CoM, to the base link of the robot or the control
-/// frame that is supposed to be attached to the world frame but that actually is not. This estimation is based on the
-/// assumption of viscoelastic contacts and using three kinds of measurements: IMUs, Force/Torque measurements (contact
+/// @details  The provided kinematics is the position, the orientation, the velocities and even the accelerations of a frame 1 within another frame 2.
+/// The object Kinematics is the expression of these kinematics in the global frame 2, while the LocalKinematics object is their expression in the local frame 1.
+/// Our observer estimates the local kinematics of the centroid's frame within the world frame. 
+/// The reason to choose the centroid's frame is that it simplifies many expressions, for example the expressions of the accelerations. 
+/// This estimation is based on the assumption of viscoelastic contacts and using three kinds of measurements: IMUs, Force/Torque measurements (contact
 /// and other ones) and any absolute position measurements.
 ///
 class STATE_OBSERVATION_DLLAPI KineticsObserver : protected DynamicalSystemFunctorBase, protected StateVectorArithmetics
 {
 public:
   typedef kine::Kinematics Kinematics;
+  typedef kine::LocalKinematics LocalKinematics;
   typedef kine::Orientation Orientation;
 
   // ////////////////////////////////////////////////////////////
@@ -124,20 +125,19 @@ public:
   /// inputs uses default ones.
   ///
   /// The IMU is located in a sensor frame. We suppose we know the kinematics of
-  /// this sensor frame in the local frame (for example the base frame or the
-  /// control frame).
+  /// this sensor frame in the centroid's frame 
   ///
   /// @return the number of the IMU (useful in case there are several ones)
   /// @param accelero measured value
   /// @param gyrometer measured gyro value
-  /// @param localKine sets the kinematics of the IMU expressed in the observed local
-  /// frame. The best is to provide the position, the orientation,
+  /// @param centroidImuKinematics sets the kinematics of the IMU in the observed centroid's frame
+  /// frame, expressed in the IMU's frame. The best is to provide the position, the orientation,
   /// the angular and linear velocities and the linear acceleration
   /// Nevertheless if velocities or accelerations are not available they will be
   /// automatically computed through finite differences
   /// @param num the number of the IMU (useful in case there are several ones).
   ///           If not set it will be generated automatically.
-  int setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const Kinematics & localKine, int num = -1);
+  int setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const LocalKinematics & centroidImuKinematics, int num = -1);
 
   /// @brief @copybrief setIMU(const Vector3&,const Vector3&,const Kinematics &,int)
   /// Provides also the associated covariance matrices
@@ -150,7 +150,7 @@ public:
              const Vector3 & gyrometer,
              const Matrix3 & acceleroCov,
              const Matrix3 & gyroCov,
-             const Kinematics & localKine,
+             const LocalKinematics & centroidImuKinematics,
              int num = -1);
 
   /// @brief set the default covariance matrix for IMU.
@@ -194,7 +194,7 @@ public:
   /// @param pose  is the initial guess on the position of the contact. Only position and orientation are enough. If the
   /// contact is compliant, you need to set the "rest" pose of the contact (i.e. the pose that gives zero reaction
   /// force)
-  /// @param contactWrench  is the initial wrench on the contact expressed in the local frame of the contact frame
+  /// @param contactWrench  is the initial wrench on the contact expressed in the sensor's frame
   /// (e.g. the force-sensor measurement)
   /// @param initialCovarianceMatrix is the covariance matrix expressing the uncertainty in the pose of the initial
   /// guess in the 6x6 upper left corner ( if no good initial guess is available give a rough position with a high
@@ -277,7 +277,7 @@ public:
   /// @{
 
   /// @brief Update the contact when it is NOT equipped with wrench sensor
-  /// @param localKine the new kinematics of the contact expressed in the local observed frame
+  /// @param localKine the new kinematics of the contact expressed in the centroid's frame frame
   ///                  the best is to provide the position, the orientation, the angular and the linear velocities.
   ///                  Otherwise they will be computed automatically
   /// @param contactNumber The number id of the contact
@@ -402,14 +402,17 @@ public:
   /// method does NOT update the estimation, for this use update().
   ///
   /// @return Kinematics
-  Kinematics getKinematics() const;
+
+  LocalKinematics getLocalCentroidKinematics() const;
+
+  LocalKinematics getGlobalCentroidKinematics() const;
 
   /// @brief gets the Kinematics that include the linear and angular accelerations.
   /// @details This method computes the estimated accelerations from the observed state of the robot. It means this
   /// acceleration is filtered by the model
   ///
   /// @return Kinematics
-  Kinematics estimateAccelerations();
+  LocalKinematics estimateAccelerations();
 
   /// @brief Get the global-frame kinematics of a local-frame defined kinematics
   /// @details The kinematics are linear and angular positions, velocities and optionally accalerations. This method
@@ -418,7 +421,11 @@ public:
   ///
   /// @param localKinematics
   /// @return Kinematics
-  Kinematics getKinematicsOf(const Kinematics & localKinematics) const;
+  LocalKinematics getLocalKinematicsOf(const LocalKinematics & localKinematics) const;
+
+  LocalKinematics getGlobalKinematicsOf(const LocalKinematics & localKinematics) const;
+
+  LocalKinematics getGlobalKinematicsOf(const Kinematics & kin) const;
 
   /// get the contact force provided by the estimator
   /// which is different from a contact sensor measurement
@@ -460,7 +467,7 @@ public:
   /// @param kine is the new kinematics of the state
   /// @param resetContactWrenches set if the contact wrenches should be reset
   /// @param resetCovariance set if the covariance of the state should be reset
-  void setStateKinematics(const Kinematics & kine, bool resetContactWrenches = true, bool resetCovariance = true);
+  void setWorldCentroidStateKinematics(const LocalKinematics & kine, bool resetContactWrenches = true, bool resetCovariance = true);
 
   // TODO
   // void setVelocityGuess(const Kinematics)
@@ -621,6 +628,8 @@ public:
   ///
   /// @return const Vector&
   const Vector & getCurrentStateVector() const;
+
+  const Vector & getCurrentLocalStateVector() const;
 
   /// @brief Get the State Vector Internal Time Index
   /// This is for advanced use but may be used to check how many states have been estimated up to now
@@ -867,7 +876,7 @@ protected:
   {
     virtual ~IMU() {}
     IMU() : Sensor(sizeIMUSignal) {}
-    Kinematics kinematics;
+    LocalKinematics centroidImuKinematics; // the kinematics of the IMU in the IMU's frame
     Vector6 acceleroGyro;
     Matrix3 covMatrixAccelero;
     Matrix3 covMatrixGyro;
@@ -885,7 +894,7 @@ protected:
     virtual ~Contact() {}
 
     Kinematics absPose;
-    Vector6 wrench;
+    Vector6 wrenchMeasurement; /// describes the measured wrench (forces + torques) at the contact in the sensor's frame
     CheckedMatrix6 sensorCovMatrix;
 
     Matrix3 linearStiffness;
@@ -898,8 +907,8 @@ protected:
     int stateIndex;
     int stateIndexTangent;
 
-    Kinematics localKine; /// describes the kinematics of the contact point in the local frame
-    static const Kinematics::Flags::Byte localKineFlags = /// flags for the components of the kinematics
+    Kinematics centroidContactKine; /// describes the kinematics of the contact point in the centroid's frame
+    static const Kinematics::Flags::Byte centroidContactKineFlags = /// flags for the components of the kinematics
         Kinematics::Flags::position | Kinematics::Flags::orientation | Kinematics::Flags::linVel
         | Kinematics::Flags::angVel;
 
@@ -925,9 +934,9 @@ protected:
 
   virtual Vector measureDynamics(const Vector & x, const Vector & u, TimeIndex k);
 
-  void addUnmodeledAndContactWrench_(const Vector & stateVector, Vector3 & force, Vector3 & torque);
+  void addUnmodeledAndContactWrench_(const Vector & centroidStateVector, Vector3 & force, Vector3 & torque);
 
-  void computeAccelerations_(Kinematics & stateKine,
+  void computeAccelerations_(LocalKinematics & localStateKine,
                              const Vector3 & totalForceLocal,
                              const Vector3 & totalMomentLocal,
                              Vector3 & linAcc,
@@ -935,10 +944,10 @@ protected:
 
   /// the kinematics is not const to allow more optimized non const operators to work
   void computeContactForces_(VectorContactIterator i,
-                             Kinematics & stateKine,
-                             Kinematics & contactPose,
-                             Vector3 & Force,
-                             Vector3 torque);
+                              LocalKinematics & worldCentroidStateKinematics,
+                              Kinematics & worldReferenceContactPose,
+                              Vector3 & force,
+                              Vector3 torque);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);
@@ -1014,7 +1023,7 @@ public:
 protected:
   Vector stateNaNCorrection_();
 
-  /// updates stateKine_ from the stateVector
+  /// updates stateKine_ from the centroidStateVector
   void updateKine_();
 
 protected:
@@ -1030,11 +1039,11 @@ protected:
   Index measurementSize_;
   Index measurementTangentSize_;
 
-  Kinematics stateKinematics_;
+  Vector worldCentroidStateVector_;
+  Vector worldCentroidStateVectorDx_;
+  Vector oldWorldCentroidStateVector_;
 
-  Vector stateVector_;
-  Vector stateVectorDx_;
-  Vector oldStateVector_;
+  LocalKinematics worldCentroidStateKinematics_; 
 
   Vector3 additionalForce_;
   Vector3 additionalTorque_;
@@ -1221,10 +1230,10 @@ protected:
   /// a structure to optimize computations
   struct Opt
   {
-    Opt() : kine(kine1), ori(kine.orientation), ori1(kine1.orientation), ori2(kine2.orientation) {}
+    Opt() : locKine(locKine1), ori(locKine.orientation), ori1(locKine1.orientation), ori2(locKine2.orientation) {}
 
-    Kinematics kine1, kine2;
-    Kinematics & kine;
+    LocalKinematics locKine1, locKine2;
+    LocalKinematics & locKine;
     Orientation & ori;
     Orientation & ori1;
     Orientation & ori2;

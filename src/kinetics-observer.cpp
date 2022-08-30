@@ -90,8 +90,8 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
 : maxContacts_(maxContacts), maxImuNumber_(maxNumberOfIMU), contacts_(maxContacts_), imuSensors_(maxImuNumber_),
   stateSize_(sizeStateBase + maxImuNumber_ * sizeGyroBias + maxContacts * sizeContact),
   stateTangentSize_(sizeStateTangentBase + maxImuNumber_ * sizeGyroBias + sizeContactTangent * maxContacts),
-  measurementSize_(0), measurementTangentSize_(0), stateVector_(stateSize_), stateVectorDx_(stateTangentSize_),
-  oldStateVector_(stateSize_), additionalForce_(Vector3::Zero()), additionalTorque_(Vector3::Zero()),
+  measurementSize_(0), measurementTangentSize_(0), worldCentroidStateVector_(stateSize_), worldCentroidStateVectorDx_(stateTangentSize_),
+  oldWorldCentroidStateVector_(stateSize_), additionalForce_(Vector3::Zero()), additionalTorque_(Vector3::Zero()),
   ekf_(stateSize_, stateTangentSize_, measurementSizeBase, measurementSizeBase, inputSize, false, false),
   finiteDifferencesJacobians_(true), withGyroBias_(true), withUnmodeledWrench_(false),
   withAccelerationEstimation_(false), k_est_(0), k_data_(0), mass_(defaultMass), dt_(defaultdx), processNoise_(0x0),
@@ -130,10 +130,10 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
   ekf_.setFunctor(this);
   ekf_.setStateArithmetics(this);
 
-  stateVector_.setZero();
-  oldStateVector_ = stateVector_;
+  worldCentroidStateVector_.setZero();
+  oldWorldCentroidStateVector_ = worldCentroidStateVector_;
 
-  ekf_.setState(stateVector_, k_est_);
+  ekf_.setState(worldCentroidStateVector_, k_est_);
 
   stateKinematicsInitCovMat_.setZero();
   stateKinematicsInitCovMat_.block<sizePos, sizePos>(posIndexTangent(), posIndexTangent()) = statePosInitCovMat_;
@@ -177,7 +177,7 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
 
   updateKine_();
 
-  stateVectorDx_.setConstant(1e-6);
+  worldCentroidStateVectorDx_.setConstant(1e-6);
 }
 
 KineticsObserver::~KineticsObserver() {}
@@ -287,7 +287,7 @@ const Vector & KineticsObserver::update()
       if(i->withRealSensor)
       {
         i->measIndex = curMeasIndex;
-        measurementVector_.segment<sizeWrench>(curMeasIndex) = i->wrench;
+        measurementVector_.segment<sizeWrench>(curMeasIndex) = i->wrenchMeasurement;
         measurementCovMatrix_.block<sizeWrench, sizeWrench>(curMeasIndex, curMeasIndex) = i->sensorCovMatrix();
         curMeasIndex += sizeWrench;
       }
@@ -308,8 +308,8 @@ const Vector & KineticsObserver::update()
     ekf_.setR(measurementCovMatrix_);
     if(finiteDifferencesJacobians_)
     {
-      ekf_.setA(ekf_.getAMatrixFD(stateVectorDx_));
-      ekf_.setC(ekf_.getCMatrixFD(stateVectorDx_));
+      ekf_.setA(ekf_.getAMatrixFD(worldCentroidStateVectorDx_));
+      ekf_.setC(ekf_.getCMatrixFD(worldCentroidStateVectorDx_));
     }
     else
     {
@@ -317,23 +317,23 @@ const Vector & KineticsObserver::update()
       ekf_.setC(computeCMatrix_());
     }
 
-    stateVector_ = ekf_.getEstimatedState(k_data_);
+    worldCentroidStateVector_ = ekf_.getEstimatedState(k_data_);
 
-    if(stateVector_.hasNaN())
+    if(worldCentroidStateVector_.hasNaN())
     {
 #ifndef NDEBUG
       std::cout << "Kinetics observer: NaN value detected" << std::endl;
 #endif
-      stateVector_ = stateNaNCorrection_();
+      worldCentroidStateVector_ = stateNaNCorrection_();
     }
     else
     {
-      oldStateVector_ = stateVector_;
+      oldWorldCentroidStateVector_ = worldCentroidStateVector_;
     }
 
     ++k_est_; // the timestamp of the state we estimated
 
-    stateKinematics_.reset();
+    worldCentroidStateKinematics_.reset();
 
     updateKine_();
 
@@ -343,12 +343,12 @@ const Vector & KineticsObserver::update()
     }
   }
 
-  return stateVector_;
+  return worldCentroidStateVector_;
 }
 
 const Vector & KineticsObserver::getCurrentStateVector() const
 {
-  return stateVector_;
+  return worldCentroidStateVector_;
 }
 
 stateObservation::TimeIndex KineticsObserver::getStateVectorTimeIndex() const
@@ -356,55 +356,70 @@ stateObservation::TimeIndex KineticsObserver::getStateVectorTimeIndex() const
   return ekf_.getCurrentTime();
 }
 
-kine::Kinematics KineticsObserver::getKinematics() const
+kine::LocalKinematics KineticsObserver::getLocalCentroidKinematics() const
 {
-  return stateKinematics_;
+  return worldCentroidStateKinematics_;
 }
 
-kine::Kinematics KineticsObserver::getKinematicsOf(const Kinematics & local) const
+kine::LocalKinematics KineticsObserver::getGlobalCentroidKinematics() const
 {
-  return Kinematics(stateKinematics_, local); /// product of the kinematics
+  return Kinematics(worldCentroidStateKinematics_);
+}
+
+kine::LocalKinematics KineticsObserver::getLocalKinematicsOf(const LocalKinematics & locKin) const
+{
+  return LocalKinematics(worldCentroidStateKinematics_, locKin); /// product of the kinematics
+}
+
+kine::LocalKinematics KineticsObserver::getGlobalKinematicsOf(const LocalKinematics & locKin) const
+{
+  return Kinematics(worldCentroidStateKinematics_, locKin); /// product of the kinematics
+}
+
+kine::LocalKinematics KineticsObserver::getGlobalKinematicsOf(const Kinematics & kin) const
+{
+  return Kinematics(Kinematics(worldCentroidStateKinematics_), kin); /// product of the kinematics
 }
 
 Vector6 KineticsObserver::getContactWrench(int contactNbr) const
 {
-  return stateVector_.segment<sizeWrench>(contactWrenchIndex(contactNbr));
+  return worldCentroidStateVector_.segment<sizeWrench>(contactWrenchIndex(contactNbr));
 }
 
 kine::Kinematics KineticsObserver::getContactPosition(int contactNbr) const
 {
-  return Kinematics(stateVector_.segment<sizeStateKine>(contactKineIndex(contactNbr)), flagsContactKine);
+  return Kinematics(worldCentroidStateVector_.segment<sizeStateKine>(contactKineIndex(contactNbr)), flagsContactKine);
 }
 
 Vector6 KineticsObserver::getUnmodeledWrench() const
 {
-  return stateVector_.segment<sizeWrench>(unmodeledWrenchIndex());
+  return worldCentroidStateVector_.segment<sizeWrench>(unmodeledWrenchIndex());
 }
 
-kine::Kinematics KineticsObserver::estimateAccelerations()
+kine::LocalKinematics KineticsObserver::estimateAccelerations()
 {
-  Vector3 forceLocal = additionalForce_;
-  Vector3 torqueLocal = additionalTorque_;
+  Vector3 forceCentroid = additionalForce_;
+  Vector3 torqueCentroid = additionalTorque_;
 
-  addUnmodeledAndContactWrench_(stateVector_, forceLocal, torqueLocal);
+  addUnmodeledAndContactWrench_(worldCentroidStateVector_, forceCentroid, torqueCentroid);
 
   /// The accelerations are about to be computed so we set them to "initialized"
-  stateKinematics_.linAcc.set(true);
-  stateKinematics_.angAcc.set(true);
+  worldCentroidStateKinematics_.linAcc.set(true);
+  worldCentroidStateKinematics_.angAcc.set(true);
 
-  computeAccelerations_(stateKinematics_, forceLocal, torqueLocal, stateKinematics_.linAcc(),
-                        stateKinematics_.angAcc());
+  computeAccelerations_(worldCentroidStateKinematics_, forceCentroid, torqueCentroid, worldCentroidStateKinematics_.linAcc(),
+                        worldCentroidStateKinematics_.angAcc());
 
-  return stateKinematics_;
+  return worldCentroidStateKinematics_;
 }
 
-void KineticsObserver::setStateKinematics(const Kinematics & kine, bool resetForces, bool resetCovariance)
+void KineticsObserver::setWorldCentroidStateKinematics(const LocalKinematics & kine, bool resetForces, bool resetCovariance)
 {
   BOOST_ASSERT(kine.position.isSet() && kine.orientation.isSet() && kine.linVel.isSet() && kine.angVel.isSet()
                && "The Kinematics is not correctly initialized, should be the position, orientation, and linear and "
                   "angular verlocities");
-  stateKinematics_ = kine;
-  stateVector_.segment<sizeStateKine>(kineIndex()) = stateKinematics_.toVector(flagsStateKine);
+  worldCentroidStateKinematics_ = kine;
+  worldCentroidStateVector_.segment<sizeStateKine>(kineIndex()) = worldCentroidStateKinematics_.toVector(flagsStateKine);
 
   if(resetForces)
   {
@@ -412,12 +427,12 @@ void KineticsObserver::setStateKinematics(const Kinematics & kine, bool resetFor
     {
       if(i->isSet)
       {
-        stateVector_.segment<sizeWrench>(contactWrenchIndex(i)).setZero();
+        worldCentroidStateVector_.segment<sizeWrench>(contactWrenchIndex(i)).setZero();
       }
     }
   }
 
-  ekf_.setState(stateVector_, k_est_);
+  ekf_.setState(worldCentroidStateVector_, k_est_);
 
   if(resetCovariance)
   {
@@ -440,8 +455,8 @@ void KineticsObserver::setStateKinematics(const Kinematics & kine, bool resetFor
 
 void KineticsObserver::setGyroBias(const Vector3 & bias, unsigned numberOfIMU, bool resetCovariance)
 {
-  stateVector_.segment<sizeGyroBias>(gyroBiasIndex(numberOfIMU)) = bias;
-  ekf_.setState(stateVector_, k_est_);
+  worldCentroidStateVector_.segment<sizeGyroBias>(gyroBiasIndex(numberOfIMU)) = bias;
+  ekf_.setState(worldCentroidStateVector_, k_est_);
 
   if(resetCovariance)
   {
@@ -454,8 +469,8 @@ void KineticsObserver::setGyroBias(const Vector3 & bias, unsigned numberOfIMU, b
 
 void KineticsObserver::setStateUnmodeledWrench(const Vector6 & wrench, bool resetCovariance)
 {
-  stateVector_.segment<sizeWrench>(unmodeledWrenchIndex()) = wrench;
-  ekf_.setState(stateVector_, k_est_);
+  worldCentroidStateVector_.segment<sizeWrench>(unmodeledWrenchIndex()) = wrench;
+  ekf_.setState(worldCentroidStateVector_, k_est_);
 
   if(resetCovariance)
   {
@@ -468,7 +483,7 @@ void KineticsObserver::setStateUnmodeledWrench(const Vector6 & wrench, bool rese
 
 void KineticsObserver::setStateVector(const Vector & v, bool resetCovariance)
 {
-  stateVector_ = v;
+  worldCentroidStateVector_ = v;
   ekf_.setState(v, k_est_);
   updateKine_();
 
@@ -500,7 +515,7 @@ void KineticsObserver::setWithGyroBias(bool b)
   withAccelerationEstimation_ = b;
 }
 
-int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const Kinematics & localKine, int num)
+int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const LocalKinematics & centroidImuKinematics, int num)
 {
   /// ensure the measurements are labeled with the good time stamp
   startNewIteration_();
@@ -526,25 +541,25 @@ int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer
   {
     imu.covMatrixAccelero = acceleroCovMatDefault_;
     imu.covMatrixGyro = gyroCovMatDefault_;
-    imu.kinematics = localKine;
-    BOOST_ASSERT(imu.kinematics.position.isSet() && imu.kinematics.orientation.isSet()
+    imu.centroidImuKinematics = centroidImuKinematics;
+    BOOST_ASSERT(imu.centroidImuKinematics.position.isSet() && imu.centroidImuKinematics.orientation.isSet()
                  && "The kinematics of the IMU is incorrectly initialized");
-    if(!imu.kinematics.linVel.isSet())
+    if(!imu.centroidImuKinematics.linVel.isSet())
     {
-      imu.kinematics.linVel.set().setZero();
+      imu.centroidImuKinematics.linVel.set().setZero();
     }
-    if(!imu.kinematics.angVel.isSet())
+    if(!imu.centroidImuKinematics.angVel.isSet())
     {
-      imu.kinematics.angVel.set().setZero();
+      imu.centroidImuKinematics.angVel.set().setZero();
     }
-    if(!imu.kinematics.linAcc.isSet())
+    if(!imu.centroidImuKinematics.linAcc.isSet())
     {
-      imu.kinematics.linAcc.set().setZero();
+      imu.centroidImuKinematics.linAcc.set().setZero();
     }
   }
   else
   {
-    imu.kinematics.update(localKine, dt_ * (k_data_ - k_data_), flagsIMUKine);
+    imu.centroidImuKinematics.update(centroidImuKinematics, dt_ * (k_data_ - k_data_), flagsIMUKine);
   }
 
   imu.time = k_data_;
@@ -557,7 +572,7 @@ int KineticsObserver::setIMU(const Vector3 & accelero,
                              const Vector3 & gyrometer,
                              const Matrix3 & acceleroCov,
                              const Matrix3 & gyroCov,
-                             const Kinematics & localKine,
+                             const LocalKinematics & centroidImuKinematics,
                              int num)
 {
   /// ensure the measuements are labeled with the good time stamp
@@ -585,25 +600,25 @@ int KineticsObserver::setIMU(const Vector3 & accelero,
 
   if(imuSensors_[num].time == 0) /// this is the first value for the IMU
   {
-    imu.kinematics = localKine;
-    BOOST_ASSERT(imu.kinematics.position.isSet() && imu.kinematics.orientation.isSet()
+    imu.centroidImuKinematics = centroidImuKinematics;
+    BOOST_ASSERT(imu.centroidImuKinematics.position.isSet() && imu.centroidImuKinematics.orientation.isSet()
                  && "The kinematics of the IMU is incorrectly initialized");
-    if(!imu.kinematics.linVel.isSet())
+    if(!imu.centroidImuKinematics.linVel.isSet())
     {
-      imu.kinematics.linVel.set().setZero();
+      imu.centroidImuKinematics.linVel.set().setZero();
     }
-    if(!imu.kinematics.angVel.isSet())
+    if(!imu.centroidImuKinematics.angVel.isSet())
     {
-      imu.kinematics.angVel.set().setZero();
+      imu.centroidImuKinematics.angVel.set().setZero();
     }
-    if(!imu.kinematics.linAcc.isSet())
+    if(!imu.centroidImuKinematics.linAcc.isSet())
     {
-      imu.kinematics.linAcc.set().setZero();
+      imu.centroidImuKinematics.linAcc.set().setZero();
     }
   }
   else
   {
-    imu.kinematics.update(localKine, dt_ * (k_data_ - k_data_), flagsIMUKine);
+    imu.centroidImuKinematics.update(centroidImuKinematics, dt_ * (k_data_ - k_data_), flagsIMUKine);
   }
 
   imu.time = k_data_;
@@ -619,8 +634,8 @@ void KineticsObserver::setIMUDefaultCovarianceMatrix(const Matrix3 & acceleroCov
   gyroCovMatDefault_ = gyroCov;
 }
 
-void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrench,
-                                                     const Kinematics & localKine,
+void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrenchMeasurement,
+                                                     const Kinematics & centroidContactKine,
                                                      unsigned contactNumber)
 {
   /// ensure the measuements are labeled with the good time stamp
@@ -633,13 +648,13 @@ void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrench,
 
   if(contacts_[contactNumber].time == k_data_ - 1) /// the contact is not newly set
   {
-    contacts_[contactNumber].localKine.update(localKine, dt_, Contact::localKineFlags);
+    contacts_[contactNumber].centroidContactKine.update(centroidContactKine, dt_, Contact::centroidContactKineFlags);
   }
   else /// the contact is newlyset
   {
-    contacts_[contactNumber].localKine = localKine;
+    contacts_[contactNumber].centroidContactKine = centroidContactKine;
   }
-  contacts_[contactNumber].wrench = wrench;
+  contacts_[contactNumber].wrenchMeasurement = wrenchMeasurement;
   contacts_[contactNumber].time = k_data_;
 
   if(!contacts_[contactNumber].sensorCovMatrix.isSet())
@@ -654,9 +669,9 @@ void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrench,
   }
 }
 
-void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrench,
+void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrenchMeasurement,
                                                      const Matrix6 & wrenchCovMatrix,
-                                                     const Kinematics & localKine,
+                                                     const Kinematics & centroidContactKine,
                                                      unsigned contactNumber)
 {
   /// ensure the measuements are labeled with the good time stamp
@@ -669,13 +684,13 @@ void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrench,
 
   if(contacts_[contactNumber].time == k_data_ - 1) /// the contact is not newly set
   {
-    contacts_[contactNumber].localKine.update(localKine, dt_, Contact::localKineFlags);
+    contacts_[contactNumber].centroidContactKine.update(centroidContactKine, dt_, Contact::centroidContactKineFlags);
   }
   else /// the contact is newlyset
   {
-    contacts_[contactNumber].localKine = localKine;
+    contacts_[contactNumber].centroidContactKine = centroidContactKine;
   }
-  contacts_[contactNumber].wrench = wrench;
+  contacts_[contactNumber].wrenchMeasurement = wrenchMeasurement;
   contacts_[contactNumber].time = k_data_;
   contacts_[contactNumber].sensorCovMatrix = wrenchCovMatrix;
 
@@ -691,7 +706,7 @@ void KineticsObserver::setContactWrenchSensorDefaultCovarianceMatrix(const Matri
   contactWrenchSensorCovMatDefault_ = wrenchSensorCovMat;
 }
 
-void KineticsObserver::updateContactWithNoSensor(const Kinematics & localKine, unsigned contactNumber)
+void KineticsObserver::updateContactWithNoSensor(const Kinematics & centroidContactKine, unsigned contactNumber)
 {
   /// ensure the measuements are labeled with the good time stamp
   startNewIteration_();
@@ -703,11 +718,11 @@ void KineticsObserver::updateContactWithNoSensor(const Kinematics & localKine, u
 
   if(contacts_[contactNumber].time == k_data_ - 1) /// the contact is not newly set
   {
-    contacts_[contactNumber].localKine.update(localKine, dt_, Contact::localKineFlags);
+    contacts_[contactNumber].centroidContactKine.update(centroidContactKine, dt_, Contact::centroidContactKineFlags);
   }
   else /// the contact is newly set
   {
-    contacts_[contactNumber].localKine = localKine;
+    contacts_[contactNumber].centroidContactKine = centroidContactKine;
   }
 
   contacts_[contactNumber].time = k_data_;
@@ -899,7 +914,7 @@ int KineticsObserver::addContact(const Kinematics & pose,
   contact.stateIndexTangent = contactsIndexTangent() + contactNumber * sizeContactTangent;
 
   contact.absPose = pose;
-  contact.wrench = contactWrench;
+  contact.wrenchMeasurement = contactWrench;
 
   if(linearDamping != Matrix3::Constant(-1))
   {
@@ -938,7 +953,7 @@ int KineticsObserver::addContact(const Kinematics & pose,
   }
 
   /// update the state vector. The contact forces and moments are initialized to zero but are updated in update()
-  stateVector_.segment<sizeContact>(contact.stateIndex) << pose.toVector(flagsContactKine), Vector6::Zero();
+  worldCentroidStateVector_.segment<sizeContact>(contact.stateIndex) << pose.toVector(flagsContactKine), Vector6::Zero();
 
   /// sets the initial covariance matrix
   Matrix stateCovMat = ekf_.getStateCovariance();
@@ -1107,7 +1122,7 @@ Vector KineticsObserver::getMeasurementVector()
       {
         if(i->time == k_data_ && i->withRealSensor)
         {
-          measurement.segment<sizeWrench>(currIndex) = i->wrench;
+          measurement.segment<sizeWrench>(currIndex) = i->wrenchMeasurement;
           currIndex += sizeWrench;
         }
       }
@@ -1273,7 +1288,7 @@ void KineticsObserver::resetInputs()
 
 void KineticsObserver::setFiniteDifferenceStep(const Vector & v)
 {
-  stateVectorDx_ = v;
+  worldCentroidStateVectorDx_ = v;
 }
 
 void KineticsObserver::useFiniteDifferencesJacobians(bool b)
@@ -1285,7 +1300,7 @@ Vector KineticsObserver::stateNaNCorrection_()
 {
   /// TODO implement this function
   assert(false && "NaN Correction not yet implemented. Please Contact mehdi.benallegue@gmail.com");
-  return oldStateVector_;
+  return oldWorldCentroidStateVector_;
 }
 
 void KineticsObserver::startNewIteration_()
@@ -1345,36 +1360,36 @@ Matrix KineticsObserver::computeAMatrix_()
   Matrix3 I_inv = I_().inverse();
   Matrix3 J_omegadot_ext_torque = I_inv; // we can merge the two last lines
                                          // not to create a new variable.
-                                         // We consider that the inertia matrix is given in the local frame.
+                                         // We consider that the inertia matrix is given in the centroid's frame.
   
-  Matrix3 J_omegadot_omega = I_inv*(kine::skewSymmetric(I_()*stateKinematics_.angVel())-Id_()-kine::skewSymmetric(stateKinematics_.angVel())*I_()+kine::skewSymmetric(sigma_()));
+  Matrix3 J_omegadot_omega = I_inv*(kine::skewSymmetric(I_()*worldCentroidStateKinematics_.angVel())-Id_()-kine::skewSymmetric(worldCentroidStateKinematics_.angVel())*I_()+kine::skewSymmetric(sigma_()));
 
 
   // Jacobians of the linear acceleration
-  Matrix3 J_al_R = -cst::gravityConstant*(stateKinematics_.orientation.toMatrix3()*kine::skewSymmetric(Vector3(0,0,1)));
+  Matrix3 J_al_R = -cst::gravityConstant*(worldCentroidStateKinematics_.orientation.toMatrix3()*kine::skewSymmetric(Vector3(0,0,1)));
   Matrix3 J_al_ext_force = Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent)/mass_;
 
 
-  // Jacobians of the local position
-  Matrix3 J_pl_pl = Matrix::Identity(sizePosTangent, sizePosTangent)-dt_*kine::skewSymmetric(stateKinematics_.angVel())+dt2_2*(kine::skewSymmetric2(stateKinematics_.angVel())-kine::skewSymmetric(stateKinematics_.angAcc()));
+  // Jacobians of the centroid's position
+  Matrix3 J_pl_pl = Matrix::Identity(sizePosTangent, sizePosTangent)-dt_*kine::skewSymmetric(worldCentroidStateKinematics_.angVel())+dt2_2*(kine::skewSymmetric2(worldCentroidStateKinematics_.angVel())-kine::skewSymmetric(worldCentroidStateKinematics_.angAcc()));
   A.block<sizePosTangent, sizePosTangent>(posIndexTangent(), posIndexTangent()) = J_pl_pl;  // For optimization, we can merge the two last operations into one
   Matrix3 J_pl_R = dt2_2*J_al_R;
   A.block<sizePosTangent, sizeOriTangent>(posIndexTangent(), oriIndexTangent()) = J_pl_R;
-  Matrix3 J_pl_vl = dt_*Matrix::Identity(sizePosTangent, sizeLinVelTangent)-2*dt2_2*kine::skewSymmetric(stateKinematics_.angVel());
+  Matrix3 J_pl_vl = dt_*Matrix::Identity(sizePosTangent, sizeLinVelTangent)-2*dt2_2*kine::skewSymmetric(worldCentroidStateKinematics_.angVel());
   A.block<sizePosTangent, sizeLinVelTangent>(posIndexTangent(), linVelIndexTangent()) = J_pl_vl;
-  Matrix3 J_pl_omega = kine::skewSymmetric(dt_*stateKinematics_.position()+2*dt2_2*stateKinematics_.linVel())+dt2_2*(kine::skewSymmetric(stateKinematics_.position())*J_omegadot_omega+kine::skewSymmetric(kine::skewSymmetric(stateKinematics_.position())*stateKinematics_.angVel())-kine::skewSymmetric(stateKinematics_.angVel())*kine::skewSymmetric(stateKinematics_.position()));
+  Matrix3 J_pl_omega = kine::skewSymmetric(dt_*worldCentroidStateKinematics_.position()+2*dt2_2*worldCentroidStateKinematics_.linVel())+dt2_2*(kine::skewSymmetric(worldCentroidStateKinematics_.position())*J_omegadot_omega+kine::skewSymmetric(kine::skewSymmetric(worldCentroidStateKinematics_.position())*worldCentroidStateKinematics_.angVel())-kine::skewSymmetric(worldCentroidStateKinematics_.angVel())*kine::skewSymmetric(worldCentroidStateKinematics_.position()));
   A.block<sizePosTangent, sizeAngVelTangent>(posIndexTangent(), angVelIndexTangent()) = J_pl_omega;
   Matrix3 J_pl_ext_force = dt2_2/mass_*Matrix::Identity(sizePosTangent, sizeForceTangent);
   A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), unmodeledForceIndexTangent()) = J_pl_ext_force;
   
 
   // Jacobians of the orientation
-  Vector delta = dt_*stateKinematics_.angVel() + dt2_2*stateKinematics_.angAcc();
+  Vector delta = dt_*worldCentroidStateKinematics_.angVel() + dt2_2*worldCentroidStateKinematics_.angAcc();
   double sq_norm_delta = delta.squaredNorm();
   double norm_delta = delta.norm();
   double sin_delta_2 = sin(norm_delta/2);
   Matrix3 J_R_delta = 1/norm_delta*(((norm_delta-2*sin_delta_2)/(2*sq_norm_delta))*
-      (stateKinematics_.orientation.toMatrix3()*delta*delta.transpose())+sin_delta_2*(stateKinematics_.orientation.toMatrix3()*kine::rotationVectorToRotationMatrix(delta/2)));  
+      (worldCentroidStateKinematics_.orientation.toMatrix3()*delta*delta.transpose())+sin_delta_2*(worldCentroidStateKinematics_.orientation.toMatrix3()*kine::rotationVectorToRotationMatrix(delta/2)));  
       // the intermediate jacobian used to compute the ones with respect to the angular velocity and acceleration
   Matrix3 J_R_omegadot = J_R_delta*dt2_2; // used in other Jacobians
 
@@ -1389,9 +1404,9 @@ Matrix KineticsObserver::computeAMatrix_()
   // Jacobians of the linear velocity
   Matrix3 J_vl_R = dt_*J_al_R;
   A.block<sizeLinVelTangent, sizeOriTangent>(linVelIndexTangent(), oriIndexTangent()) = J_vl_R;
-  Matrix3 J_vl_vl = Matrix::Identity(sizeLinVelTangent, sizeLinVelTangent)-dt_*kine::skewSymmetric(stateKinematics_.angVel());
+  Matrix3 J_vl_vl = Matrix::Identity(sizeLinVelTangent, sizeLinVelTangent)-dt_*kine::skewSymmetric(worldCentroidStateKinematics_.angVel());
   A.block<sizeLinVelTangent, sizeLinVelTangent>(linVelIndexTangent(), linVelIndexTangent()) = J_vl_vl;
-  Matrix3 J_vl_omega = dt_*kine::skewSymmetric(stateKinematics_.linVel());
+  Matrix3 J_vl_omega = dt_*kine::skewSymmetric(worldCentroidStateKinematics_.linVel());
   A.block<sizeLinVelTangent, sizeAngVelTangent>(linVelIndexTangent(), angVelIndexTangent()) = J_vl_omega;
   Matrix3 J_vl_ext_force = dt_*J_al_ext_force;
   A.block<sizeLinVelTangent, sizeAngVelTangent>(linVelIndexTangent(), unmodeledForceIndexTangent()) = J_vl_ext_force;
@@ -1428,17 +1443,18 @@ Matrix KineticsObserver::computeAMatrix_()
   {
     if(i->isSet)
     {
-      Orientation RContactInv = i->localKine.orientation.inverse();
-      const Orientation predictedStateContactOri(Orientation(Quaternion(statePrediction.segment<sizeOri>(contactOriIndex(i))).toRotationMatrix()));
+      Orientation RContactInv = i->centroidContactKine.orientation.inverse();
+      Orientation predictedStateContactOri;
+      predictedStateContactOri.fromVector4(statePrediction.segment<sizeOri>(contactOriIndex(i))).toMatrix3();
 
       // Jacobian of the linar acceleration with respect to the contact force
-      Matrix3 J_linAcc_Fcis = (1/mass_)*i->localKine.orientation.toMatrix3();
+      Matrix3 J_linAcc_Fcis = (1/mass_)*i->centroidContactKine.orientation.toMatrix3();
       // Jacobian of the angular acceleration with respect to the contact force
-      Matrix3 J_omegadot_Fcis = (I_inv*kine::skewSymmetric(i->localKine.position()))*(i->localKine.orientation*i->localKine.orientation).toMatrix3();
+      Matrix3 J_omegadot_Fcis = (I_inv*kine::skewSymmetric(i->centroidContactKine.position()))*(i->centroidContactKine.orientation*i->centroidContactKine.orientation).toMatrix3();
       // Jacobian of the angular acceleration with respect to the contact torque
-      Matrix3 J_omegadot_Tcis = I_inv*i->localKine.orientation.toMatrix3();
+      Matrix3 J_omegadot_Tcis = I_inv*i->centroidContactKine.orientation.toMatrix3();
 
-      // Jacobian of the local position with respect to the contact force
+      // Jacobian of the centroid's position with respect to the contact force
       Matrix3 J_pl_contactForce = dt2_2*J_linAcc_Fcis;
       A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), contactForceIndexTangent(i)) = J_pl_contactForce;
       // Jacobians of the orientation with respect to the contact force and torque
@@ -1461,18 +1477,18 @@ Matrix KineticsObserver::computeAMatrix_()
       A.block<sizeOriTangent, sizeOriTangent>(contactOriIndexTangent(i), contactOriIndexTangent(i)) = J_contactOri_contactOri;
       
       Orientation predictedStateOriInv = predictedStateOri.inverse();
-      Orientation RGlobalToContactLocal = RContactInv*predictedStateOriInv; // better to compute it now as it is used in several expressions
+      Orientation RWorldToContactLocal = RContactInv*predictedStateOriInv; // better to compute it now as it is used in several expressions
       // Jacobians of the contacts force
-      Matrix3 J_contactForce_pl_at_same_time = -(RGlobalToContactLocal.toMatrix3()*i->linearStiffness*predictedStateOri.toMatrix3());
-      Vector3 sumVelContact = i->localKine.linVel()+predictedStateAngVel.cross(i->localKine.position())+predictedStateLinVel;
-      Matrix3 J_contactForce_R_at_same_time = RGlobalToContactLocal.toMatrix3()*(
-        i->linearStiffness*kine::skewSymmetric(predictedStateOri.toMatrix3()*(i->localKine.position()+predictedStatePos))
+      Matrix3 J_contactForce_pl_at_same_time = -(RWorldToContactLocal.toMatrix3()*i->linearStiffness*predictedStateOri.toMatrix3());
+      Vector3 sumVelContact = i->centroidContactKine.linVel()+predictedStateAngVel.cross(i->centroidContactKine.position())+predictedStateLinVel;
+      Matrix3 J_contactForce_R_at_same_time = RWorldToContactLocal.toMatrix3()*(
+        i->linearStiffness*kine::skewSymmetric(predictedStateOri.toMatrix3()*(i->centroidContactKine.position()+predictedStatePos))
         + i->linearDamping*kine::skewSymmetric(predictedStateOri.toMatrix3()*sumVelContact)
-        -kine::skewSymmetric(i->linearStiffness*(predictedStateOri.toMatrix3()*(i->localKine.position()+predictedStatePos))
-          + i->linearDamping*(predictedStateOri.toMatrix3()*sumVelContact) - i->linearStiffness*i->localKine.position()));
-      Matrix3 J_contactForce_vl_at_same_time = -(RGlobalToContactLocal.toMatrix3()*i->linearDamping*predictedStateOri.toMatrix3());
-      Matrix3 J_contactForce_omega_at_same_time = RGlobalToContactLocal.toMatrix3()*i->linearDamping*(predictedStateOri.toMatrix3()*kine::skewSymmetric(i->localKine.position()));
-      Matrix3 J_contactForce_contactPosition_at_same_time = RGlobalToContactLocal.toMatrix3()*i->linearStiffness*predictedStateOri.toMatrix3();
+        -kine::skewSymmetric(i->linearStiffness*(predictedStateOri.toMatrix3()*(i->centroidContactKine.position()+predictedStatePos))
+          + i->linearDamping*(predictedStateOri.toMatrix3()*sumVelContact) - i->linearStiffness*i->centroidContactKine.position()));
+      Matrix3 J_contactForce_vl_at_same_time = -(RWorldToContactLocal.toMatrix3()*i->linearDamping*predictedStateOri.toMatrix3());
+      Matrix3 J_contactForce_omega_at_same_time = RWorldToContactLocal.toMatrix3()*i->linearDamping*(predictedStateOri.toMatrix3()*kine::skewSymmetric(i->centroidContactKine.position()));
+      Matrix3 J_contactForce_contactPosition_at_same_time = RWorldToContactLocal.toMatrix3()*i->linearStiffness*predictedStateOri.toMatrix3();
     
       A.block<sizeForceTangent, sizePosTangent>(contactForceIndexTangent(i), posIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_pl;
       A.block<sizeForceTangent, sizeOriTangent>(contactForceIndexTangent(i), oriIndexTangent()) = J_contactForce_pl_at_same_time*J_pl_R + J_contactForce_R_at_same_time + J_contactForce_vl_at_same_time*J_vl_R;
@@ -1485,17 +1501,17 @@ Matrix KineticsObserver::computeAMatrix_()
       A.block<sizeForceTangent, sizeTorqueTangent>(contactForceIndexTangent(i), contactTorqueIndexTangent(i)) = J_contactForce_R_at_same_time*J_R_contactTorque + J_contactForce_omega_at_same_time * J_omega_contactTorque;
     
       // Jacobians of the contacts torque
-      Vector3 localAngVelSum = predictedStateOri*(i->localKine.angVel()+predictedStateAngVel);
+      Vector3 angVelSum = predictedStateOri*(i->centroidContactKine.angVel()+predictedStateAngVel);
       Vector3 ex = Vector3(1,0,0);
       Vector3 ey = Vector3(0,1,0);
       Vector3 ez = Vector3(0,0,1);
-      Orientation RRefContactToGlobal = predictedStateOri*i->localKine.orientation*predictedStateContactOri.inverse();
-      Orientation RGlobalToRefContact = RRefContactToGlobal.inverse();
+      Orientation RRefContactToWorld = predictedStateOri*i->centroidContactKine.orientation*predictedStateContactOri.inverse();
+      Orientation RWorldToRefContact = RRefContactToWorld.inverse();
 
-      Matrix3 Vk = -ex*ez.transpose()*(kine::skewSymmetric(RRefContactToGlobal.toMatrix3()*ey)+RGlobalToRefContact.toMatrix3()*kine::skewSymmetric(ey))-ey*ex.transpose()*(kine::skewSymmetric(RRefContactToGlobal.toMatrix3()*ez)+RGlobalToRefContact.toMatrix3()*kine::skewSymmetric(ez))-ez*ey.transpose()*(kine::skewSymmetric(RRefContactToGlobal.toMatrix3()*ex)+RGlobalToRefContact.toMatrix3()*kine::skewSymmetric(ex));
-      Matrix3 J_contactTorque_R_at_same_time = -(RGlobalToContactLocal.toMatrix3()*(kine::skewSymmetric(0.5*i->angularStiffness*(kine::rotationMatrixToRotationVector(RRefContactToGlobal.toMatrix3()-RGlobalToRefContact.toMatrix3()))+i->angularDamping*localAngVelSum)+0.5*i->angularStiffness*Vk-i->angularDamping*kine::skewSymmetric(localAngVelSum)));
-      Matrix3 J_contactTorque_omega_at_same_time = -(RGlobalToContactLocal.toMatrix3()*i->angularDamping*predictedStateOri.toMatrix3());
-      Matrix3 J_contactTorque_contactOri_at_same_time = -0.5*(RGlobalToContactLocal.toMatrix3()*i->angularStiffness*(predictedStateOri.toMatrix3()*Vk));
+      Matrix3 Vk = -ex*ez.transpose()*(kine::skewSymmetric(RRefContactToWorld.toMatrix3()*ey)+RWorldToRefContact.toMatrix3()*kine::skewSymmetric(ey))-ey*ex.transpose()*(kine::skewSymmetric(RRefContactToWorld.toMatrix3()*ez)+RWorldToRefContact.toMatrix3()*kine::skewSymmetric(ez))-ez*ey.transpose()*(kine::skewSymmetric(RRefContactToWorld.toMatrix3()*ex)+RWorldToRefContact.toMatrix3()*kine::skewSymmetric(ex));
+      Matrix3 J_contactTorque_R_at_same_time = -(RWorldToContactLocal.toMatrix3()*(kine::skewSymmetric(0.5*i->angularStiffness*(kine::rotationMatrixToRotationVector(RRefContactToWorld.toMatrix3()-RWorldToRefContact.toMatrix3()))+i->angularDamping*angVelSum)+0.5*i->angularStiffness*Vk-i->angularDamping*kine::skewSymmetric(angVelSum)));
+      Matrix3 J_contactTorque_omega_at_same_time = -(RWorldToContactLocal.toMatrix3()*i->angularDamping*predictedStateOri.toMatrix3());
+      Matrix3 J_contactTorque_contactOri_at_same_time = -0.5*(RWorldToContactLocal.toMatrix3()*i->angularStiffness*(predictedStateOri.toMatrix3()*Vk));
 
       A.block<sizeTorqueTangent, sizeOriTangent>(contactTorqueIndexTangent(i), oriIndexTangent()) = J_contactTorque_R_at_same_time;
       A.block<sizeTorqueTangent, sizeAngVelTangent>(contactTorqueIndexTangent(i), angVelIndexTangent()) = J_contactTorque_R_at_same_time*J_R_omega+J_contactTorque_omega_at_same_time*J_omega_omega;
@@ -1512,81 +1528,78 @@ Matrix KineticsObserver::computeAMatrix_()
 
 Matrix KineticsObserver::computeCMatrix_()
 {
-  return ekf_.getCMatrixFD(stateVectorDx_);
+  return ekf_.getCMatrixFD(worldCentroidStateVectorDx_);
 }
 
 void KineticsObserver::updateKine_()
 {
-  stateKinematics_.fromVector(stateVector_.segment<sizeStateKine>(kineIndex()), flagsStateKine);
+  worldCentroidStateKinematics_.fromVector(worldCentroidStateVector_.segment<sizeStateKine>(kineIndex()), flagsStateKine);
 }
 
-void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & stateVector, Vector3 & force, Vector3 & torque)
+void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroidStateVector, Vector3 & force, Vector3 & torque)
 {
-  force += stateVector.segment<sizeForce>(unmodeledForceIndex());
-  torque += stateVector.segment<sizeTorque>(unmodeledTorqueIndex());
+  force += worldCentroidStateVector.segment<sizeForce>(unmodeledWrenchIndex());
+  torque += worldCentroidStateVector.segment<sizeForce>(unmodeledTorqueIndex());
 
   for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
   {
     if(i->isSet)
     {
-      Kinematics & localKinei = i->localKine;
-      Vector3 localForcei = localKinei.orientation * stateVector.segment<sizeForce>(contactForceIndex(i));
-      force += localForcei;
-      torque += localKinei.orientation * stateVector.segment<sizeForce>(contactTorqueIndex(i))
-                + localKinei.position().cross(localForcei);
+      Kinematics & centroidContactKinei = i->centroidContactKine;
+      Vector3 centroidContactForcei = centroidContactKinei.orientation * worldCentroidStateVector.segment<sizeForce>(contactForceIndex(i));
+      force += centroidContactForcei;
+      torque += centroidContactKinei.orientation * worldCentroidStateVector.segment<sizeForce>(contactTorqueIndex(i))
+                + centroidContactKinei.position().cross(centroidContactForcei);
     }
   }
 }
 
-void KineticsObserver::computeAccelerations_(Kinematics & stateKine,
-                                             const Vector3 & totalForceLocal,
-                                             const Vector3 & totalMomentLocal,
+void KineticsObserver::computeAccelerations_(LocalKinematics & worldCentroidStateKinematics,
+                                             const Vector3 & totalCentroidForce,
+                                             const Vector3 & totalCentroidTorque,
                                              Vector3 & linAcc,
                                              Vector3 & angAcc)
 {
-  Matrix3 Rt = stateKine.orientation.toMatrix3().transpose();
-  Vector3 Rtw = Rt * stateKine.angVel();
-  Vector3 corioCentri = 2 * Rtw.cross(comd_() + Rtw.cross(com_()));
+  Matrix3 Rt = worldCentroidStateKinematics.orientation.toMatrix3().transpose();
 
-  angAcc = stateKine.orientation
-           * ((I_() + mass_ * kine::skewSymmetric2(com_())).inverse()
-              * (totalMomentLocal - Id_() * Rtw - sigmad_() - Rtw.cross(I_() * Rtw + sigma_())
-                 - com_().cross(totalForceLocal - mass_ * (comdd_() + corioCentri))));
+  angAcc =  I_().inverse()
+              * (totalCentroidTorque - Id_() * worldCentroidStateKinematics.angVel() - sigmad_() - worldCentroidStateKinematics.angVel().cross(I_() * worldCentroidStateKinematics.angVel() + sigma_()));
 
-  linAcc = stateKine.orientation * ((totalForceLocal / mass_) - comdd_() - corioCentri + com_().cross(Rt * angAcc))
-           - cst::gravity;
+  linAcc = (totalCentroidForce / mass_) - Rt*cst::gravity;
 }
 
+
 void KineticsObserver::computeContactForces_(VectorContactIterator i,
-                                             Kinematics & stateKine,
-                                             Kinematics & contactPose,
+                                             LocalKinematics & worldCentroidStateKinematics,
+                                             Kinematics & worldReferenceContactPose,
                                              Vector3 & force,
                                              Vector3 torque)
 {
   Contact & contact = *i;
 
-  Kinematics & localKine = contact.localKine;
+  Kinematics & centroidContactKine = contact.centroidContactKine; // the kinematics of the contact in the centroid's frame, expressed in the centroid's frame
 
-  Kinematics globalKine(stateKine, localKine); /// product of kinematics
+  Kinematics worldContactKine(Kinematics(worldCentroidStateKinematics), centroidContactKine); // the kinematics of the contact in the world frame, expressed in the contact's frame
 
-  Matrix3 globKineOriInverse = globalKine.orientation.toMatrix3().transpose();
+  Matrix3 contactWorldOri = worldContactKine.orientation.toMatrix3().transpose(); // the orientation from the world frame to the contact's frame
 
-  force = globKineOriInverse
-          * (contact.linearStiffness * (contactPose.position() - globalKine.position())
-             - contact.linearDamping * globalKine.linVel());
-  torque = globKineOriInverse
+  force = contactWorldOri
+          * (contact.linearStiffness * (worldReferenceContactPose.position() - worldContactKine.position())
+             - contact.linearDamping * worldContactKine.linVel());
+
+  torque = contactWorldOri
            * (-0.5 * contact.angularStiffness
-                  * (globalKine.orientation.toQuaternion() * contactPose.orientation.toQuaternion().inverse()).vec()
-              - contact.angularDamping * globalKine.angVel());
+                  * (worldContactKine.orientation.toQuaternion() * worldReferenceContactPose.orientation.toQuaternion().inverse()).vec()
+              - contact.angularDamping * worldContactKine.angVel());
 }
 
-void KineticsObserver::stateSum(const Vector & stateVector, const Vector & tangentVector, Vector & sum)
+void KineticsObserver::stateSum(const Vector & worldCentroidStateVector, const Vector & tangentVector, Vector & sum)
 {
   Orientation & o = opt_.ori;
-  sum = stateVector;
+  sum = worldCentroidStateVector;
   /// use the exponential map integration to perform the sum of the states
   sum.segment<sizePos>(posIndex()) += tangentVector.segment<sizePos>(posIndexTangent());
-  o.fromVector4(stateVector.segment<sizeOri>(oriIndex()));
+  o.fromVector4(worldCentroidStateVector.segment<sizeOri>(oriIndex()));
   o.integrate(tangentVector.segment<sizeOriTangent>(oriIndexTangent()));
   sum.segment<sizeOri>(oriIndex()) = o.toVector4();
   ///
@@ -1609,7 +1622,7 @@ void KineticsObserver::stateSum(const Vector & stateVector, const Vector & tange
     if(i->isSet)
     {
       sum.segment<sizePos>(contactPosIndex(i)) += tangentVector.segment<sizePos>(contactPosIndexTangent(i));
-      o.fromVector4(stateVector.segment<sizeOri>(contactOriIndex(i)));
+      o.fromVector4(worldCentroidStateVector.segment<sizeOri>(contactOriIndex(i)));
       o.integrate(tangentVector.segment<sizeOriTangent>(contactOriIndexTangent(i)));
       sum.segment<sizeOri>(contactOriIndex(i)) = o.toVector4();
       sum.segment<sizeWrench>(contactWrenchIndex(i)) += tangentVector.segment<sizeWrench>(contactWrenchIndexTangent(i));
@@ -1617,32 +1630,32 @@ void KineticsObserver::stateSum(const Vector & stateVector, const Vector & tange
   }
 }
 
-void KineticsObserver::stateDifference(const Vector & stateVector1, const Vector & stateVector2, Vector & difference)
+void KineticsObserver::stateDifference(const Vector & worldCentroidStateVector1, const Vector & worldCentroidStateVector2, Vector & difference)
 {
   Orientation & o1 = opt_.ori1;
   Orientation & o2 = opt_.ori2;
   difference.resize(stateTangentSize_);
   difference.segment<sizePos>(posIndexTangent()).noalias() =
-      stateVector1.segment<sizePos>(posIndex()) - stateVector2.segment<sizePos>(posIndex());
-  o1.fromVector4(stateVector1.segment<sizeOri>(oriIndex()));
-  o2.fromVector4(stateVector2.segment<sizeOri>(oriIndex()));
+      worldCentroidStateVector1.segment<sizePos>(posIndex()) - worldCentroidStateVector2.segment<sizePos>(posIndex());
+  o1.fromVector4(worldCentroidStateVector1.segment<sizeOri>(oriIndex()));
+  o2.fromVector4(worldCentroidStateVector2.segment<sizeOri>(oriIndex()));
   difference.segment<sizeOriTangent>(oriIndexTangent()) = o2.differentiate(o1);
   difference.segment<sizeLinVel + sizeAngVel>(linVelIndexTangent()).noalias() =
-      stateVector1.segment<sizeLinVel + sizeAngVel>(linVelIndex())
-      - stateVector2.segment<sizeLinVel + sizeAngVel>(linVelIndex());
+      worldCentroidStateVector1.segment<sizeLinVel + sizeAngVel>(linVelIndex())
+      - worldCentroidStateVector2.segment<sizeLinVel + sizeAngVel>(linVelIndex());
   if(withGyroBias_)
   {
     for(unsigned i = 0; i < imuSensors_.size(); ++i)
     {
       difference.segment<sizeGyroBias>(gyroBiasIndexTangent(i)).noalias() =
-          stateVector1.segment<sizeGyroBias>(gyroBiasIndex(i)) - stateVector2.segment<sizeGyroBias>(gyroBiasIndex(i));
+          worldCentroidStateVector1.segment<sizeGyroBias>(gyroBiasIndex(i)) - worldCentroidStateVector2.segment<sizeGyroBias>(gyroBiasIndex(i));
     }
   }
   if(withUnmodeledWrench_)
   {
     difference.segment<sizeWrench>(unmodeledForceIndexTangent()).noalias() =
-        stateVector1.segment<sizeWrench>(unmodeledWrenchIndex())
-        - stateVector2.segment<sizeWrench>(unmodeledWrenchIndex());
+        worldCentroidStateVector1.segment<sizeWrench>(unmodeledWrenchIndex())
+        - worldCentroidStateVector2.segment<sizeWrench>(unmodeledWrenchIndex());
   }
 
   for(VectorContactConstIterator i = contacts_.begin(); i != contacts_.end(); ++i)
@@ -1650,13 +1663,13 @@ void KineticsObserver::stateDifference(const Vector & stateVector1, const Vector
     if(i->isSet)
     {
       difference.segment<sizePos>(contactPosIndexTangent(i)).noalias() =
-          stateVector1.segment<sizePos>(contactPosIndex(i)) - stateVector2.segment<sizePos>(contactPosIndex(i));
-      o1.fromVector4(stateVector1.segment<sizeOri>(contactOriIndex(i)));
-      o2.fromVector4(stateVector2.segment<sizeOri>(contactOriIndex(i)));
+          worldCentroidStateVector1.segment<sizePos>(contactPosIndex(i)) - worldCentroidStateVector2.segment<sizePos>(contactPosIndex(i));
+      o1.fromVector4(worldCentroidStateVector1.segment<sizeOri>(contactOriIndex(i)));
+      o2.fromVector4(worldCentroidStateVector2.segment<sizeOri>(contactOriIndex(i)));
       difference.segment<sizeOriTangent>(contactOriIndexTangent(i)) = o2.differentiate(o1);
       difference.segment<sizeWrench>(contactWrenchIndexTangent(i)).noalias() =
-          stateVector1.segment<sizeWrench>(contactWrenchIndex(i))
-          - stateVector2.segment<sizeWrench>(contactWrenchIndex(i));
+          worldCentroidStateVector1.segment<sizeWrench>(contactWrenchIndex(i))
+          - worldCentroidStateVector2.segment<sizeWrench>(contactWrenchIndex(i));
     }
   }
 }
@@ -1692,54 +1705,62 @@ void KineticsObserver::measurementDifference(const Vector & measureVector1,
 Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*unused*/, TimeIndex)
 {
   Vector x = xInput;
-  Vector3 forceLocal = additionalForce_;
-  Vector3 torqueLocal = additionalTorque_;
+  Vector3 forceCentroid = additionalForce_;
+  Vector3 torqueCentroid = additionalTorque_;
 
-  addUnmodeledAndContactWrench_(x, forceLocal, torqueLocal);
+  addUnmodeledAndContactWrench_(x, forceCentroid, torqueCentroid);
 
-  Kinematics stateKine(x.segment<sizeStateKine>(kineIndex()), flagsStateKine);
+  LocalKinematics worldCentroidStateKinematics(x.segment<sizeStateKine>(kineIndex()), flagsStateKine);
 
   /// The accelerations are about to be computed so we set them to "initialized"
-  stateKine.linAcc.set(true);
-  stateKine.angAcc.set(true);
+  worldCentroidStateKinematics.linAcc.set(true);
+  worldCentroidStateKinematics.angAcc.set(true);
 
-  Vector3 & linacc = stateKine.linAcc(); /// reference (Vector3&)
-  Vector3 & angacc = stateKine.angAcc(); /// reference
+  Vector3 & linacc = worldCentroidStateKinematics.linAcc(); /// reference (Vector3&)
+  Vector3 & angacc = worldCentroidStateKinematics.angAcc(); /// reference
 
-  computeAccelerations_(stateKine, forceLocal, torqueLocal, linacc, angacc);
+  computeAccelerations_(worldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
 
-  stateKine.integrate(dt_);
+  worldCentroidStateKinematics.integrate(dt_);
 
-  x.segment<sizeStateKine>(kineIndex()) = stateKine.toVector(flagsStateKine);
+  x.segment<sizeStateKine>(kineIndex()) = worldCentroidStateKinematics.toVector(flagsStateKine);
+
+  Kinematics globWorldCentroidStateKinematics = Kinematics(worldCentroidStateKinematics);
 
   for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
   {
     if(i->isSet)
     {
-      Kinematics & localKine = i->localKine;
+      Kinematics & centroidContactKine = i->centroidContactKine; 
 
       Matrix3 & Kpt = i->linearStiffness;
       Matrix3 & Kdt = i->linearDamping;
       Matrix3 & Kpr = i->angularStiffness;
       Matrix3 & Kdr = i->angularDamping;
 
-      /// the posiiton of the contact in the global frame
-      Kinematics globalKine;
+      Vector3 const &  worldContactRefPosition = x.segment<sizePos>(contactPosIndex(i));
+      Orientation worldContactRefOrientation;
+      worldContactRefOrientation.fromVector4(x.segment<sizeOri>(contactOriIndex(i)));
+      Kinematics worldContactRefKine;
+      worldContactRefKine.position() = worldContactRefPosition; // position of the contact in the world frame, expressed in the world frame
+      worldContactRefKine.orientation = worldContactRefOrientation;
 
-      globalKine.setToProductNoAlias(stateKine, localKine);
+      Kinematics worldContactKine;  // the positon of the contact in the world frame, expressed in the contact's frame
 
+      worldContactKine.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
+      
+      /// Inverse of the orientation of the contact in the world frame = the orientation from the world frame to the contact's frame
+      Orientation contactWorldOri(worldContactKine.orientation.inverse());
+      
       /// The error between the current kinematics and the rest kinematics
       /// of the flexibility
       Kinematics errorKine;
-      errorKine.setToProductNoAlias(globalKine, localKine.getInverse());
+      errorKine.setToProductNoAlias(worldContactKine, worldContactRefKine.getInverse()); 
 
-      /// Inverse of the orientation of the foot in the global frame
-      Orientation Rcit(globalKine.orientation.inverse());
+      x.segment<sizeForce>(contactForceIndex(i)) = -(contactWorldOri * (Kpt * errorKine.position() + Kdt * errorKine.linVel()));
 
-      x.segment<sizeForce>(contactForceIndex(i)) = -(Rcit * (Kpt * errorKine.position() + Kdt * errorKine.linVel()));
+      x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent(errorKine.orientation.toQuaternion()) * 0.5 + Kdr * errorKine.angVel()));
 
-      x.segment<sizeTorque>(contactTorqueIndex(i)) = -(
-          Rcit * (Kpr * kine::vectorComponent(errorKine.orientation.toQuaternion()) * 0.5 + Kdr * errorKine.angVel()));
     }
   }
 
@@ -1755,38 +1776,38 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
 {
   Vector y(getMeasurementSize());
 
-  Vector3 forceLocal = additionalForce_;
-  Vector3 torqueLocal = additionalTorque_;
+  Vector3 forceCentroid = additionalForce_;
+  Vector3 torqueCentroid = additionalTorque_;
 
-  addUnmodeledAndContactWrench_(x, forceLocal, torqueLocal);
+  addUnmodeledAndContactWrench_(x, forceCentroid, torqueCentroid);
 
-  Kinematics stateKine(x.segment<sizeStateKine>(kineIndex()), flagsStateKine);
+  LocalKinematics worldCentroidStateKinematics(x.segment<sizeStateKine>(kineIndex()), flagsStateKine);
 
   /// The accelerations are about to be computed so we set them to "initialized"
-  stateKine.linAcc.set(true);
-  stateKine.angAcc.set(true);
+  worldCentroidStateKinematics.linAcc.set(true);
+  worldCentroidStateKinematics.angAcc.set(true);
 
-  Vector3 & linacc = (Vector3 &)(stateKine.linAcc);
-  Vector3 & angacc = (Vector3 &)(stateKine.angAcc);
+  Vector3 & linacc = (Vector3 &)(worldCentroidStateKinematics.linAcc);
+  Vector3 & angacc = (Vector3 &)(worldCentroidStateKinematics.angAcc);
 
-  computeAccelerations_(stateKine, forceLocal, torqueLocal, linacc, angacc);
+  computeAccelerations_(worldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
 
-  Kinematics & globalKine = opt_.kine;
+  LocalKinematics & worldImuKinematics = opt_.locKine;
 
   for(VectorIMUConstIterator i = imuSensors_.begin(); i != imuSensors_.end(); ++i)
   {
     if(i->time == k_data_)
     {
       const IMU & imu = *i;
-      globalKine.setToProductNoAlias(stateKine, imu.kinematics);
-      const Matrix3 & globalOri = globalKine.orientation.toMatrix3();
+      worldImuKinematics.setToProductNoAlias(worldCentroidStateKinematics, imu.centroidImuKinematics); // the kinematics of the IMU in the world frame, expressed in the IMU's frame
+      const Matrix3 & worldImuOri = worldImuKinematics.orientation.toMatrix3();
 
       /// accelerometer
       y.segment<sizeAcceleroSignal>(imu.measIndex).noalias() =
-          globalOri.transpose() * (globalKine.linAcc() + cst::gravity);
+          worldImuKinematics.linAcc() + worldImuOri.transpose() * cst::gravity;
       /// gyrometer
       y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() =
-          globalOri.transpose() * globalKine.angVel();
+          worldImuKinematics.angVel();
     }
   }
 
@@ -1800,7 +1821,7 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
 
   if(absPoseSensor_.time == k)
   {
-    y.segment<sizePose>(absPoseSensor_.measIndex) = stateKine.toVector(flagsPoseKine);
+    y.segment<sizePose>(absPoseSensor_.measIndex) = worldCentroidStateKinematics.toVector(flagsPoseKine);
   }
 
   if(measurementNoise_ != 0x0)

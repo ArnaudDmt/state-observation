@@ -21,7 +21,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
 
   o.setSamplingTime(dt);
 
-  Kinematics stateKine;
+  LocalKinematics stateKine;
 
   stateKine.position.set() << 0.1, 0, 0.7;
   stateKine.orientation = Vector3(0, 0, 0);
@@ -30,7 +30,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
 
   o.setStateVector(x0);
 
-  o.setStateKinematics(stateKine);
+  o.setWorldCentroidStateKinematics(stateKine);
   o.setGyroBias(Vector3(1, 2, 3));
 
   Vector6 wrench;
@@ -41,7 +41,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
   Vector x = o.getCurrentStateVector();
   stateObservation::TimeIndex index = o.getStateVectorTimeIndex();
 
-  Kinematics contactKine;
+  LocalKinematics contactKine;
   contactKine.position.set() << 0, 0.1, 0;
   contactKine.orientation.setZeroRotation();
 
@@ -86,11 +86,11 @@ int testKineticsObserverCodeAccessor(int errorcode)
 
   o.update();
 
-  Kinematics k = o.getKinematics();
+  LocalKinematics k = o.getLocalCentroidKinematics();
 
   std::cout << k;
 
-  Kinematics l = o.getKinematicsOf(k);
+  LocalKinematics l = o.getLocalKinematicsOf(k);
 
   std::cout << l;
 
@@ -202,6 +202,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
 
 int main()
 {
+
   int returnVal;
 
   if((returnVal = testKineticsObserverCodeAccessor(3)))

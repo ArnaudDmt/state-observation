@@ -505,7 +505,7 @@ struct Kinematics
 
   Kinematics(const Kinematics & multiplier1, const Kinematics & multiplier2);
 
-  inline Kinematics(const LocalKinematics & locK);
+  explicit inline Kinematics(const LocalKinematics & locK);
 
   /// Fills from vector
   /// the flags show which parts of the kinematics to be loaded from the vector
@@ -528,7 +528,6 @@ struct Kinematics
 
   inline Kinematics getInverse() const;
 
-  //inline LocalKinematics switchToLocalFrame() const;
 
   /// converts the object to a vector
   /// the order of the vector is
@@ -541,6 +540,9 @@ struct Kinematics
   inline Kinematics operator*(const Kinematics &) const;
 
   inline Kinematics setToProductNoAlias(const Kinematics & operand1, const Kinematics & operand2);
+
+  /// Allows to compute the difference between two Kinematics objects. Has the same effect that calling setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
+  inline Kinematics setToDiffNoAlias(const Kinematics & multiplier1, const Kinematics & multiplier2);
 
   inline void reset();
 
@@ -592,7 +594,7 @@ struct LocalKinematics
 
   inline LocalKinematics(const LocalKinematics & multiplier1, const LocalKinematics & multiplier2);
 
-  inline LocalKinematics(const Kinematics & kin);
+  explicit inline LocalKinematics(const Kinematics & kin);
 
   /// Fills from vector
   /// the flags show which parts of the kinematics to be loaded from the vector
@@ -616,8 +618,6 @@ struct LocalKinematics
 
   inline LocalKinematics getInverse() const;
 
-  //inline Kinematics switchToGlobalFrame() const;
-
   /// converts the object to a vector
   /// the order of the vector is
   /// position orientation (quaternion) linevel angvel linAcc angAcc
@@ -631,6 +631,10 @@ struct LocalKinematics
   inline LocalKinematics setToProductNoAlias(const LocalKinematics & operand1,
                                                   const LocalKinematics & operand2);
 
+
+  /// Allows to compute the difference between two LocalKinematics objects. Has the same effect that calling setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
+  inline LocalKinematics setToDiffNoAlias(const LocalKinematics & multiplier1,
+                                                            const LocalKinematics & multiplier2);
   inline void reset();
 
   CheckedVector3 position;  // position of the frame in the destination frame of the Kinematic object, expressed in the original frame
@@ -649,6 +653,9 @@ protected:
 
   Vector3 tempVec_;
   Vector3 tempVec_2;
+  Vector3 tempVec_3;
+  Vector3 tempVec_4;
+  Vector3 tempVec_5;
 };
 
 } // namespace kine

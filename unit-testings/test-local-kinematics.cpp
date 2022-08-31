@@ -140,6 +140,156 @@ int testPositionByIntegration(int errcode)
   return 0;
 }
 
+int testSetToDiffNoAliasLocalKinematics(int errcode)
+{
+
+  std::cout << "testSetToDiffNoAliasLocalKinematics test started" << std::endl;
+  typedef kine::LocalKinematics::Flags Flags;
+
+  kine::LocalKinematics k0;
+  kine::LocalKinematics k1;
+
+  Flags::Byte flag0 = BOOST_BINARY(000000);
+  Flags::Byte flag1 = BOOST_BINARY(000000);
+
+  kine::LocalKinematics k, l, k2;
+
+  int count = int(pow(2, 6) * pow(2, 6));
+  double err = 0;
+  double threshold = 1e-30 * count;
+
+  for(int i = 0; i < count; i++)
+  {
+    /*
+    std::cout << std::endl << "-----------------------------------------" << std::endl 
+                          << "New iteration" 
+              << std::endl << "-----------------------------------------" << std::endl;
+    std::cout << "err: " << err << std::endl;
+    */
+
+    Vector3 pos0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    kine::Orientation ori0 = kine::Orientation::randomRotation();
+    Vector3 linvel0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    Vector3 angvel0 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+    Vector3 linacc0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    Vector3 angacc0 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+
+    Vector3 pos1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    kine::Orientation ori1 = kine::Orientation::randomRotation();
+    Vector3 linvel1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    Vector3 angvel1 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+    Vector3 linacc1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    Vector3 angacc1 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+
+    k0.reset();
+    k1.reset();
+
+    if(true) /// the position has to be set
+    {
+      k0.position = pos0;
+    }
+    if(true) /// the orientation has to be set
+    {
+      k0.orientation = ori0;
+    }
+    if(flag0 & Flags::linVel)
+    {
+      k0.linVel = linvel0;
+    }
+    if(flag0 & Flags::angVel)
+    {
+      k0.angVel = angvel0;
+    }
+    if(flag0 & Flags::linAcc)
+    {
+      k0.linAcc = linacc0;
+    }
+    if(flag0 & Flags::angAcc)
+    {
+      k0.angAcc = angacc0;
+    }
+
+    if(true) /// the position has to be set
+    {
+      k1.position = pos1;
+    }
+    if(true) /// the orientation has to be set
+    {
+      k1.orientation = ori1;
+    }
+    if(flag1 & Flags::linVel)
+    {
+      k1.linVel = linvel1;
+    }
+    if(flag1 & Flags::angVel)
+    {
+      k1.angVel = angvel1;
+    }
+    if(flag1 & Flags::linAcc)
+    {
+      k1.linAcc = linacc1;
+    }
+    if(flag1 & Flags::angAcc)
+    {
+      k1.angAcc = angacc1;
+    }
+
+    if((flag0 = (flag0 + 1) & Flags::all) == 0) /// update the flags to span all the possibilties
+      flag1 = (flag1 + 1) & Flags::all;
+
+    k2 = k1;
+    if(!k1.orientation.isSet())
+    {
+      k2.orientation.setZeroRotation();
+    }
+    LocalKinematics k3;
+    LocalKinematics k4;
+
+    k3.setToDiffNoAlias(k2, k0);
+
+    k4.setToProductNoAlias(k2, k0.getInverse());
+
+    // std::cout << std::endl << "k3: " << std::endl << k3 << std::endl;
+    // std::cout << std::endl << "k4: " << std::endl << k4 << std::endl;
+
+    k = k4*k3.getInverse();
+
+    if(k.position.isSet())
+    {
+      err += k.position().squaredNorm();
+    }
+    if(k.orientation.isSet())
+    {
+      err += k.orientation.toRotationVector().squaredNorm();
+    }
+    if(k.linVel.isSet())
+    {
+      err += k.linVel().squaredNorm();
+    }
+    if(k.angVel.isSet())
+    {
+      err += k.angVel().squaredNorm();
+    }
+    if(k.linAcc.isSet())
+    {
+      err += k.linAcc().squaredNorm();
+    }
+    if(k.angAcc.isSet())
+    {
+      err += k.angAcc().squaredNorm();
+    }
+  }
+
+  std::cout << "Error 1 : " << err << std::endl;
+
+  if(err > threshold)
+  {
+    std::cout << "Error too large : " << err << std::endl;
+    return errcode;
+  }
+  return 0;
+}
+
 int testLocalVsGlobalIntegrates(int errcode)
 {
   double threshold = 1e-4;
@@ -1236,15 +1386,6 @@ int testKinematics(int errcode)
     //        std::cout<< i<<" "<<err << std::endl;
     if(err > threshold)
     {
-        
-      /*
-      std::bitset<6> bit0(flag0);
-      std::bitset<6> bit1(flag1);
-      std::bitset<6> bit(flag);
-      std::cout << "flag0: " << std::endl << bit0 << std::endl;
-      std::cout << "flag1: " << std::endl << bit1 << std::endl;
-      std::cout << "flag: " << std::endl << bit << std::endl;
-      */
       break;
     }
   }
@@ -1273,6 +1414,16 @@ int main()
   else
   {
     std::cout << "testPositionByIntegration succeeded" << std::endl;
+  }
+  
+  if((returnVal = testSetToDiffNoAliasLocalKinematics(++errorcode)))
+  {
+    std::cout << "testSetToDiffNoAliasLocalKinematics Failed, error code: " << returnVal << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "testSetToDiffNoAliasLocalKinematics succeeded" << std::endl;
   }
 
   if((returnVal = testLocalVsGlobalIntegrates(++errorcode)))
@@ -1314,9 +1465,6 @@ int main()
   {
     std::cout << "LocalKinematics test succeeded" << std::endl;
   }
-
-
-
 
   std::cout << "test succeeded" << std::endl;
   return 0;

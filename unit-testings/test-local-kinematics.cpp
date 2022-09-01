@@ -1121,19 +1121,21 @@ int testKinematics(int errcode)
 
   err = 0;
 
-  //threshold = 1e-19 * count;
-  threshold = 1e-9;
+  threshold = 1e-19 * count;
+  //threshold = 1e-9;
 
   flag0 = BOOST_BINARY(000000);
   flag1 = BOOST_BINARY(000000);
 
   for(int i = 0; i < count; i++)
   {
+    /*
     std::cout << std::endl << "-----------------------------------------" << std::endl 
                           << "New iteration" 
               << std::endl << "-----------------------------------------" << std::endl;
     std::cout << "err: " << err << std::endl;
-
+    */
+   
     Vector3 pos0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
     kine::Orientation ori0 = kine::Orientation::randomRotation();
     Vector3 linvel0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
@@ -1152,9 +1154,9 @@ int testKinematics(int errcode)
     l = k;
 
     double dt = 0.001;
-    std::cout << std::endl << "k before integrate: " << std::endl << k << std::endl;
+    // std::cout << std::endl << "k before integrate: " << std::endl << k << std::endl;
     k.integrate(dt);
-    std::cout << std::endl << "k after integrate: " << std::endl << k << std::endl;
+    // std::cout << std::endl << "k after integrate: " << std::endl << k << std::endl;
 
     k0.reset();
     k1.reset();
@@ -1213,47 +1215,6 @@ int testKinematics(int errcode)
       flag1 = (flag1 + 1) & Flags::all;
 
     kine::LocalKinematics::Flags::Byte flag = BOOST_BINARY(000000);
-    
-    /*
-
-    if(k1.position.isSet() || (k0.position.isSet() && (k0.linVel.isSet() || k0.linAcc.isSet() || k0.angVel.isSet() || k0.angAcc.isSet())))
-    {
-      flag = flag | kine::LocalKinematics::Flags::position;
-    }
-    if(true) // the orientation has to be computed
-    {
-      if(!k1.orientation.isSet() || !(k0.orientation.isSet() && k0.angVel.isSet() && k0.angAcc.isSet()))
-      {
-        continue; // if the the orientation can't be computed, the update function has to prompt an error, so we musn't test this combination
-      }
-      flag = flag | kine::LocalKinematics::Flags::orientation; 
-    }
-    if(k1.linVel.isSet() || 
-        (k0.position.isSet() && k1.position.isSet()) || 
-        (k0.linAcc.isSet() && k0.linVel.isSet()))
-    {
-      flag = flag | kine::LocalKinematics::Flags::linVel;
-    }
-    if(k1.angVel.isSet() || (k0.orientation.isSet() && k1.orientation.isSet())
-       || (k0.angVel.isSet() && k0.angAcc.isSet()))
-    {
-      flag = flag | kine::LocalKinematics::Flags::angVel;
-    }
-    if(k1.angAcc.isSet() || (k0.angVel.isSet() && k1.angVel.isSet())
-       || (k0.angVel.isSet() && k0.orientation.isSet() && k1.orientation.isSet()))
-    {
-      flag = flag | kine::LocalKinematics::Flags::angAcc;
-    }
-    if(k1.linAcc.isSet() ||(flag & kine::LocalKinematics::Flags::angVel && k0.linVel.isSet() && k1.linVel.isSet()) 
-                    || (flag & kine::LocalKinematics::Flags::angVel && flag & kine::LocalKinematics::Flags::angAcc && k0.position.isSet() && k1.position.isSet()))
-    {
-      if(k1.linAcc.isSet() ||(flag & kine::LocalKinematics::Flags::angVel && k0.linVel.isSet() && k1.linVel.isSet())) //we forget about the last combination only for the test
-      {
-        flag = flag | kine::LocalKinematics::Flags::linAcc;
-      }
-      
-    }
-    */
 
     if(k1.position.isSet() || (k0.position.isSet() && k0.linVel.isSet() && k0.linAcc.isSet() && k0.angVel.isSet() && k0.angAcc.isSet()))
     {
@@ -1287,12 +1248,12 @@ int testKinematics(int errcode)
       flag = flag | kine::Kinematics::Flags::angAcc;
     }
 
-    std::cout << std::endl << "k0 before update: " << std::endl << k0 << std::endl;
-    std::cout << std::endl << "k1 before update: " << std::endl << k1 << std::endl;
+    // std::cout << std::endl << "k0 before update: " << std::endl << k0 << std::endl;
+    // std::cout << std::endl << "k1 before update: " << std::endl << k1 << std::endl;
     k0.update(k1, dt, flag);
-    std::cout << std::endl << "k0 after update: " << std::endl << k0 << std::endl;
+    // std::cout << std::endl << "k0 after update: " << std::endl << k0 << std::endl;
 
-    std::cout << "Error before all : " << err << std::endl;
+    // std::cout << "Error before all : " << err << std::endl;
     if(k0.position.isSet())
     {
       if((k.position() - k0.position()).squaredNorm() < 1e-10)
@@ -1304,13 +1265,13 @@ int testKinematics(int errcode)
         err += (l.position() - l.angVel().cross(dt*(l.position()+dt*(0.5*l.angVel().cross(l.position()-l.linVel())))) + dt*(l.linVel()+0.5*dt*(l.linAcc()-l.angAcc().cross(l.position())))- k0.position()).squaredNorm();
         
       }
-      std::cout << "Error after pos : " << err << std::endl;
+      // std::cout << "Error after pos : " << err << std::endl;
       
     }
     if(k0.orientation.isSet())
     {
       err += (k0.orientation.differentiateRightSide(k.orientation)).squaredNorm();
-      std::cout << "Error after ori : " << err << std::endl;
+      // std::cout << "Error after ori : " << err << std::endl;
     }
     if(k0.linVel.isSet())
     {
@@ -1329,7 +1290,7 @@ int testKinematics(int errcode)
         err += ((k.position() - l.position()) / dt + tempAngVel.cross(k.position()) - k0.linVel()).squaredNorm();
       }
       
-      std::cout << "Error after linVel : " << err << std::endl;
+      // std::cout << "Error after linVel : " << err << std::endl;
     }
     if(k0.angVel.isSet())
     {
@@ -1341,7 +1302,7 @@ int testKinematics(int errcode)
       {
         err += (l.orientation.differentiateRightSide(k.orientation) / dt - k0.angVel()).squaredNorm();
       }
-      std::cout << "Error after angVel : " << err << std::endl;
+      // std::cout << "Error after angVel : " << err << std::endl;
     }
     if(k0.linAcc.isSet())
     {
@@ -1365,7 +1326,7 @@ int testKinematics(int errcode)
         
       }
       
-      std::cout << "Error after linAcc : " << err << std::endl;
+      // std::cout << "Error after linAcc : " << err << std::endl;
 
       
     }
@@ -1380,7 +1341,7 @@ int testKinematics(int errcode)
         err += (k.angAcc() - 2 * k0.angAcc()).squaredNorm();
       }
 
-      std::cout << "Error after angAcc : " << err << std::endl;
+      // std::cout << "Error after angAcc : " << err << std::endl;
     }
 
     //        std::cout<< i<<" "<<err << std::endl;
@@ -1455,6 +1416,7 @@ int main()
   {
     std::cout << "Orientation test succeeded" << std::endl;
   }
+  
 
   if((returnVal = testKinematics(++errorcode))) /// it is not an equality check
   {

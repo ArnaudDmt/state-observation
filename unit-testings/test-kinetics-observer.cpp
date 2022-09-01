@@ -41,7 +41,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
   Vector x = o.getCurrentStateVector();
   stateObservation::TimeIndex index = o.getStateVectorTimeIndex();
 
-  LocalKinematics contactKine;
+  Kinematics contactKine;
   contactKine.position.set() << 0, 0.1, 0;
   contactKine.orientation.setZeroRotation();
 

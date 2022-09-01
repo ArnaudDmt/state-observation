@@ -130,14 +130,14 @@ public:
   /// @return the number of the IMU (useful in case there are several ones)
   /// @param accelero measured value
   /// @param gyrometer measured gyro value
-  /// @param centroidImuKinematics sets the kinematics of the IMU in the observed centroid's frame
-  /// frame, expressed in the IMU's frame. The best is to provide the position, the orientation,
+  /// @param centroidImuKinematics sets the kinematics of the IMU in the user's
+  /// frame, expressed in the user's frame. The best is to provide the position, the orientation,
   /// the angular and linear velocities and the linear acceleration
   /// Nevertheless if velocities or accelerations are not available they will be
   /// automatically computed through finite differences
   /// @param num the number of the IMU (useful in case there are several ones).
   ///           If not set it will be generated automatically.
-  int setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const LocalKinematics & centroidImuKinematics, int num = -1);
+  int setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const Kinematics & userImuKinematics, int num = -1);
 
   /// @brief @copybrief setIMU(const Vector3&,const Vector3&,const Kinematics &,int)
   /// Provides also the associated covariance matrices
@@ -150,7 +150,7 @@ public:
              const Vector3 & gyrometer,
              const Matrix3 & acceleroCov,
              const Matrix3 & gyroCov,
-             const LocalKinematics & centroidImuKinematics,
+             const Kinematics & userImuKinematics,
              int num = -1);
 
   /// @brief set the default covariance matrix for IMU.
@@ -405,7 +405,7 @@ public:
 
   LocalKinematics getLocalCentroidKinematics() const;
 
-  LocalKinematics getGlobalCentroidKinematics() const;
+  Kinematics getGlobalCentroidKinematics() const;
 
   /// @brief gets the Kinematics that include the linear and angular accelerations.
   /// @details This method computes the estimated accelerations from the observed state of the robot. It means this
@@ -423,9 +423,9 @@ public:
   /// @return Kinematics
   LocalKinematics getLocalKinematicsOf(const LocalKinematics & localKinematics) const;
 
-  LocalKinematics getGlobalKinematicsOf(const LocalKinematics & localKinematics) const;
+  Kinematics getGlobalKinematicsOf(const LocalKinematics & localKinematics) const;
 
-  LocalKinematics getGlobalKinematicsOf(const Kinematics & kin) const;
+  Kinematics getGlobalKinematicsOf(const Kinematics & kin) const;
 
   /// get the contact force provided by the estimator
   /// which is different from a contact sensor measurement
@@ -894,7 +894,7 @@ protected:
     virtual ~Contact() {}
 
     Kinematics absPose;
-    Vector6 wrenchMeasurement; /// describes the measured wrench (forces + torques) at the contact in the sensor's frame
+    Vector6 wrenchMeasurement; /// Describes the measured wrench (forces + torques) at the contact in the sensor's frame
     CheckedMatrix6 sensorCovMatrix;
 
     Matrix3 linearStiffness;
@@ -907,7 +907,8 @@ protected:
     int stateIndex;
     int stateIndexTangent;
 
-    Kinematics centroidContactKine; /// describes the kinematics of the contact point in the centroid's frame
+    Kinematics centroidContactKine; /// Describes the kinematics of the contact point in the centroid's frame. 
+                                    /// We initialize the Kinematics of the contact in the user's frame with the updateContact functions, but they will be converted to the centroid's frame before any computation
     static const Kinematics::Flags::Byte centroidContactKineFlags = /// flags for the components of the kinematics
         Kinematics::Flags::position | Kinematics::Flags::orientation | Kinematics::Flags::linVel
         | Kinematics::Flags::angVel;
@@ -1081,6 +1082,27 @@ protected:
 
   virtual Matrix computeAMatrix_();
   virtual Matrix computeCMatrix_();
+
+
+  /// @brief Converts a Kinematics object from the user frame to the centroid's frame, which is used for most of the computations
+  /// @param userKine the Kinematics object expressed in the user's frame. It is likely to correspond to the contact's Kinematics, defined by the user in its frame.
+  /// @param userKine the Kinematics object corresponding to the converted Kinematics in the centroid's frame.
+  inline void convertUserToCentroidFrame_(const Kinematics & userKine, Kinematics & centroidKine, TimeIndex k_data);
+
+  /// @brief Converts a Kinematics object from the user frame to the centroid's frame, which is used for most of the computations
+  /// @param userKine the Kinematics object expressed in the user's frame. It is likely to correspond to the contact's Kinematics, defined by the user in its frame.
+  /// @return the Kinematics object corresponding to the converted Kinematics in the centroid's frame.
+  inline Kinematics convertUserToCentroidFrame_(const Kinematics & userKine, TimeIndex k_data);
+
+  /// @brief Converts a LocalKinematics object from the user frame to the centroid's frame, which is used for most of the computations
+  /// @param userKine the LocalKinematics object expressed in the user's frame. It is likely to correspond to the IMU's LocalKinematics, defined by the user in its frame.
+  /// @param userKine the LocalKinematics object corresponding to the converted LocalKinematics in the centroid's frame.
+  inline void convertUserToCentroidFrame_(const LocalKinematics & userKine, LocalKinematics & centroidKine, TimeIndex k_data);
+
+  /// @brief Converts a LocalKinematics object from the user frame to the centroid's frame, which is used for most of the computations
+  /// @param userKine the LocalKinematics object expressed in the user's frame. It is likely to correspond to the IMU's LocalKinematics, defined by the user in its frame.
+  /// @return the LocalKinematics object corresponding to the converted LocalKinematics in the centroid's frame.
+  inline LocalKinematics convertUserToCentroidFrame_(const LocalKinematics & userKine, TimeIndex k_data);
 
   /// Getters for the indexes of the state Vector using private types
   inline unsigned contactIndex(VectorContactConstIterator i) const;

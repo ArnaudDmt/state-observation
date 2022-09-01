@@ -1613,21 +1613,6 @@ void KineticsObserver::convertUserToCentroidFrame_(const Kinematics & userKine, 
   }
 }
 
-KineticsObserver::Kinematics KineticsObserver::convertUserToCentroidFrame_(const Kinematics & userKine, TimeIndex k_data)
-{
-  Kinematics centroidKine;
-  BOOST_ASSERT((com_.getTime() == k_data && com_.getTime() == comd_.getTime() && com_.getTime() == comdd_.getTime()) &&  "The Center of Mass must be actualized before the conversion");
-  centroidKine.position = userKine.position() - com_();
-  if (userKine.linVel.isSet())
-  {
-    centroidKine.linVel = userKine.linVel() - comd_();
-  }
-  if (userKine.linAcc.isSet())
-  {
-    centroidKine.linAcc = userKine.linAcc() - comdd_();
-  }
-  return centroidKine;
-}
 
 void KineticsObserver::convertUserToCentroidFrame_(const LocalKinematics & userKine, LocalKinematics & centroidKine, TimeIndex k_data)
 {
@@ -1642,23 +1627,6 @@ void KineticsObserver::convertUserToCentroidFrame_(const LocalKinematics & userK
     centroidKine.linAcc = userKine.linAcc() - comdd_();
   }
 }
-
-KineticsObserver::LocalKinematics KineticsObserver::convertUserToCentroidFrame_(const LocalKinematics & userKine, TimeIndex k_data)
-{
-  LocalKinematics centroidKine;
-  BOOST_ASSERT((com_.getTime() == k_data && com_.getTime() == comd_.getTime() && com_.getTime() == comdd_.getTime()) &&  "The Center of Mass must be actualized before the conversion");
-  centroidKine.position = userKine.position() - com_();
-  if (userKine.linVel.isSet())
-  {
-    centroidKine.linVel = userKine.linVel() - comd_();
-  }
-  if (userKine.linAcc.isSet())
-  {
-    centroidKine.linAcc = userKine.linAcc() - comdd_();
-  }
-  return centroidKine;
-}
-
 
 void KineticsObserver::updateKine_()
 {
@@ -1729,9 +1697,9 @@ void KineticsObserver::stateSum(const Vector & worldCentroidStateVector, const V
   /// use the exponential map integration to perform the sum of the states
   sum.segment<sizePos>(posIndex()) += tangentVector.segment<sizePos>(posIndexTangent());
   o.fromVector4(worldCentroidStateVector.segment<sizeOri>(oriIndex()));
-  o.integrate(tangentVector.segment<sizeOriTangent>(oriIndexTangent()));
+  o.integrate(tangentVector.segment<sizeOriTangent>(oriIndexTangent())); // we don't use integrateRightOrientation() 
+                                                                         // as it is used only for the computation of the dynamical evolution of the orientation by integration
   sum.segment<sizeOri>(oriIndex()) = o.toVector4();
-  ///
   sum.segment<sizeLinVel + sizeAngVel>(linVelIndex()) +=
       tangentVector.segment<sizeLinVel + sizeAngVel>(linVelIndexTangent());
   if(withGyroBias_)

@@ -422,15 +422,18 @@ public:
   inline Orientation inverse() const;
 
   /// use the vector dt_x_omega as the increment of rotation expressed in the
-  /// world frame. Which gives R_{k+1}=\exp(S(dtxomega))R_k
+  /// world frame. Which gives R_{k+1}=\exp(S(dtxomega))R_k.
+  /// This function is also used to sum two Orientations expressed in the same frame at the same time k, even for the LocalKinematics (the integration of the orientation is different but not the sum)
   inline const Orientation & integrate(Vector3 dt_x_omega);
 
   /// use the vector dt_x_omega as the increment of rotation expressed in the
-  /// world frame. Which gives R_{k+1}=R_k*exp(S(dtxomega))
+  /// local frame. Which gives R_{k+1}=R_k*exp(S(dtxomega))
   inline const Orientation & integrateRightSide(Vector3 dt_x_omega);
 
   /// gives the log (rotation vector) of the difference of orientation
-  /// gives log of (*this).inverse()*R_k1
+  /// gives log of R_k1*(*this).inverse().
+  /// This function is also used to differentiate two Orientations expressed in the same frame at the same time k, even for the LocalKinematics 
+      /// (the integration of the orientation is different and therefore the associated differentiation also is, but the difference remains the same)
   inline Vector3 differentiate(Orientation R_k1) const;
 
   inline Vector3 differentiateRightSide(Orientation R_k1) const;

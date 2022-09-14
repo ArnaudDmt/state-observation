@@ -194,8 +194,6 @@ public:
   /// @param pose  is the initial guess on the position of the contact. Only position and orientation are enough. If the
   /// contact is compliant, you need to set the "rest" pose of the contact (i.e. the pose that gives zero reaction
   /// force)
-  /// @param contactWrench  is the initial wrench on the contact expressed in the sensor's frame
-  /// (e.g. the force-sensor measurement)
   /// @param initialCovarianceMatrix is the covariance matrix expressing the uncertainty in the pose of the initial
   /// guess in the 6x6 upper left corner ( if no good initial guess is available give a rough position with a high
   /// initial covariance matrix, if the position is certain, set it to zero.) and the initial wrench in the 6x6 lower
@@ -215,7 +213,6 @@ public:
   /// Matrix3::Constant(-1) (default) to use the default one
   /// @return int the id number of the contact just added (returns contactNumber if it is positive)
   int addContact(const Kinematics & pose,
-                 const Vector6 & contactWrench,
                  const Matrix12 & initialCovarianceMatrix,
                  const Matrix12 & processCovarianceMatrix,
                  int contactNumber = -1,
@@ -239,7 +236,6 @@ public:
   /// Matrix3:::Constant(-1) (default) to use the default one
   /// @return int the id number of the contact just added (returns contactNumber if it is positive)
   int addContact(const Kinematics & pose,
-                 const Vector6 & contactWrench = Vector6::Zero(),
                  int contactNumber = -1,
                  const Matrix3 & linearStiffness = Matrix3::Constant(-1),
                  const Matrix3 & linearDamping = Matrix3::Constant(-1),
@@ -890,10 +886,12 @@ protected:
 
   struct Contact : public Sensor
   {
-    Contact() : Sensor(sizeWrench), isSet(false), withRealSensor(false), stateIndex(-1), stateIndexTangent(-1) {}
+    Contact() : Sensor(sizeWrench), isSet(false), withRealSensor(false), stateIndex(-1), stateIndexTangent(-1) {
+      worldRefPose.angVel = worldRefPose.linVel = Vector3::Zero();
+    }
     virtual ~Contact() {}
 
-    Kinematics absPose;
+    Kinematics worldRefPose;
     Vector6 wrenchMeasurement; /// Describes the measured wrench (forces + torques) at the contact in the sensor's frame
     CheckedMatrix6 sensorCovMatrix;
 
@@ -1024,7 +1022,7 @@ public:
 protected:
   Vector stateNaNCorrection_();
 
-  /// updates stateKine_ from the centroidStateVector
+  /// updates stateKine_ and the reference position and orientation of the contacts  from the centroidStateVector 
   void updateKine_();
 
 protected:

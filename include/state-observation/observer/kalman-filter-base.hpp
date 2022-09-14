@@ -295,7 +295,7 @@ public:
   /// for the estimation call getEstimateState method
   /// it is only an execution of the state synamics with the current state
   /// estimation and the current input value
-  inline StateVector updateStatePrediction();
+  inline const StateVector & updateStatePrediction();
 
   /// update the predicted state, enables to precompute the predicted measurementŔ
   /// triggers also Vector updateStatePrediction()
@@ -381,7 +381,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-/*inline*/ Vector KalmanFilterBase::updateStatePrediction()
+/*inline*/ const Vector & KalmanFilterBase::updateStatePrediction()
 {
   prediction_(this->x_.getTime() + 1);
   return xbar_();

@@ -47,7 +47,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
 
   Vector6 initContactWrench = Vector6::Zero();
 
-  o.addContact(contactKine, initContactWrench, 0);
+  o.addContact(contactKine, 0);
 
   Matrix3 linStiffness, angStiffness, linDamping, angDamping;
   linStiffness.setZero();
@@ -63,7 +63,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
   angDamping.diagonal().setConstant(20);
 
   contactKine.position.set() << 0, -0.1, 0;
-  o.addContact(contactKine, initContactWrench, 3, linStiffness, linDamping, angStiffness, angDamping);
+  o.addContact(contactKine, 3, linStiffness, linDamping, angStiffness, angDamping);
 
   Matrix12 initialCov, processCov;
 
@@ -73,13 +73,13 @@ int testKineticsObserverCodeAccessor(int errorcode)
   processCov.diagonal().setConstant(0.0001);
 
   contactKine.position.set() << 1, 0.1, 0;
-  int i = o.addContact(contactKine, initContactWrench, initialCov, processCov);
+  int i = o.addContact(contactKine, initialCov, processCov);
 
   (void)i; /// avoid warning in release mode
   assert(i == 1);
 
   contactKine.position.set() << 1, -0.1, 0;
-  o.addContact(contactKine, initContactWrench, initialCov, processCov, 2, linDamping, linStiffness, angStiffness,
+  o.addContact(contactKine, initialCov, processCov, 2, linDamping, linStiffness, angStiffness,
                angDamping);
 
   std::cout << index << " " << x.transpose() << std::endl;

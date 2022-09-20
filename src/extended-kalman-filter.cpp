@@ -1,4 +1,5 @@
 #include <state-observation/observer/extended-kalman-filter.hpp>
+#include <iostream>
 
 namespace stateObservation
 {
@@ -142,6 +143,13 @@ must set directInputOutputFeedthrough to 'false' in the constructor");
   return f_->measureDynamics(x, opt.u_, k);
 }
 
+Matrix displayVectorWithIndex(const Vector & vec1, const Vector & indexes) // to be removed
+{
+  Matrix C(vec1.rows(), vec1.cols()+indexes.cols());
+  C << vec1, indexes;
+  return C;
+}
+
 KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
     ExtendedKalmanFilter::getAMatrixFD(const Vector & dx)
 {
@@ -151,7 +159,7 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
 
   opt.x_ = this->x_();
   opt.dx_.resize(nt_);
-
+  std::cout << std::endl << "opt.x_: " << std::endl << opt.x_ << std::endl;
   if(p_ > 0)
   {
     if(directInputStateProcessFeedthrough_)
@@ -159,24 +167,57 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
     else
       opt.u_ = inputVectorZero();
   }
-
+  Eigen::VectorXd indexes(57); //to be removed
+  for (int ind = 0; ind<indexes.size(); ind++)
+  {
+    indexes(ind) = ind;
+  }
+  std::cout << std::endl << "indexes: " << std::endl << indexes << std::endl;
   for(Index i = 0; i < nt_; ++i)
   {
-
+    std::cout << std::endl << "col: " << std::endl << i << std::endl;
     opt.dx_.setZero();
     opt.dx_[i] = dx[i];
+    std::cout << std::endl << "dx: " << std::endl << displayVectorWithIndex(dx.segment<57>(0), indexes) << std::endl;
+    std::cout << std::endl << "opt.x_ before sum: " << std::endl << displayVectorWithIndex(opt.x_.segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
 
     arithm_->stateSum(this->x_(), opt.dx_, opt.x_);
+    std::cout << std::endl << "opt.x_ after sum: " << std::endl << displayVectorWithIndex(opt.x_.segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
 
     opt.xp_ = f_->stateDynamics(opt.x_, opt.u_, k);
-
+    
+    std::cout << std::endl << "opt.x_ after stateDynamics: " << std::endl << displayVectorWithIndex(opt.xp_.segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
+    std::cout << std::endl << "xbar_(): " << std::endl << displayVectorWithIndex(xbar_().segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
     arithm_->stateDifference(opt.xp_, xbar_(), opt.dx_);
+    std::cout << std::endl << "Difference: " << std::endl << displayVectorWithIndex(opt.dx_.segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
 
     opt.dx_ /= dx[i];
 
+    bool stopTest = false;
+    for (int j = 0; j < nt_; j++)
+    {
+      
+      if (opt.dx_.coeff(j) > 1e+2 )
+      {
+        std::cout << std::endl << "error indexes: " << std::endl << "(" << j << "," << i << ")" << std::endl;
+        stopTest = true;
+      }
+
+    }
+    BOOST_ASSERT(!stopTest && "Erreurs sur A");
+
+
     opt.a_.col(i) = opt.dx_;
   }
+  Matrix sumA;
+  sumA = Matrix::Zero(nt_, nt_);
+  for(Index i = 0; i < nt_; i+=3) // to be deleted
+  {
+    sumA(i,i) = opt.a_.block<3,3>(i, i).mean();
+  }
+  std::cout << std::endl << "A compact: " << std::endl << sumA << std::endl;
 
+  
   return opt.a_;
 }
 

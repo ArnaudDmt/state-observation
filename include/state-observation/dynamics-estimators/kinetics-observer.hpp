@@ -302,6 +302,7 @@ public:
   /// @param wrenchSensorCovMat the new default covariance matrix
   void setContactWrenchSensorDefaultCovarianceMatrix(const Matrix6 & wrenchSensorCovMat);
 
+  void initWorldCentroidStateVector(const Vector & initStateVector);
   /// @}
 
   // /////////////////////////////////////////////

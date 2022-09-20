@@ -128,7 +128,7 @@ inline unsigned KineticsObserver::angVelIndexTangent() const
 }
 inline unsigned KineticsObserver::gyroBiasIndexTangent( unsigned numberOfIMU) const
 {
-  BOOST_ASSERT( numberOfIMU < maxImuNumber_ && \
+  BOOST_ASSERT( numberOfIMU <= maxImuNumber_ && \
                   "The requested IMU number is higher than the maximum");
   return angVelIndexTangent() + sizeAngVel+ sizeGyroBias * numberOfIMU;
 }

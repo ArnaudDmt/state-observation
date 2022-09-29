@@ -1080,16 +1080,16 @@ protected:
   virtual Matrix computeAMatrix_();
   virtual Matrix computeCMatrix_();
 
-
-  /// @brief Converts a Kinematics object from the user's frame to the centroid's frame, which is used for most of the computations
-  /// @param userKine the Kinematics object expressed in the user's frame. It is likely to correspond to the contact's Kinematics, defined by the user in its frame.
-  /// @param centroidKine the Kinematics object corresponding to the converted Kinematics in the centroid's frame.
-  inline void convertUserToCentroidFrame_(const Kinematics & userKine, Kinematics & centroidKine, TimeIndex k_data);
-
   /// @brief Converts a LocalKinematics object from the user's frame to the centroid's frame, which is used for most of the computations
   /// @param userKine the LocalKinematics object expressed in the user's frame. It is likely to correspond to the IMU's LocalKinematics, defined by the user in its frame.
   /// @param centroidKine the LocalKinematics object corresponding to the converted LocalKinematics in the centroid's frame.
-  inline void convertUserToCentroidFrame_(const LocalKinematics & userKine, LocalKinematics & centroidKine, TimeIndex k_data);
+  
+  inline void convertUserToCentroidFrame_(const Kinematics & userKine, Kinematics & centroidKine, TimeIndex k_data);
+  
+  /// @brief Converts a Kinematics object from the user's frame to the centroid's frame, which is used for most of the computations
+  /// @param userKine the Kinematics object expressed in the user's frame. It is likely to correspond to the contact's Kinematics, defined by the user in its frame.
+
+  inline Kinematics convertUserToCentroidFrame_(const Kinematics & userKine, TimeIndex k_data);
 
   /// Getters for the indexes of the state Vector using private types
   inline unsigned contactIndex(VectorContactConstIterator i) const;

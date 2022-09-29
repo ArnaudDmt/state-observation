@@ -399,6 +399,11 @@ Vector KalmanFilterBase::getLastPredictedMeasurement() const
   return ybar_();
 }
 
+Vector KalmanFilterBase::getLastMeasurement() const
+{
+  return y_.back();
+}
+
 Matrix KalmanFilterBase::getLastGain() const
 {
   return oc_.kGain;

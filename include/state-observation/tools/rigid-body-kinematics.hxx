@@ -1120,6 +1120,7 @@ inline Kinematics::Kinematics(const LocalKinematics & locK)
 inline Kinematics & Kinematics::fromVector(const Vector & v, Kinematics::Flags::Byte flags)
 {
   int index = 0;
+  reset();
 
   bool flagPos = flags & Flags::position;
   bool flagLinVel = flags & Flags::linVel;
@@ -2337,6 +2338,7 @@ inline LocalKinematics::LocalKinematics(const Kinematics & kin) // we consider w
 inline LocalKinematics & LocalKinematics::fromVector(const Vector & v, LocalKinematics::Flags::Byte flags)
 {
   int index = 0;
+  reset();
 
   bool flagPos = flags & Flags::position;
   bool flagLinVel = flags & Flags::linVel;

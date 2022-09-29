@@ -274,9 +274,6 @@ const Vector & KineticsObserver::update()
       if(i->time == k_data_)
       {
         i->measIndex = curMeasIndex;
-        LocalKinematics & centroidImuKinematics = i->centroidImuKinematics;
-        convertUserToCentroidFrame_(centroidImuKinematics, centroidImuKinematics, k_data_); // the IMU's local kinematics were initialized with the ones in the user's frame but are now converted in the centroid's frame
-        
         measurementVector_.segment<sizeIMUSignal>(curMeasIndex) = i->acceleroGyro;
         measurementCovMatrix_.block<sizeAcceleroSignal, sizeAcceleroSignal>(curMeasIndex, curMeasIndex) =
             i->covMatrixAccelero;
@@ -290,9 +287,6 @@ const Vector & KineticsObserver::update()
     {
       if(i->withRealSensor)
       {
-        Kinematics & centroidContactKine = i->centroidContactKine;
-        convertUserToCentroidFrame_(centroidContactKine, centroidContactKine, k_data_); // the contact's kinematics were initialized with the ones in the user's frame but are now converted in the centroid's frame
-
         i->measIndex = curMeasIndex;
         measurementVector_.segment<sizeWrench>(curMeasIndex) = i->wrenchMeasurement;
         measurementCovMatrix_.block<sizeWrench, sizeWrench>(curMeasIndex, curMeasIndex) = i->sensorCovMatrix();
@@ -386,15 +380,30 @@ kine::Kinematics KineticsObserver::getGlobalCentroidKinematics() const
 {
   return Kinematics(worldCentroidStateKinematics_);
 }
-
+/*
 kine::Kinematics KineticsObserver::getGlobalKinematicsOf(const LocalKinematics & locKin) const
 {
   return Kinematics(LocalKinematics(worldCentroidStateKinematics_, locKin)); /// product of the kinematics
 }
+*/
 
-kine::Kinematics KineticsObserver::getGlobalKinematicsOf(const Kinematics & kin) const
+kine::Kinematics KineticsObserver::getGlobalKinematicsOf(const Kinematics & userBodyKin) const
 {
-  return Kinematics(Kinematics(worldCentroidStateKinematics_), kin); /// product of the kinematics
+  Kinematics centroidBodyKine = userBodyKin;
+  if (centroidBodyKine.position.isSet())
+  {
+    centroidBodyKine.position() -= com_();
+  }
+  if (centroidBodyKine.linVel.isSet())
+  {
+    centroidBodyKine.linVel() -= comd_();
+  }
+  if (centroidBodyKine.linAcc.isSet())
+  {
+    centroidBodyKine.linAcc() -= comdd_();
+  }
+
+  return Kinematics(Kinematics(worldCentroidStateKinematics_), centroidBodyKine); /// product of the kinematics
 }
 
 Vector6 KineticsObserver::getContactWrench(int contactNbr) const
@@ -555,8 +564,8 @@ int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer
   imu.acceleroGyro.tail<3>() = gyrometer;
   if(imuSensors_[num].time == 0) /// this is the first value for the IMU
   {
-    imu.centroidImuKinematics = LocalKinematics(userImuKinematics); // the local kinematics of the IMU in the user's frame are temporarily assigned to its local kinematics in the centroid's frame,
-                                                  // as they will be converted to the centroid's frame before any computation
+    imu.userImuKinematics = userImuKinematics;
+    imu.centroidImuKinematics = LocalKinematics(imu.userImuKinematics);
 
     imu.covMatrixAccelero = acceleroCovMatDefault_;
     imu.covMatrixGyro = gyroCovMatDefault_;
@@ -578,9 +587,8 @@ int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer
   }
   else
   {
-    imu.centroidImuKinematics.update(LocalKinematics(userImuKinematics), dt_ * (k_data_ - k_data_), flagsIMUKine); // the local kinematics of the IMU in the user's frame are temporarily assigned to 
-                                                                                                  // its local kinematics in the centroid's frame,
-                                                                                                  // as they will be converted to the centroid's frame before any computation
+    imu.userImuKinematics.update(userImuKinematics, dt_ * (k_data_ - k_data_), flagsIMUKine);
+    imu.centroidImuKinematics = LocalKinematics(imu.userImuKinematics); 
   }
 
   imu.time = k_data_;
@@ -674,8 +682,8 @@ int KineticsObserver::setIMU(const Vector3 & accelero,
 
   if(imuSensors_[num].time == 0) /// this is the first value for the IMU
   {
-    imu.centroidImuKinematics = LocalKinematics(userImuKinematics); // the local kinematics of the IMU in the user's frame are temporarily assigned to its local kinematics in the centroid's frame,
-                                                  // as they will be converted to the centroid's frame before any computation
+    imu.userImuKinematics = userImuKinematics;
+    imu.centroidImuKinematics = LocalKinematics(imu.userImuKinematics); 
     BOOST_ASSERT(imu.centroidImuKinematics.position.isSet() && imu.centroidImuKinematics.orientation.isSet()
                  && "The kinematics of the IMU is incorrectly initialized");
     if(!imu.centroidImuKinematics.linVel.isSet())
@@ -693,9 +701,8 @@ int KineticsObserver::setIMU(const Vector3 & accelero,
   }
   else
   {
-    imu.centroidImuKinematics.update(LocalKinematics(userImuKinematics), dt_ * (k_data_ - k_data_), flagsIMUKine); // the local kinematics of the IMU in the user's frame are temporarily assigned to 
-                                                                                                  // its local kinematics in the centroid's frame,
-                                                                                                  // as they will be converted to the centroid's frame before any computation
+    imu.userImuKinematics.update(userImuKinematics, dt_ * (k_data_ - k_data_), flagsIMUKine);
+    imu.centroidImuKinematics = LocalKinematics(imu.userImuKinematics);
   }
 
   imu.time = k_data_;
@@ -725,11 +732,15 @@ void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrenchMeasu
 
   if(contacts_[contactNumber].time == k_data_ - 1) /// the contact is not newly set
   {
-    contacts_[contactNumber].centroidContactKine.update(userContactKine, dt_, Contact::centroidContactKineFlags); // we initialize the Kinematics of the contact in the user's frame, but they will be converted to the centroid's frame before any computation
+    contacts_[contactNumber].userContactKine.update(userContactKine, dt_, Contact::contactKineFlags);
+    convertUserToCentroidFrame_(contacts_[contactNumber].userContactKine, contacts_[contactNumber].centroidContactKine, k_data_); 
+          // we convert the contact's kinematics from the user frame to the centroid's frame
   }
   else /// the contact is newlyset
   {
-    contacts_[contactNumber].centroidContactKine = userContactKine; // we initialize the Kinematics of the contact in the user's frame, but they will be converted to the centroid's frame before any computation
+    contacts_[contactNumber].userContactKine = userContactKine;
+    convertUserToCentroidFrame_(contacts_[contactNumber].userContactKine, contacts_[contactNumber].centroidContactKine, k_data_); 
+          // we convert the contact's kinematics from the user frame to the centroid's frame
   }
   contacts_[contactNumber].wrenchMeasurement = wrenchMeasurement;
   contacts_[contactNumber].time = k_data_;
@@ -748,7 +759,7 @@ void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrenchMeasu
 
 void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrenchMeasurement,
                                                      const Matrix6 & wrenchCovMatrix,
-                                                     const Kinematics & centroidContactKine,
+                                                     const Kinematics & userContactKine,
                                                      unsigned contactNumber)
 {
   /// ensure the measuements are labeled with the good time stamp
@@ -761,11 +772,15 @@ void KineticsObserver::updateContactWithWrenchSensor(const Vector6 & wrenchMeasu
 
   if(contacts_[contactNumber].time == k_data_ - 1) /// the contact is not newly set
   {
-    contacts_[contactNumber].centroidContactKine.update(centroidContactKine, dt_, Contact::centroidContactKineFlags); // we initialize the Kinematics of the contact in the user's frame, but they will be converted to the centroid's frame before any computation
+    contacts_[contactNumber].userContactKine.update(userContactKine, dt_, Contact::contactKineFlags);
+    convertUserToCentroidFrame_(contacts_[contactNumber].userContactKine, contacts_[contactNumber].centroidContactKine, k_data_); 
+          // we convert the contact's kinematics from the user frame to the centroid's frame
   }
   else /// the contact is newlyset
   {
-    contacts_[contactNumber].centroidContactKine = centroidContactKine; // we initialize the Kinematics of the contact in the user's frame, but they will be converted to the centroid's frame before any computation
+    contacts_[contactNumber].userContactKine = userContactKine;
+    convertUserToCentroidFrame_(contacts_[contactNumber].userContactKine, contacts_[contactNumber].centroidContactKine, k_data_); 
+          // we convert the contact's kinematics from the user frame to the centroid's frame
   }
   contacts_[contactNumber].wrenchMeasurement = wrenchMeasurement;
   contacts_[contactNumber].time = k_data_;
@@ -795,11 +810,15 @@ void KineticsObserver::updateContactWithNoSensor(const Kinematics & userContactK
 
   if(contacts_[contactNumber].time == k_data_ - 1) /// the contact is not newly set
   {
-    contacts_[contactNumber].centroidContactKine.update(userContactKine, dt_, Contact::centroidContactKineFlags); // we initialize the Kinematics of the contact in the user's frame, but they will be converted to the centroid's frame before any computation
+    contacts_[contactNumber].userContactKine.update(userContactKine, dt_, Contact::contactKineFlags);
+    convertUserToCentroidFrame_(contacts_[contactNumber].userContactKine, contacts_[contactNumber].centroidContactKine, k_data_); 
+          // we convert the contact's kinematics from the user frame to the centroid's frame
   }
-  else /// the contact is newly set
+  else /// the contact is newlyset
   {
-    contacts_[contactNumber].centroidContactKine = userContactKine; // we initialize the Kinematics of the contact in the user's frame, but they will be converted to the centroid's frame before any computation
+    contacts_[contactNumber].userContactKine = userContactKine;
+    convertUserToCentroidFrame_(contacts_[contactNumber].userContactKine, contacts_[contactNumber].centroidContactKine, k_data_); 
+          // we convert the contact's kinematics from the user frame to the centroid's frame
   }
 
   contacts_[contactNumber].time = k_data_;
@@ -988,8 +1007,8 @@ int KineticsObserver::addContact(const Kinematics & userContactKine,
   contact.isSet = true; /// set the contacts
   contact.stateIndex = contactsIndex() + contactNumber * sizeContact;
   contact.stateIndexTangent = contactsIndexTangent() + contactNumber * sizeContactTangent;
-
-  contact.worldRefPose = pose;
+  contact.worldRefPose = Kinematics(worldCentroidStateKinematics_) * convertUserToCentroidFrame_(userContactKine, k_data_); // probably what we have to do
+  //contact.worldRefPose = pose;
   std::cout << std::endl << "contact.worldRefPose: " << std::endl << contact.worldRefPose << std::endl;
 
   if(linearDamping != Matrix3::Constant(-1))
@@ -1029,7 +1048,8 @@ int KineticsObserver::addContact(const Kinematics & userContactKine,
   }
 
   /// update the state vector. The contact forces and moments are initialized to zero but are updated in update()
-  worldCentroidStateVector_.segment<sizeContact>(contact.stateIndex) << pose.toVector(flagsContactKine), Vector6::Zero();
+  worldCentroidStateVector_.segment<sizeContact>(contact.stateIndex) << contact.worldRefPose.toVector(flagsContactKine), Vector6::Zero();
+  ekf_.setState(worldCentroidStateVector_, k_est_);
 
   /// sets the initial covariance matrix
   Matrix stateCovMat = ekf_.getStateCovariance();
@@ -1636,9 +1656,49 @@ void KineticsObserver::convertUserToCentroidFrame_(const Kinematics & userKine, 
   {
     centroidKine.linAcc = userKine.linAcc() - comdd_();
   }
+  if (userKine.orientation.isSet())
+  {
+    centroidKine.orientation = userKine.orientation;
+  }
+  if (userKine.angVel.isSet())
+  {
+    centroidKine.angVel = userKine.angVel();
+  }
+  if (userKine.angAcc.isSet())
+  {
+    centroidKine.angAcc = userKine.angAcc();
+  }
 }
 
+KineticsObserver::Kinematics KineticsObserver::convertUserToCentroidFrame_(const Kinematics & userKine, TimeIndex k_data)
+{
+  Kinematics centroidKine;
+  BOOST_ASSERT((com_.getTime() == k_data && com_.getTime() == comd_.getTime() && com_.getTime() == comdd_.getTime()) &&  "The Center of Mass must be actualized before the conversion");
+  centroidKine.position = userKine.position() - com_();
+  if (userKine.linVel.isSet())
+  {
+    centroidKine.linVel = userKine.linVel() - comd_();
+  }
+  if (userKine.linAcc.isSet())
+  {
+    centroidKine.linAcc = userKine.linAcc() - comdd_();
+  }
+  if (userKine.orientation.isSet())
+  {
+    centroidKine.orientation = userKine.orientation;
+  }
+  if (userKine.angVel.isSet())
+  {
+    centroidKine.angVel = userKine.angVel();
+  }
+  if (userKine.angAcc.isSet())
+  {
+    centroidKine.angAcc = userKine.angAcc();
+  }
+  return centroidKine;
+}
 
+/*
 void KineticsObserver::convertUserToCentroidFrame_(const LocalKinematics & userKine, LocalKinematics & centroidKine, TimeIndex k_data)
 {
   BOOST_ASSERT((com_.getTime() == k_data && com_.getTime() == comd_.getTime() && com_.getTime() == comdd_.getTime()) &&  "The Center of Mass must be actualized before the conversion");

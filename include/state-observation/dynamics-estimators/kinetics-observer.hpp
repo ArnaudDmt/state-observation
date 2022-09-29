@@ -871,6 +871,7 @@ protected:
   {
     virtual ~IMU() {}
     IMU() : Sensor(sizeIMUSignal) {}
+    Kinematics userImuKinematics; // the kinematics of the IMU in the user's frame
     LocalKinematics centroidImuKinematics; // the kinematics of the IMU in the IMU's frame
     Vector6 acceleroGyro;
     Matrix3 covMatrixAccelero;
@@ -903,10 +904,9 @@ protected:
     bool withRealSensor;
     int stateIndex;
     int stateIndexTangent;
-
+    Kinematics userContactKine; /// Describes the kinematics of the contact point in the centroid's frame. 
     Kinematics centroidContactKine; /// Describes the kinematics of the contact point in the centroid's frame. 
-                                    /// We initialize the Kinematics of the contact in the user's frame with the updateContact functions, but they will be converted to the centroid's frame before any computation
-    static const Kinematics::Flags::Byte centroidContactKineFlags = /// flags for the components of the kinematics
+    static const Kinematics::Flags::Byte contactKineFlags = /// flags for the components of the kinematics
         Kinematics::Flags::position | Kinematics::Flags::orientation | Kinematics::Flags::linVel
         | Kinematics::Flags::angVel;
 

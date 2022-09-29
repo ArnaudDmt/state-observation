@@ -1712,6 +1712,7 @@ void KineticsObserver::convertUserToCentroidFrame_(const LocalKinematics & userK
     centroidKine.linAcc = userKine.linAcc() - comdd_();
   }
 }
+*/
 
 void KineticsObserver::updateKine_()
 {

@@ -204,7 +204,7 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
     for (int j = 0; j < nt_; j++)
     {
       
-      if (opt.dx_.coeff(j) > 1e+2 )
+      if (opt.dx_.coeff(j) > 1e+30 )
       {
         std::cout << std::endl << "error indexes: " << std::endl << "(" << j << "," << i << ")" << std::endl;
         stopTest = true;

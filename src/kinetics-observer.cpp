@@ -2031,5 +2031,40 @@ void KineticsObserver::initWorldCentroidStateVector(const Vector & initStateVect
   oldWorldCentroidStateVector_ = worldCentroidStateVector_;
 }
 
+Matrix displayVectorWithIndex(const Vector & vec1, const int & numbIndexes) // to be removed
+{
+  Eigen::VectorXd indexes(numbIndexes); //to be removed
+  //Eigen::VectorXd indexes(57); //to be removed
+  for (int ind = 0; ind<indexes.size(); ind++)
+  {
+    indexes(ind) = ind;
+  }
+  Matrix C(vec1.rows(), vec1.cols()+indexes.cols());
+  C << vec1, indexes;
+  return C;
+}
+
+int KineticsObserver::getIMUMeasIndexByNum(const int & num) const
+{
+  return imuSensors_[num].measIndex;
+}
+
+int KineticsObserver::getContactMeasIndexByNum(const int & num) const
+{
+  return contacts_[num].measIndex;
+}
+
+bool KineticsObserver::getContactIsSetByNum(const int & num) const
+{
+  if (num >= contacts_.size())
+  {
+    return false;
+  }
+  else
+  {
+    return contacts_[num].isSet;
+  }
+  
+}
 
 } // namespace stateObservation

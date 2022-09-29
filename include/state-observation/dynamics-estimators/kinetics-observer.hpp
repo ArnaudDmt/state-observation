@@ -419,9 +419,9 @@ public:
   /// @param localKinematics
   /// @return Kinematics
   LocalKinematics getLocalKinematicsOf(const LocalKinematics & localKinematics) const;
-
+  /*
   Kinematics getGlobalKinematicsOf(const LocalKinematics & localKinematics) const;
-
+  */
   Kinematics getGlobalKinematicsOf(const Kinematics & kin) const;
 
   /// get the contact force provided by the estimator
@@ -625,8 +625,6 @@ public:
   ///
   /// @return const Vector&
   const Vector & getCurrentStateVector() const;
-
-  const Vector & getCurrentLocalStateVector() const;
 
   /// @brief Get the State Vector Internal Time Index
   /// This is for advanced use but may be used to check how many states have been estimated up to now

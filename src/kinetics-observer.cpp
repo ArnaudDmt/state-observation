@@ -533,7 +533,6 @@ void KineticsObserver::setWithGyroBias(bool b)
 
 int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const Kinematics & userImuKinematics, int num)
 {
-  // we initialize the local Kinematics of the IMU in the user's frame, but they will be converted to the centroid's frame before any computation
   /// ensure the measurements are labeled with the good time stamp
   startNewIteration_();
 
@@ -947,7 +946,7 @@ void KineticsObserver::setAngularMomentum(const Vector3 & sigma)
   sigma_.set(sigma, k_data_);
 }
 
-int KineticsObserver::addContact(const Kinematics & pose,
+int KineticsObserver::addContact(const Kinematics & userContactKine,
                                  const Matrix12 & initialCovarianceMatrix,
                                  const Matrix12 & processCovarianceMatrix,
                                  int contactNumber,
@@ -957,7 +956,7 @@ int KineticsObserver::addContact(const Kinematics & pose,
                                  const Matrix3 & angularDamping)
 {
 
-  BOOST_ASSERT(pose.position.isSet() && pose.orientation.isSet()
+  BOOST_ASSERT(userContactKine.position.isSet() && userContactKine.orientation.isSet()
                && "The added contact pose is not initialized correctly (position and orientation)");
 
   if(contactNumber < 0)   /// attributes the contact an index called contactNumber. Automatically attributes the 
@@ -1661,8 +1660,9 @@ void KineticsObserver::updateKine_()
   {
     if(i->isSet)
     {
-      i->worldRefPose.position() = worldCentroidStateVector_.segment<sizePos>(contactPosIndex(i));
-      i->worldRefPose.orientation.fromVector4(worldCentroidStateVector_.segment<sizeOri>(contactOriIndex(i)));
+      //i->worldRefPose.position() = worldCentroidStateVector_.segment<sizePos>(contactPosIndex(i));
+      //i->worldRefPose.orientation.fromVector4(worldCentroidStateVector_.segment<sizeOri>(contactOriIndex(i)));
+      i->worldRefPose.fromVector(worldCentroidStateVector_.segment<sizePose>(contactPosIndex(i)), flagsContactKine);
     }
   }
 }

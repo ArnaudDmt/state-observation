@@ -1955,8 +1955,10 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
       //x.segment<sizeForce>(contactForceIndex(i)) = -(contactWorldOri * (Kpt * errorKine.position() + Kdt * errorKine.linVel()));      
       x.segment<sizeForce>(contactForceIndex(i)) = -(contactWorldOri * (Kpt * (worldContactKine.position() - worldContactRefPose.position()) + Kdt * worldContactKine.linVel()));
       std::cout << std::endl << "contactForce: " << std::endl << x.segment<sizeForce>(contactForceIndex(i)) << std::endl;
-      BOOST_ASSERT(x.segment<sizeForce>(contactForceIndex(i)).maxCoeff() > 1 && "Pb Contact Force");
-      x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent(errorKine.orientation.toQuaternion()) * 0.5 + Kdr * errorKine.angVel()));
+      //BOOST_ASSERT(x.segment<sizeForce>(contactForceIndex(i)).maxCoeff() < 1 && "Pb contact force");
+      //x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent(errorKine.orientation.toQuaternion()) * 0.5 + Kdr * errorKine.angVel()));
+      
+      x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent((worldContactKine.orientation.toQuaternion()*worldContactRefPose.orientation.toQuaternion().inverse())) * 2 + Kdr * worldContactKine.angVel()));
       std::cout << std::endl << "contactTorque: " << std::endl << x.segment<sizeTorque>(contactTorqueIndex(i)) << std::endl;
       BOOST_ASSERT(x.segment<sizeTorque>(contactTorqueIndex(i)).maxCoeff() > 1 && "Pb Contact Torque");
     }

@@ -1941,12 +1941,12 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
       worldContactKine.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
       std::cout << std::endl << "centroidContactKine: " << std::endl << centroidContactKine << std::endl;
       
-      /// Inverse of the orientation of the contact in the world frame = the orientation of the world frame in the contact's frame
+            /// Inverse of the orientation of the contact in the world frame = the orientation of the world frame in the contact's frame
       Orientation contactWorldOri(worldContactKine.orientation.inverse());
       
       /// The error between the current kinematics and the rest kinematics
       /// of the flexibility
-      Kinematics errorKine;
+      //Kinematics errorKine;
       std::cout << std::endl << "worldContactKine: " << std::endl << worldContactKine << std::endl;
       std::cout << std::endl << "worldContactRefPose: " << std::endl << worldContactRefPose << std::endl;
       //errorKine.setToDiffNoAlias(worldContactKine, worldContactRefPose); 
@@ -1960,7 +1960,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
       
       x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent((worldContactKine.orientation.toQuaternion()*worldContactRefPose.orientation.toQuaternion().inverse())) * 2 + Kdr * worldContactKine.angVel()));
       std::cout << std::endl << "contactTorque: " << std::endl << x.segment<sizeTorque>(contactTorqueIndex(i)) << std::endl;
-      BOOST_ASSERT(x.segment<sizeTorque>(contactTorqueIndex(i)).maxCoeff() > 1 && "Pb Contact Torque");
+      //BOOST_ASSERT(x.segment<sizeTorque>(contactTorqueIndex(i)).maxCoeff() < 1 && "Pb contact torque");
     }
   }
 

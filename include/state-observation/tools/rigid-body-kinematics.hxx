@@ -1151,6 +1151,7 @@ inline Kinematics & Kinematics::fromVector(const Vector & v, Kinematics::Flags::
 
   if(flagLinVel)
   {
+    std::cout << std::endl << "linVel: " << std::endl << v.segment<3>(index) << std::endl;
     BOOST_ASSERT(v.size() >= index + 3 && "The kinematics vector size is incorrect (loading linear velocity)");
     if(v.size() >= index + 3)
     {

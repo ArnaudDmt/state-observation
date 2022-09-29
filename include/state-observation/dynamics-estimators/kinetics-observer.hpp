@@ -966,6 +966,18 @@ protected:
   virtual Index getInputSize() const;
 
 public:
+
+    /// @{
+
+  /// @brief Get the measurement index of the required IMU : allows to access its corresponding measurements in the measurement vector for example
+  ///
+  /// @return const int &
+  int getIMUMeasIndexByNum(const int & num) const;
+
+  int getContactMeasIndexByNum(const int & num) const;
+
+  bool getContactIsSetByNum(const int & num) const;
+
   ///////////////////////////////////////////////////////////////
   /// @name State vector representation arithmetics and derivation (advanced use)
   ///////////////////////////////////////////////////////////////

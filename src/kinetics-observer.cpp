@@ -54,9 +54,9 @@ const double KineticsObserver::stateOriInitVarianceDefault = 1e-4;
 const double KineticsObserver::stateLinVelInitVarianceDefault = 1e-6;
 const double KineticsObserver::stateAngVelInitVarianceDefault = 1e-6;
 const double KineticsObserver::gyroBiasInitVarianceDefault = 1e-10;
-const double KineticsObserver::unmodeledWrenchInitVarianceDefault = 1e100;
-const double KineticsObserver::contactForceInitVarianceDefault = 1e100;
-const double KineticsObserver::contactTorqueInitVarianceDefault = 1e100;
+const double KineticsObserver::unmodeledWrenchInitVarianceDefault = 1e2;
+const double KineticsObserver::contactForceInitVarianceDefault = 1e2;
+const double KineticsObserver::contactTorqueInitVarianceDefault = 1e2;
 
 const double KineticsObserver::statePoseProcessVarianceDefault = 1e-8;
 const double KineticsObserver::stateOriProcessVarianceDefault = 1e-8;

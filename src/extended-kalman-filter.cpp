@@ -176,27 +176,27 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
   }
   for(Index i = 0; i < nt_; ++i)
   {
-    std::cout << std::endl << "col: " << std::endl << i << std::endl;
+    //std::cout << std::endl << "col: " << std::endl << i << std::endl;
     opt.dx_.setZero();
     opt.dx_[i] = dx[i];
     //std::cout << std::endl << "dx: " << std::endl << displayVectorWithIndex(dx.segment<57>(0), indexes) << std::endl;
-    std::cout << std::endl << "dx: " << std::endl << displayVectorWithIndex(dx.segment<nbIndexes>(0), indexes) << std::endl;
-    std::cout << std::endl << "opt.x_ before sum: " << std::endl << displayVectorWithIndex(opt.x_.segment<nbIndexes>(0), indexes) << std::endl;
+    //std::cout << std::endl << "dx: " << std::endl << displayVectorWithIndex(dx.segment<nbIndexes>(0), indexes) << std::endl;
+    //std::cout << std::endl << "opt.x_ before sum: " << std::endl << displayVectorWithIndex(opt.x_.segment<nbIndexes>(0), indexes) << std::endl;
     //std::cout << std::endl << "opt.x_ before sum: " << std::endl << displayVectorWithIndex(opt.x_.segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
 
     arithm_->stateSum(this->x_(), opt.dx_, opt.x_);
-    std::cout << std::endl << "opt.x_ after sum: " << std::endl << displayVectorWithIndex(opt.x_.segment<nbIndexes>(0), indexes) << std::endl;
+    //std::cout << std::endl << "opt.x_ after sum: " << std::endl << displayVectorWithIndex(opt.x_.segment<nbIndexes>(0), indexes) << std::endl;
     //std::cout << std::endl << "opt.x_ after sum: " << std::endl << displayVectorWithIndex(opt.x_.segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
 
     opt.xp_ = f_->stateDynamics(opt.x_, opt.u_, k);
     
-    std::cout << std::endl << "opt.x_ after stateDynamics: " << std::endl << displayVectorWithIndex(opt.xp_.segment<nbIndexes>(0), indexes) << std::endl;
+    //std::cout << std::endl << "opt.x_ after stateDynamics: " << std::endl << displayVectorWithIndex(opt.xp_.segment<nbIndexes>(0), indexes) << std::endl;
     //std::cout << std::endl << "opt.x_ after stateDynamics: " << std::endl << displayVectorWithIndex(opt.xp_.segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
-    std::cout << std::endl << "xbar_(): " << std::endl << displayVectorWithIndex(xbar_().segment<nbIndexes>(0), indexes) << std::endl;
+    //std::cout << std::endl << "xbar_(): " << std::endl << displayVectorWithIndex(xbar_().segment<nbIndexes>(0), indexes) << std::endl;
     //std::cout << std::endl << "xbar_(): " << std::endl << displayVectorWithIndex(xbar_().segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
     arithm_->stateDifference(opt.xp_, xbar_(), opt.dx_);
     //std::cout << std::endl << "Difference: " << std::endl << displayVectorWithIndex(opt.dx_.segment<57>(0), indexes) << std::endl; // we don't display the two empty contacts
-    std::cout << std::endl << "Difference: " << std::endl << displayVectorWithIndex(opt.dx_.segment<nbIndexes>(0), indexes) << std::endl;
+    //std::cout << std::endl << "Difference: " << std::endl << displayVectorWithIndex(opt.dx_.segment<nbIndexes>(0), indexes) << std::endl;
 
     opt.dx_ /= dx[i];
 
@@ -206,7 +206,8 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
       
       if (opt.dx_.coeff(j) > 1e+30 )
       {
-        std::cout << std::endl << "error indexes: " << std::endl << "(" << j << "," << i << ")" << std::endl;
+        //std::cout << std::endl << "error indexes: " << std::endl << "(" << j << "," << i << ")" << std::endl;
+        BOOST_ASSERT(false && "error on A");
         stopTest = true;
       }
 

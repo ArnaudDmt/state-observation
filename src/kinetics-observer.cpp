@@ -1419,7 +1419,7 @@ Matrix KineticsObserver::computeAMatrix_()
 
 
   // Jacobians of the linear acceleration
-  Matrix3 J_al_R = -cst::gravityConstant*(worldCentroidStateKinematics_.orientation.toMatrix3()*kine::skewSymmetric(Vector3(0,0,1)));
+  Matrix3 J_al_R = -cst::gravityConstant*(worldCentroidStateKinematics_.orientation.toMatrix3().transpose()*kine::skewSymmetric(Vector3(0,0,1)));
   Matrix3 J_al_ext_force = Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent)/mass_;
 
 

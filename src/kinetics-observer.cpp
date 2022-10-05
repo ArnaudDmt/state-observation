@@ -597,60 +597,7 @@ int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer
 
   return num;
 }
-/*
-int KineticsObserver::setIMU(const Vector3 & accelero, const Vector3 & gyrometer, const LocalKinematics & centroidImuKinematics, int num)
-{
-  /// ensure the measurements are labeled with the good time stamp
-  startNewIteration_();
 
-  if(num < 0)
-  {
-    num = 0;
-    while(imuSensors_[num].time != k_data_ && unsigned(num) < imuSensors_.size())
-    {
-      ++num;
-    }
-  }
-
-  BOOST_ASSERT(unsigned(num) < maxImuNumber_ && "The inserted IMU number exceeds the maximum number");
-
-  IMU & imu = imuSensors_[num]; /// reference
-
-  BOOST_ASSERT(imu.time < k_data_ && "The IMU has been already set, use another number");
-
-  imu.acceleroGyro.head<3>() = accelero;
-  imu.acceleroGyro.tail<3>() = gyrometer;
-  if(imuSensors_[num].time == 0) /// this is the first value for the IMU
-  {
-    imu.covMatrixAccelero = acceleroCovMatDefault_;
-    imu.covMatrixGyro = gyroCovMatDefault_;
-    imu.centroidImuKinematics = centroidImuKinematics;
-    BOOST_ASSERT(imu.centroidImuKinematics.position.isSet() && imu.centroidImuKinematics.orientation.isSet()
-                 && "The kinematics of the IMU is incorrectly initialized");
-    if(!imu.centroidImuKinematics.linVel.isSet())
-    {
-      imu.centroidImuKinematics.linVel.set().setZero();
-    }
-    if(!imu.centroidImuKinematics.angVel.isSet())
-    {
-      imu.centroidImuKinematics.angVel.set().setZero();
-    }
-    if(!imu.centroidImuKinematics.linAcc.isSet())
-    {
-      imu.centroidImuKinematics.linAcc.set().setZero();
-    }
-  }
-  else
-  {
-    imu.centroidImuKinematics.update(centroidImuKinematics, dt_ * (k_data_ - k_data_), flagsIMUKine);
-  }
-
-  imu.time = k_data_;
-  ++currentIMUSensorNumber_;
-
-  return num;
-}
-*/
 int KineticsObserver::setIMU(const Vector3 & accelero,
                              const Vector3 & gyrometer,
                              const Matrix3 & acceleroCov,
@@ -1008,7 +955,7 @@ int KineticsObserver::addContact(const Kinematics & userContactKine,
   contact.isSet = true; /// set the contacts
   contact.stateIndex = contactsIndex() + contactNumber * sizeContact;
   contact.stateIndexTangent = contactsIndexTangent() + contactNumber * sizeContactTangent;
-  contact.worldRefPose = Kinematics(worldCentroidStateKinematics_) * convertUserToCentroidFrame_(userContactKine, k_data_); // probably what we have to do
+  contact.worldRefPose = Kinematics(worldCentroidStateKinematics_) * convertUserToCentroidFrame_(userContactKine, k_data_);
   //contact.worldRefPose = pose;
   //std::cout << std::endl << "contact.worldRefPose: " << std::endl << contact.worldRefPose << std::endl;
 

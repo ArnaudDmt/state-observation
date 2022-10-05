@@ -1636,6 +1636,10 @@ Matrix KineticsObserver::computeAMatrix_()
     }
 
   }
+  // To remove
+  compareAnalyticAndFDJacobians(ekf_, A, worldCentroidStateVectorDx_);
+  return ekf_.getA();
+  // To remove
   return A;
 
 }
@@ -2073,6 +2077,45 @@ bool KineticsObserver::getContactIsSetByNum(const int & num) const
     return contacts_[num].isSet;
   }
   
+}
+
+const double & KineticsObserver::getMass() const
+{
+  return mass_;
+}
+
+void KineticsObserver::compareAnalyticAndFDJacobians(ExtendedKalmanFilter & ekf, const Matrix & A_analytic, const Vector & dx)
+{
+  ekf.setA(ekf.getAMatrixFD(dx));
+  bool stopIT = false;
+  for (int i = 0; i < A_analytic.rows(); i++)
+  {
+    for (int j = 0; j < A_analytic.cols(); j++)
+    {      
+      if (abs(A_analytic(i,j) - ekf.getA()(i,j)) > 1e-1 && abs(A_analytic(i,j) - ekf.getA()(i,j))/abs(A_analytic(i,j)) > 1e+1 && abs(A_analytic(i,j) - ekf.getA()(i,j))/abs(ekf.getA()(i,j)))
+      {
+        /*
+        std::cout << std::endl << "\033[1;31m"
+              << "error indexes: " << std::endl << "(" << i << "," << j << "): " << A_analytic(i,j) << "-" << ekf.getA()(i,j) << "=" << A_analytic(i,j) - ekf.getA()(i,j) 
+                  << "\033[0m\n" << std::endl;
+                  */
+        stopIT = true;
+        
+      }
+      else
+      {
+        /*
+        std::cout << std::endl << "good indexes: " << std::endl << "(" << i << "," << j << "): " 
+              << A_analytic(i,j) << "-" << ekf.getA()(i,j) << "=" << std::max(abs(A_analytic(i,j) - ekf.getA()(i,j))/abs(A_analytic(i,j)), abs(A_analytic(i,j) - ekf.getA()(i,j))/abs(ekf.getA()(i,j))) << std::endl;
+        */
+      }
+
+    }
+    if (stopIT)
+    {
+      //BOOST_ASSERT(false && "PB matrice A analytique");
+    }
+  }
 }
 
 } // namespace stateObservation

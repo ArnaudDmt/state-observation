@@ -930,6 +930,8 @@ protected:
 
 protected:
   ///////////// DYNAMICAL SYSTEM IMPLEMENTATION
+  void compareAnalyticAndFDJacobians(ExtendedKalmanFilter & ekf, const Matrix & A_analytic, const Vector & dx);
+
   virtual Vector stateDynamics(const Vector & x, const Vector & u, TimeIndex k);
 
   virtual Vector measureDynamics(const Vector & x, const Vector & u, TimeIndex k);

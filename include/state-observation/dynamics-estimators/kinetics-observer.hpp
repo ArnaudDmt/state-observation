@@ -109,6 +109,8 @@ public:
   /// @return sets
   void setMass(double);
 
+  const double & getMass() const;
+
   /// @}
 
   // ///////////////////////////////////////////////////////////

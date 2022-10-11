@@ -913,7 +913,7 @@ void KineticsObserver::setAngularMomentum(const Vector3 & sigma)
   sigma_.set(sigma, k_data_);
 }
 
-int KineticsObserver::addContact(const Kinematics & userContactKine,
+int KineticsObserver::addContact(const Kinematics & worldContactRefKine,
                                  const Matrix12 & initialCovarianceMatrix,
                                  const Matrix12 & processCovarianceMatrix,
                                  int contactNumber,
@@ -923,7 +923,7 @@ int KineticsObserver::addContact(const Kinematics & userContactKine,
                                  const Matrix3 & angularDamping)
 {
 
-  BOOST_ASSERT(userContactKine.position.isSet() && userContactKine.orientation.isSet()
+  BOOST_ASSERT(worldContactRefKine.position.isSet() && worldContactRefKine.orientation.isSet()
                && "The added contact pose is not initialized correctly (position and orientation)");
 
   if(contactNumber < 0)   /// attributes the contact an index called contactNumber. Automatically attributes the 
@@ -955,9 +955,7 @@ int KineticsObserver::addContact(const Kinematics & userContactKine,
   contact.isSet = true; /// set the contacts
   contact.stateIndex = contactsIndex() + contactNumber * sizeContact;
   contact.stateIndexTangent = contactsIndexTangent() + contactNumber * sizeContactTangent;
-  contact.worldRefPose = Kinematics(worldCentroidStateKinematics_) * convertUserToCentroidFrame_(userContactKine, k_data_);
-  //contact.worldRefPose = pose;
-  //std::cout << std::endl << "contact.worldRefPose: " << std::endl << contact.worldRefPose << std::endl;
+  contact.worldRefPose = worldContactRefKine;
 
   if(linearDamping != Matrix3::Constant(-1))
   {
@@ -1013,14 +1011,14 @@ int KineticsObserver::addContact(const Kinematics & userContactKine,
 }
 
 /// version when the contact position is perfectly known
-int KineticsObserver::addContact(const Kinematics & pose,
+int KineticsObserver::addContact(const Kinematics & worldContactRefKine,
                                  int contactNumber,
                                  const Matrix3 & linearStiffness,
                                  const Matrix3 & linearDamping,
                                  const Matrix3 & angularStiffness,
                                  const Matrix3 & angularDamping)
 {
-  return addContact(pose, contactInitCovMatDefault_, contactProcessCovMatDefault_, contactNumber,
+  return addContact(worldContactRefKine, contactInitCovMatDefault_, contactProcessCovMatDefault_, contactNumber,
                     linearStiffness, linearDamping, angularStiffness, angularDamping);
 }
 

@@ -1024,7 +1024,7 @@ int KineticsObserver::addContact(const Kinematics & worldContactRefKine,
 
 void KineticsObserver::removeContact(int contactNbr)
 {
-  BOOST_ASSERT(!contacts_[contactNbr].isSet && "Tried to remove a non-existing contact.");
+  BOOST_ASSERT(contacts_[contactNbr].isSet && "Tried to remove a non-existing contact.");
   contacts_[contactNbr].isSet = false;
   if(contacts_[contactNbr].withRealSensor)
   {

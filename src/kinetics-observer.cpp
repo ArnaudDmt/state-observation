@@ -322,9 +322,6 @@ const Vector & KineticsObserver::update()
       ekf_.setA(computeAMatrix_());
       ekf_.setC(computeCMatrix_());
     }
-    /* To delete */
-    Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-    //std::cout << std::endl << "A: " << std::endl << ekf_.getA().format(CleanFmt) << std::endl;
 
     worldCentroidStateVector_ = ekf_.getEstimatedState(k_data_);
 
@@ -352,8 +349,6 @@ const Vector & KineticsObserver::update()
     }
     */
   }
-  //std::cout << std::endl << "worldCentroidStateVector_: " << std::endl << worldCentroidStateVector_.segment<57>(0) << std::endl; // we don't display the two empty contacts
-  std::cout << std::endl << "worldCentroidStateVector_: " << std::endl << worldCentroidStateVector_ << std::endl;
   return worldCentroidStateVector_;
 }
 
@@ -1394,7 +1389,6 @@ NoiseBase * KineticsObserver::getMeasurementNoise() const
 Matrix KineticsObserver::computeAMatrix_()
 {
   const Vector & statePrediction = ekf_.updateStatePrediction();
-  std::cout << std::endl << "statePrediction: " << std::endl << statePrediction << std::endl;
   const Vector3 & predictedWorldCentroidStatePos = statePrediction.segment<sizePos>(posIndex());
   Orientation predictedWorldCentroidStateOri;
   predictedWorldCentroidStateOri.fromVector4(statePrediction.segment<sizeOri>(oriIndex())).toMatrix3();
@@ -1912,8 +1906,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
       //x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent(errorKine.orientation.toQuaternion()) * 0.5 + Kdr * errorKine.angVel()));
       
       x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent((worldContactKine.orientation.toQuaternion()*worldContactRefPose.orientation.toQuaternion().inverse())) * 2 + Kdr * worldContactKine.angVel()));
-      //std::cout << std::endl << "contactTorque: " << std::endl << x.segment<sizeTorque>(contactTorqueIndex(i)) << std::endl;
-      //BOOST_ASSERT(x.segment<sizeTorque>(contactTorqueIndex(i)).maxCoeff() < 1 && "Pb contact torque");
+
     }
   }
 

@@ -193,7 +193,7 @@ public:
 
   /// @brief Set a new contact with the environment
   ///
-  /// @param pose  is the initial guess on the position of the contact. Only position and orientation are enough. If the
+  /// @param pose  is the initial guess on the position of the contact in the WORLD frame. Only position and orientation are enough. If the
   /// contact is compliant, you need to set the "rest" pose of the contact (i.e. the pose that gives zero reaction
   /// force)
   /// @param initialCovarianceMatrix is the covariance matrix expressing the uncertainty in the pose of the initial
@@ -225,7 +225,7 @@ public:
 
   /// @brief Set a new contact with the environment (use default covariance matrices)
   ///
-  /// @param pose  is the initial guess on the position of the contact. Only position and orientation are enough
+  /// @param pose  is the initial guess on the position of the contact in the WORLD frame. Only position and orientation are enough
   /// @param contactNumber the number id of the contact to add. If no predefined id, use -1 (default) in order to set
   /// the number automatically
   /// @param linearStiffness the linear stiffness of the contact viscoelastic model, if unknown, set to

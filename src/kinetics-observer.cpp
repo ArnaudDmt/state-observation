@@ -1670,8 +1670,6 @@ void KineticsObserver::updateKine_()
   {
     if(i->isSet)
     {
-      //i->worldRefPose.position() = worldCentroidStateVector_.segment<sizePos>(contactPosIndex(i));
-      //i->worldRefPose.orientation.fromVector4(worldCentroidStateVector_.segment<sizeOri>(contactOriIndex(i)));
       i->worldRefPose.fromVector(worldCentroidStateVector_.segment<sizePose>(contactPosIndex(i)), flagsContactKine);
     }
   }

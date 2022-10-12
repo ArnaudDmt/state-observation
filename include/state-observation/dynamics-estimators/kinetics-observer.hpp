@@ -940,7 +940,7 @@ protected:
 
   void addUnmodeledAndContactWrench_(const Vector & centroidStateVector, Vector3 & force, Vector3 & torque);
 
-  void computeAccelerations_(LocalKinematics & localStateKine,
+  void computeLocalAccelerations_(LocalKinematics & localStateKine,
                              const Vector3 & totalForceLocal,
                              const Vector3 & totalMomentLocal,
                              Vector3 & linAcc,
@@ -1041,6 +1041,9 @@ protected:
 
   /// updates stateKine_ and the reference position and orientation of the contacts  from the centroidStateVector 
   void updateKine_();
+  
+  /// updates the global kinematics of the centroid, that can be more interpretable
+  void updateGlobalKine_();
 
 protected:
   unsigned maxContacts_;
@@ -1059,7 +1062,8 @@ protected:
   Vector worldCentroidStateVectorDx_;
   Vector oldWorldCentroidStateVector_;
 
-  LocalKinematics worldCentroidStateKinematics_; 
+  LocalKinematics worldCentroidStateKinematics_;
+  LocalKinematics worldCentroidKinematics_;
 
   Vector3 additionalForce_;
   Vector3 additionalTorque_;

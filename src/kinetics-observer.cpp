@@ -339,12 +339,11 @@ const Vector & KineticsObserver::update()
     worldCentroidStateKinematics_.reset();
 
     updateKine_();
-    /*  the estimation is now necesssary 
     if(withAccelerationEstimation_)  
     {
       estimateAccelerations();
     }
-    */
+    updateGlobalKine_();
   }
   return worldCentroidStateVector_;
 }
@@ -425,7 +424,7 @@ kine::LocalKinematics KineticsObserver::estimateAccelerations()
   worldCentroidStateKinematics_.linAcc.set(true);
   worldCentroidStateKinematics_.angAcc.set(true);
 
-  computeAccelerations_(worldCentroidStateKinematics_, forceCentroid, torqueCentroid, worldCentroidStateKinematics_.linAcc(),
+  computeLocalAccelerations_(worldCentroidStateKinematics_, forceCentroid, torqueCentroid, worldCentroidStateKinematics_.linAcc(),
                         worldCentroidStateKinematics_.angAcc());
 
   return worldCentroidStateKinematics_;
@@ -1678,6 +1677,12 @@ void KineticsObserver::updateKine_()
   }
 }
 
+void KineticsObserver::updateGlobalKine_()
+{
+  worldCentroidKinematics_ = worldCentroidStateKinematics_;
+}
+
+
 void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroidStateVector, Vector3 & force, Vector3 & torque)
 {
   force += worldCentroidStateVector.segment<sizeForce>(unmodeledWrenchIndex());
@@ -1696,7 +1701,7 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
   }
 }
 
-void KineticsObserver::computeAccelerations_(LocalKinematics & worldCentroidStateKinematics,
+void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroidStateKinematics,
                                              const Vector3 & totalCentroidForce,
                                              const Vector3 & totalCentroidTorque,
                                              Vector3 & linAcc,
@@ -1860,7 +1865,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   Vector3 & linacc = worldCentroidStateKinematics.linAcc(); /// reference (Vector3&)
   Vector3 & angacc = worldCentroidStateKinematics.angAcc(); /// reference
 
-  computeAccelerations_(worldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
+  computeLocalAccelerations_(worldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
 
   worldCentroidStateKinematics.integrate(dt_);
 
@@ -1938,7 +1943,7 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
   Vector3 & linacc = worldCentroidStateKinematics.linAcc();
   Vector3 & angacc = worldCentroidStateKinematics.angAcc();
 
-  computeAccelerations_(worldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
+  computeLocalAccelerations_(worldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
 
   LocalKinematics & worldImuKinematics = opt_.locKine;
 

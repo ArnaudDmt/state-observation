@@ -1081,8 +1081,8 @@ protected:
   IndexedVector3 sigma_, sigmad_;
   IndexedMatrix3 I_, Id_;
 
-  TimeIndex k_est_;
-  TimeIndex k_data_;
+  TimeIndex k_est_; // time index of the last estimation
+  TimeIndex k_data_; // time index of the current measurements
 
   double mass_;
 

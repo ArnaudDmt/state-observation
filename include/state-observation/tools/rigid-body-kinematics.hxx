@@ -1114,7 +1114,6 @@ inline Kinematics::Kinematics(const LocalKinematics & locK)
   {
     angAcc = orientation * locK.angAcc();
   }
-  
 }
 
 inline Kinematics & Kinematics::fromVector(const Vector & v, Kinematics::Flags::Byte flags)

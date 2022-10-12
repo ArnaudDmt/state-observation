@@ -191,22 +191,19 @@ Index KineticsObserver::getStateSize() const
 Index KineticsObserver::getMeasurementSize() const
 {
   Index size = 0;
-  if(k_est_ != k_data_) // test if there are new measurements
+  for(VectorIMUConstIterator i = imuSensors_.begin(); i != imuSensors_.end(); ++i)
   {
-    for(VectorIMUConstIterator i = imuSensors_.begin(); i != imuSensors_.end(); ++i)
+    if(i->time == k_data_)
     {
-      if(i->time == k_data_)
-      {
-        size += sizeIMUSignal;
-      }
+      size += sizeIMUSignal;
     }
+  }
 
-    size += numberOfContactRealSensors_ * sizeWrench;
+  size += numberOfContactRealSensors_ * sizeWrench;
 
-    if(absPoseSensor_.time == k_data_)
-    {
-      size += sizePose;
-    }
+  if(absPoseSensor_.time == k_data_)
+  {
+    size += sizePose;
   }
 
   return size;

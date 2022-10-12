@@ -510,6 +510,8 @@ struct Kinematics
 
   explicit inline Kinematics(const LocalKinematics & locK);
 
+  inline Kinematics & operator=(const LocalKinematics & locK);
+
   /// Fills from vector
   /// the flags show which parts of the kinematics to be loaded from the vector
   /// the order of the vector is
@@ -598,6 +600,8 @@ struct LocalKinematics
   inline LocalKinematics(const LocalKinematics & multiplier1, const LocalKinematics & multiplier2);
 
   explicit inline LocalKinematics(const Kinematics & kin);
+
+  inline LocalKinematics & operator=(const Kinematics & kine);
 
   /// Fills from vector
   /// the flags show which parts of the kinematics to be loaded from the vector

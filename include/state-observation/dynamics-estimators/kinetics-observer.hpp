@@ -98,6 +98,8 @@ public:
   /// @param b
   void setWithAccelerationEstimation(bool b = true);
 
+  bool getWithAccelerationEstimation() const;
+
   /// @brief Set if the gyrometers bias is computed or not.
   ///        This parameter is global for all the IMUs.
   ///

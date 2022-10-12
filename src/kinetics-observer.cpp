@@ -528,6 +528,11 @@ void KineticsObserver::setWithAccelerationEstimation(bool b)
   withAccelerationEstimation_ = b;
 }
 
+bool KineticsObserver::getWithAccelerationEstimation() const
+{
+  return withAccelerationEstimation_;
+}
+
 void KineticsObserver::setWithGyroBias(bool b)
 {
   withAccelerationEstimation_ = b;

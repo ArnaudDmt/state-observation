@@ -1084,6 +1084,11 @@ inline Kinematics::Kinematics(const Kinematics & multiplier1, const Kinematics &
 
 inline Kinematics::Kinematics(const LocalKinematics & locK)
 {
+  *this = locK;
+}
+
+inline Kinematics & Kinematics::operator=(const LocalKinematics & locK)
+{
   BOOST_ASSERT(locK.orientation.isSet() && "The transformation to the local frame requires the orientation");
 
   locK.orientation.toMatrix3();
@@ -2299,7 +2304,11 @@ inline LocalKinematics::LocalKinematics(const LocalKinematics & multiplier1, con
 inline LocalKinematics::LocalKinematics(const Kinematics & kin) // we consider we can modify directly the globalKine variables
                                                         // as it would then be outdated
 {
+  *this = kin;
+}
 
+inline LocalKinematics & LocalKinematics::operator=(const Kinematics & kin)
+{
   BOOST_ASSERT(kin.orientation.isSet() && "The transformation to the local frame requires the orientation");
 
   orientation = kin.orientation;

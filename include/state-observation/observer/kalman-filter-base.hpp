@@ -50,6 +50,7 @@ namespace stateObservation
 class STATE_OBSERVATION_DLLAPI KalmanFilterBase : public ZeroDelayObserver, protected StateVectorArithmetics
 {
 public:
+  bool withInnovation;
   /// The type of the jacobian df/dx
   typedef Matrix Amatrix;
 

@@ -137,7 +137,15 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   // innovation
 
   oc_.kGain.noalias() = oc_.pbar * (c_.transpose() * oc_.inoMeasCovInverse);
-  innovation_.noalias() = oc_.kGain * oc_.inoMeas;
+  
+  if (withInnovation)
+  {
+    innovation_.noalias() = oc_.kGain * oc_.inoMeas;
+  }
+  else
+  {
+    innovation_ = Vector::Zero(xbar_().size());
+  }
 
   // update
 

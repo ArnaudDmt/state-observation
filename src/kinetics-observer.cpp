@@ -527,6 +527,11 @@ void KineticsObserver::setWithAccelerationEstimation(bool b)
   withAccelerationEstimation_ = b;
 }
 
+void KineticsObserver::setWithInnovation(bool b)
+{
+  ekf_.withInnovation = b;
+}
+
 bool KineticsObserver::getWithAccelerationEstimation() const
 {
   return withAccelerationEstimation_;

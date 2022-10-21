@@ -358,6 +358,26 @@ stateObservation::TimeIndex KineticsObserver::getStateVectorTimeIndex() const
   return ekf_.getCurrentTime();
 }
 
+kine::Kinematics KineticsObserver::getPredictedGlobalCentroidKinematics() const
+{
+  return predictedWorldCentroidKinematics_;
+}
+
+std::vector<Vector> KineticsObserver::getPredictedAccelerometersGravityComponent() const
+{
+  return predictedAccelerometersGravityComponent_;
+}
+
+std::vector<Vector> KineticsObserver::getPredictedAccelerometers() const
+{
+  return predictedAccelerometers_;
+}
+
+std::vector<Vector> KineticsObserver::getPredictedAccelerometersLinAccComponent() const
+{
+  return predictedWorldIMUsLinAcc_;
+}
+
 kine::LocalKinematics KineticsObserver::getLocalCentroidKinematics() const
 {
   return worldCentroidStateKinematics_;
@@ -1950,6 +1970,10 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
 
   LocalKinematics & worldImuKinematics = opt_.locKine;
 
+  predictedAccelerometersGravityComponent_.clear(); // just for debug, to be removed. Clears the gravity component of the measurement for each accelerometer
+  predictedWorldIMUsLinAcc_.clear();
+
+
   for(VectorIMUConstIterator i = imuSensors_.begin(); i != imuSensors_.end(); ++i)
   {
     if(i->time == k_data_)
@@ -1961,6 +1985,11 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
       /// accelerometer
       y.segment<sizeAcceleroSignal>(imu.measIndex).noalias() =
           worldImuKinematics.linAcc() + worldImuOri.transpose() * cst::gravity;
+      
+      predictedWorldIMUsLinAcc_.push_back(worldImuKinematics.linAcc());
+      predictedAccelerometersGravityComponent_.push_back(worldImuOri.transpose() * cst::gravity);
+      predictedAccelerometers_.push_back(y.segment<sizeAcceleroSignal>(imu.measIndex));
+
       /// gyrometer
       y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() =
           worldImuKinematics.angVel();

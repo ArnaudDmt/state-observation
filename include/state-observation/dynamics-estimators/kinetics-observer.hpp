@@ -399,6 +399,24 @@ public:
   /// @return const Vector& The state vector
   const Vector & update();
 
+
+  /// @brief Returns the predicted Kinematics object of the centroid in the world frame at the time of the measurement predictions
+
+  /// @return const Kinematics& The predicted kinematics
+  Kinematics getPredictedGlobalCentroidKinematics() const;
+
+  /// @brief Returns the predicted gravitational component of the accelerometers measurement
+
+  /// @return const Kinematics& The predicted kinematics
+  std::vector<Vector> getPredictedAccelerometersGravityComponent() const;
+
+  /// @brief Returns the predicted linear acceleration component of the accelerometers measurement
+
+  /// @return const Kinematics& The predicted kinematics
+  std::vector<Vector> getPredictedAccelerometersLinAccComponent() const;
+
+  std::vector<Vector> getPredictedAccelerometers() const;
+
   /// @brief Get the Kinematics of the observed local frame
   /// @details the kinemactics are the main output of this observer. It includes the linear and angular position and
   /// velocity but not the accelerations by default. To get the acceleration call estimateAccelerations(). This
@@ -1065,7 +1083,12 @@ protected:
   Vector oldWorldCentroidStateVector_;
 
   LocalKinematics worldCentroidStateKinematics_;
-  LocalKinematics worldCentroidKinematics_;
+  Kinematics worldCentroidKinematics_;
+
+  Kinematics predictedWorldCentroidKinematics_;
+  std::vector<Vector> predictedAccelerometersGravityComponent_; //the gravity component of the measurement for each accelerometer
+  std::vector<Vector> predictedWorldIMUsLinAcc_; //the gravity component of the measurement for each accelerometer
+  std::vector<Vector> predictedAccelerometers_;
 
   Vector3 additionalForce_;
   Vector3 additionalTorque_;

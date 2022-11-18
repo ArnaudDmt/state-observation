@@ -908,17 +908,9 @@ inline const Orientation & Orientation::integrate(Vector3 dt_x_omega)
   check_();
   if(q_.isSet())
   {
-    if(isMatrixSet())
-    {
-      Quaternion q = kine::rotationVectorToQuaternion(dt_x_omega);
-      q_ = q * q_();
-      m_ = q.toRotationMatrix() * m_();
-    }
-    else
-    {
-      q_ = kine::rotationVectorToQuaternion(dt_x_omega) * q_();
-    }
-  }
+    m_.reset();
+    q_ = kine::rotationVectorToQuaternion(dt_x_omega) * q_();
+  }  
   else
   {
     m_ = kine::rotationVectorToRotationMatrix(dt_x_omega) * m_();

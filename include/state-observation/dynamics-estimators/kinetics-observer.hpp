@@ -403,7 +403,7 @@ public:
   /// @brief Returns the predicted Kinematics object of the centroid in the world frame at the time of the measurement predictions
 
   /// @return const Kinematics& The predicted kinematics
-  Kinematics getPredictedGlobalCentroidKinematics() const;
+  Vector getPredictedGlobalCentroidState() const;
 
   /// @brief Returns the predicted gravitational component of the accelerometers measurement
 
@@ -1004,6 +1004,8 @@ public:
 
   bool getContactIsSetByNum(const int & num) const;
 
+  const std::vector<Kinematics> getContactPoses() const;
+
   ///////////////////////////////////////////////////////////////
   /// @name State vector representation arithmetics and derivation (advanced use)
   ///////////////////////////////////////////////////////////////
@@ -1085,7 +1087,7 @@ protected:
   LocalKinematics worldCentroidStateKinematics_;
   Kinematics worldCentroidKinematics_;
 
-  Kinematics predictedWorldCentroidKinematics_;
+  Vector predictedWorldCentroidState_;
   std::vector<Vector> predictedAccelerometersGravityComponent_; //the gravity component of the measurement for each accelerometer
   std::vector<Vector> predictedWorldIMUsLinAcc_; //the gravity component of the measurement for each accelerometer
   std::vector<Vector> predictedAccelerometers_;

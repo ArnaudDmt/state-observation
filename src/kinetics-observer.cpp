@@ -1924,9 +1924,9 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   {
     if(i->isSet)
     {
-
       Kinematics & centroidContactKine = i->centroidContactKine; 
-      Kinematics & worldContactRefPose = i->worldRefPose;
+      Kinematics worldContactRefPose;
+      worldContactRefPose.fromVector(x.segment<sizePose>(contactPosIndex(i)), flagsPoseKine);
 
       Matrix3 & Kpt = i->linearStiffness;
       Matrix3 & Kdt = i->linearDamping;

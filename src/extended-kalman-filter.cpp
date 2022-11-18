@@ -139,6 +139,7 @@ must set directInputOutputFeedthrough to 'false' in the constructor");
       opt.u_ = inputVectorZero();
     }
   }
+  
 
   return f_->measureDynamics(x, opt.u_, k);
 }
@@ -194,12 +195,12 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
       if (opt.dx_.coeff(j) > 1e+30 )
       {
         //std::cout << std::endl << "error indexes: " << std::endl << "(" << j << "," << i << ")" << std::endl;
-        BOOST_ASSERT(false && "error on A");
+        //BOOST_ASSERT(false && "error on A");
         stopTest = true;
       }
 
     }
-    BOOST_ASSERT(!stopTest && "Erreurs sur A");
+    //BOOST_ASSERT(!stopTest && "Erreurs sur A");
 
 
     opt.a_.col(i) = opt.dx_;
@@ -237,7 +238,6 @@ KalmanFilterBase::Cmatrix ExtendedKalmanFilter::getCMatrixFD(const Vector & dx)
     arithm_->stateSum(xbar_(), opt.dx_, opt.xp_);
 
     opt.yp_ = simulateSensor_(opt.xp_, k + 1);
-
     opt.yp_ -= ybar_();
     opt.yp_ /= dx[i];
 

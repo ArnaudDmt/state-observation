@@ -317,6 +317,23 @@ const Vector & KineticsObserver::update()
       ekf_.setA(computeAMatrix_());
       ekf_.setC(computeCMatrix_());
     }
+    // std::cout << std::endl << "d_kine/d_kine : " << std::endl << ekf_.getA().block<12, 12>(posIndexTangent(), posIndexTangent()) << std::endl;
+    
+    int j = 0;
+    for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
+    {
+      if(i->isSet)
+      {
+        //std::cout << std::endl << "contact " + std::to_string(j) + " : Q : " << std::endl << ekf_.getQ().block<12, 12>(contactPosIndexTangent(), posIndexTangent()) << std::endl;
+        //std::cout << std::endl << "contact " + std::to_string(j) + " : d_kine/d_contact : " << std::endl << ekf_.getA().block<12, 12>(posIndexTangent(), contactPosIndexTangent(i)) << std::endl;
+        //std::cout << std::endl << "contact " + std::to_string(j) + " : d_contact/d_kine : " << std::endl << ekf_.getA().block<12, 12>(contactPosIndexTangent(i), posIndexTangent()) << std::endl;
+        //std::cout << std::endl << "contact " + std::to_string(j) + " : d_contact/d_contact : " << std::endl << ekf_.getA().block<12, 12>(contactPosIndexTangent(i), contactPosIndexTangent(i)) << std::endl;
+        //std::cout << std::endl << "contact " + std::to_string(j) + " : Kinematics : " << std::endl << i->centroidContactKine << std::endl;
+      }
+      j++;
+
+    }
+    
 
     worldCentroidStateVector_ = ekf_.getEstimatedState(k_data_);
 
@@ -368,6 +385,7 @@ std::vector<Vector> KineticsObserver::getPredictedAccelerometersGravityComponent
 
 std::vector<Vector> KineticsObserver::getPredictedAccelerometers() const
 {
+  //std::cout << std::endl << "predictedAccelerometers_: " << std::endl << predictedAccelerometers_.at(0) << std::endl;
   return predictedAccelerometers_;
 }
 
@@ -1737,6 +1755,7 @@ void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroi
               * (totalCentroidTorque - Id_() * worldCentroidStateKinematics.angVel() - sigmad_() - worldCentroidStateKinematics.angVel().cross(I_() * worldCentroidStateKinematics.angVel() + sigma_()));
 
   linAcc = (totalCentroidForce / mass_) - Rt*cst::gravity;
+  
 }
 
 
@@ -1951,6 +1970,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
 
 Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unused*/, TimeIndex k)
 {
+  
   Vector y(getMeasurementSize());
 
   Vector3 forceCentroid = additionalForce_;

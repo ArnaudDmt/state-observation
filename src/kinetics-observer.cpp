@@ -2080,7 +2080,7 @@ int KineticsObserver::getContactMeasIndexByNum(const int & num) const
 
 bool KineticsObserver::getContactIsSetByNum(const int & num) const
 {
-  if (num >= contacts_.size())
+  if (num >= contacts_.size() || contacts_.size() == 0)
   {
     return false;
   }

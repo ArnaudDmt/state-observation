@@ -308,7 +308,15 @@ public:
   /// @param wrenchSensorCovMat the new default covariance matrix
   void setContactWrenchSensorDefaultCovarianceMatrix(const Matrix6 & wrenchSensorCovMat);
 
-  void initWorldCentroidStateVector(const Vector & initStateVector);
+  void setInitWorldCentroidStateVector(const Vector & initStateVector);
+
+  void setAllCovariances(const Matrix3 & statePositionInitCovariance, const Matrix3 & stateOriInitCovariance,
+            const Matrix3 & stateLinVelInitCovariance, const Matrix3 & stateAngVelInitCovariance, const Matrix3 & gyroBiasInitCovariance, 
+            const Matrix6 & unmodeledWrenchInitCovariance, const Matrix12 & contactInitCovariance, const Matrix3 & statePositionProcessCovariance,
+            const Matrix3 & stateOriProcessCovariance, const Matrix3 & stateLinVelProcessCovariance, const Matrix3 & stateAngVelProcessCovariance,
+            const Matrix3 & gyroBiasProcessCovariance, const Matrix6 & unmodeledWrenchProcessCovariance, const Matrix12 & contactProcessCovariance, 
+            const Matrix3 & positionSensorCovariance, const Matrix3 & orientationSensorCoVariance, const Matrix3 & acceleroSensorCovariance,
+            const Matrix3 & gyroSensorCovariance, const Matrix6 & contactSensorCovariance );
   /// @}
 
   // /////////////////////////////////////////////

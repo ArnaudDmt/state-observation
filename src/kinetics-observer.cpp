@@ -2048,11 +2048,62 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
   return y;
 }
 
-void KineticsObserver::initWorldCentroidStateVector(const Vector & initStateVector)
+void KineticsObserver::setInitWorldCentroidStateVector(const Vector & initStateVector)
 {
   worldCentroidStateVector_.setZero();
   setStateVector(initStateVector, false);
   oldWorldCentroidStateVector_ = worldCentroidStateVector_;
+}
+
+void KineticsObserver::setAllCovariances(const Matrix3 & statePositionInitCovariance, const Matrix3 & stateOriInitCovariance,
+        const Matrix3 & stateLinVelInitCovariance, const Matrix3 & stateAngVelInitCovariance, const Matrix3 & gyroBiasInitCovariance, 
+        const Matrix6 & unmodeledWrenchInitCovariance, const Matrix12 & contactInitCovariance, const Matrix3 & statePositionProcessCovariance,
+        const Matrix3 & stateOriProcessCovariance, const Matrix3 & stateLinVelProcessCovariance, const Matrix3 & stateAngVelProcessCovariance,
+        const Matrix3 & gyroBiasProcessCovariance, const Matrix6 & unmodeledWrenchProcessCovariance, const Matrix12 & contactProcessCovariance, 
+        const Matrix3 & positionSensorCovariance, const Matrix3 & orientationSensorCoVariance, const Matrix3 & acceleroSensorCovariance,
+        const Matrix3 & gyroSensorCovariance, const Matrix6 & contactSensorCovariance )
+{
+  statePosInitCovMat_ = statePositionInitCovariance;
+  stateOriInitCovMat_ = stateOriInitCovariance;
+  stateLinVelInitCovMat_ = stateLinVelInitCovariance;
+  stateAngVelInitCovMat_ = stateAngVelInitCovariance;
+  gyroBiasInitCovMat_ = gyroBiasInitCovariance;
+  unmodeledWrenchInitCovMat_= unmodeledWrenchInitCovariance;
+  contactInitCovMatDefault_ = contactInitCovariance;
+
+  statePosProcessCovMat_ = statePositionProcessCovariance;
+  stateOriProcessCovMat_ = stateOriProcessCovariance;
+  stateLinVelProcessCovMat_ = stateLinVelProcessCovariance;
+  stateAngVelProcessCovMat_ = stateAngVelProcessCovariance;
+  gyroBiasProcessCovMat_ = gyroBiasProcessCovariance;
+  unmodeledWrenchProcessCovMat_ = unmodeledWrenchProcessCovariance;
+  contactProcessCovMatDefault_ = contactProcessCovariance;
+
+  absPoseSensorCovMatDefault_ = blockMat6(positionSensorCovariance,
+                                        Matrix3::Zero(),
+                                        Matrix3::Zero(),
+                                        orientationSensorCoVariance);
+  acceleroCovMatDefault_ = acceleroSensorCovariance;
+  gyroCovMatDefault_= gyroSensorCovariance;
+  contactWrenchSensorCovMatDefault_ = contactSensorCovariance;
+
+  stateKinematicsInitCovMat_.block<sizePos, sizePos>(posIndexTangent(), posIndexTangent()) = statePosInitCovMat_;
+  stateKinematicsInitCovMat_.block<sizeOriTangent, sizeOriTangent>(oriIndexTangent(), oriIndexTangent()) = stateOriInitCovMat_;
+  stateKinematicsInitCovMat_.block<sizeLinVel, sizeLinVel>(linVelIndexTangent(), linVelIndexTangent()) = stateLinVelInitCovMat_;
+  stateKinematicsInitCovMat_.block<sizeAngVel, sizeAngVel>(angVelIndexTangent(), angVelIndexTangent()) = stateAngVelInitCovMat_;
+
+  stateKinematicsProcessCovMat_.setZero();
+  stateKinematicsProcessCovMat_.block<sizePos, sizePos>(posIndexTangent(), posIndexTangent()) = statePosProcessCovMat_;
+  stateKinematicsProcessCovMat_.block<sizeOriTangent, sizeOriTangent>(oriIndexTangent(), oriIndexTangent()) = stateOriProcessCovMat_;
+  stateKinematicsProcessCovMat_.block<sizeLinVel, sizeLinVel>(linVelIndexTangent(), linVelIndexTangent()) = stateLinVelProcessCovMat_;
+  stateKinematicsProcessCovMat_.block<sizeAngVel, sizeAngVel>(angVelIndexTangent(), angVelIndexTangent()) = stateAngVelProcessCovMat_;
+
+  //ekf_.setStateCovariance(ekf_.getPmatrixZero());
+  ekf_.setQ(ekf_.getQmatrixZero());
+  ekf_.setR(ekf_.getRmatrixZero());
+
+  resetStateCovarianceMat();
+  resetProcessCovarianceMat();
 }
 
 Matrix displayVectorWithIndex(const Vector & vec1, const int & numbIndexes) // to be removed

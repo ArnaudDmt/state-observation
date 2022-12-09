@@ -315,6 +315,7 @@ const Vector & KineticsObserver::update()
     {
       estimateAccelerations();
       ekf_.setA(computeAMatrix_());
+      predictedWorldCentroidState_ = ekf_.getLastPrediction();
       ekf_.setC(computeCMatrix_());
     }
     // std::cout << std::endl << "d_kine/d_kine : " << std::endl << ekf_.getA().block<12, 12>(posIndexTangent(), posIndexTangent()) << std::endl;
@@ -381,6 +382,11 @@ Vector KineticsObserver::getPredictedGlobalCentroidState() const
 std::vector<Vector> KineticsObserver::getPredictedAccelerometersGravityComponent() const
 {
   return predictedAccelerometersGravityComponent_;
+}
+
+Vector KineticsObserver::getPredictedAccelerationByStateDynamics() const
+{
+  return predictedAccelerationByStateDynamics_.at(0);
 }
 
 std::vector<Vector> KineticsObserver::getPredictedAccelerometers() const
@@ -1383,6 +1389,8 @@ void KineticsObserver::startNewIteration_()
 {
   if(k_est_ == k_data_)
   {
+    predictedAccelerationByStateDynamics_.clear();
+
     ++k_data_;
     numberOfContactRealSensors_ = 0;
     currentIMUSensorNumber_ = 0;

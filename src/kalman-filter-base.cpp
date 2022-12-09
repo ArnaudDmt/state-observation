@@ -1,5 +1,6 @@
 #include <state-observation/observer/kalman-filter-base.hpp>
 #include <state-observation/tools/probability-law-simulation.hpp>
+#include <iostream>
 
 #ifndef NDEBUG
 //#define VERBOUS_KALMANFILTER
@@ -137,7 +138,7 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   // innovation
 
   oc_.kGain.noalias() = oc_.pbar * (c_.transpose() * oc_.inoMeasCovInverse);
-  
+
   if (withInnovation)
   {
     innovation_.noalias() = oc_.kGain * oc_.inoMeas;
@@ -151,13 +152,13 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
 
   arithm_->stateSum(xbar_(), innovation_, oc_.xhat);
 
-#ifdef VERBOUS_KALMANFILTER
+#ifndef VERBOUS_KALMANFILTER
   Eigen::IOFormat CleanFmt(2, 0, " ", "\n", "", "");
   std::cout << "A" << std::endl << a_.format(CleanFmt) << std::endl;
   std::cout << "C" << std::endl << c_.format(CleanFmt) << std::endl;
   std::cout << "P" << std::endl << pr_.format(CleanFmt) << std::endl;
   std::cout << "K" << std::endl << oc_.kGain.format(CleanFmt) << std::endl;
-  std::cout << "Xbar" << std::endl << xbar().transpose().format(CleanFmt) << std::endl;
+  std::cout << "Xbar" << std::endl << xbar_().transpose().format(CleanFmt) << std::endl;
   std::cout << "inoMeasCov" << std::endl << oc_.inoMeasCov.format(CleanFmt) << std::endl;
   std::cout << "oc_.pbar" << std::endl << (oc_.pbar).format(CleanFmt) << std::endl;
   std::cout << "c_ * (oc_.pbar * c_.transpose())" << std::endl
@@ -165,18 +166,60 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   std::cout << "inoMeasCovInverse" << std::endl << oc_.inoMeasCovInverse.format(CleanFmt) << std::endl;
   std::cout << "predictedMeasurement " << std::endl << ybar_().transpose().format(CleanFmt) << std::endl;
   std::cout << "inoMeas" << std::endl << oc_.inoMeas.transpose().format(CleanFmt) << std::endl;
-  std::cout << "inovation_" << std::endl << inovation_.transpose().format(CleanFmt) << std::endl;
+  std::cout << "inovation_" << std::endl << innovation_.transpose().format(CleanFmt) << std::endl;
   std::cout << "Xhat" << std::endl << oc_.xhat.transpose().format(CleanFmt) << std::endl;
 #endif // VERBOUS_KALMANFILTER
 
   this->x_.set(oc_.xhat, k + 1);
   pr_.noalias() = -oc_.kGain * c_;
   pr_.diagonal().array() += 1;
+  Matrix IKc = pr_;
   pr_ *= oc_.pbar;
-
+  IKc = IKc * oc_.pbar * IKc.transpose() + oc_.kGain * r_ * oc_.kGain.transpose();
   // simmetrize the pr_ matrix
   pr_ = (pr_ + pr_.transpose()) * 0.5;
+  IKc = (IKc + IKc.transpose()) * 0.5;
 
+  Matrix diff = IKc - pr_;
+  double max = 0;
+  double minRatio = 1000.0;
+  int maxRow = 0;
+  int maxCol = 0;
+  double diffMinRatio = 0.0;
+  double covMinRatio = 0.0;
+  double covMaxRatio = 0.0;
+  int rowMinRatio = 0.0;
+  int colMinRatio = 0.0;
+  std::cout << std::endl << "Q" << std::endl << (q_).format(CleanFmt) << std::endl;
+  std::cout << std::endl << "R" << std::endl << (r_).format(CleanFmt) << std::endl;
+  std::cout << std::endl << "Diff" << std::endl << (diff).format(CleanFmt) << std::endl;
+  for (int i = 0; i<diff.rows(); i++)
+  {
+    for (int j = 0; j < diff.cols(); j++)
+    {
+      if (abs(diff(i,j)) > max)
+      {
+        max = diff(i,j);
+        maxRow = i;
+        maxCol = j;
+      }
+      if (diff(i,j) != 0 && std::min(abs(pr_(i, j)), abs(IKc(i, j))) / abs(diff(i,j)) < minRatio)
+      {
+        minRatio = std::min(abs(pr_(i, j)), abs(IKc(i, j))) / abs(diff(i,j));
+        rowMinRatio = i;
+        colMinRatio = j;
+        covMinRatio = std::min(abs(pr_(i, j)), abs(IKc(i, j)));
+        covMaxRatio = std::max(abs(pr_(i, j)), abs(IKc(i, j)));
+        diffMinRatio = abs(diff(i,j));
+      }
+    }
+  }
+  /*
+  std::cout << std::endl << "Positions x : " << "pr_ : " << pr_(0,0) << "  .  IKc" << IKc(0,0) << "  .  pr_ - IKc" << pr_(0,0) - IKc(0,0) << std::endl;
+  std::cout << std::endl << "Max : " << max << "    on index : [" << std::to_string(maxRow) << ", " << std::to_string(maxCol) << "]" << std::endl;
+  std::cout << std::endl << "Ratio on this index : " << std::endl << std::min(pr_(maxRow, maxCol), IKc(maxRow, maxCol)) / max << " .    Diff at that index : " << diff(maxRow, maxCol) << " .  Min covariance at that index : " << std::min(pr_(maxRow, maxCol), IKc(maxRow, maxCol)) << " .  Max covariance at that index : " << std::max(pr_(maxRow, maxCol), IKc(maxRow, maxCol)) << std::endl;
+  std::cout << std::endl << "Min ratio : " << minRatio << " on index : [" << std::to_string(rowMinRatio) << ", " << std::to_string(colMinRatio) << "].    Diff at that index : " << diffMinRatio << " .  Min covariance at that index : " << covMinRatio << " .  Max covariance at that index : " << covMaxRatio << std::endl;
+  */
   return oc_.xhat;
 }
 

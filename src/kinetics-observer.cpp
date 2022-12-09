@@ -1604,7 +1604,7 @@ Matrix KineticsObserver::computeAMatrix_()
       A.block<sizeForceTangent, sizePosTangent>(contactForceIndexTangent(i), contactPosIndexTangent(i)) = J_contactForce_contactPosition_at_same_time;
       A.block<sizeForceTangent, sizeForceTangent>(contactForceIndexTangent(i), contactForceIndexTangent(i)) = J_contactForce_pl_at_same_time*J_pl_contactForce + J_contactForce_R_at_same_time*J_R_contactForce + J_contactForce_vl_at_same_time*J_vl_contactForce + J_contactForce_omega_at_same_time*J_omega_contactForce;
       A.block<sizeForceTangent, sizeTorqueTangent>(contactForceIndexTangent(i), contactTorqueIndexTangent(i)) = J_contactForce_R_at_same_time*J_R_contactTorque + J_contactForce_omega_at_same_time * J_omega_contactTorque;
-    
+
       // Jacobians of the contacts torque
       Vector3 angVelSum = predictedWorldCentroidStateOri*(i->centroidContactKine.angVel()+predictedWorldCentroidStateAngVel);
       Vector3 ex = Vector3(1,0,0);
@@ -1763,7 +1763,7 @@ void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroi
               * (totalCentroidTorque - Id_() * worldCentroidStateKinematics.angVel() - sigmad_() - worldCentroidStateKinematics.angVel().cross(I_() * worldCentroidStateKinematics.angVel() + sigma_()));
 
   linAcc = (totalCentroidForce / mass_) - Rt*cst::gravity;
-  
+
 }
 
 

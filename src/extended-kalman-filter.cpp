@@ -210,7 +210,7 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
   sumA = Matrix::Zero(nt_, nt_);
   for(Index i = 0; i < nt_; i+=3) // to be deleted
   {
-    sumA(i,i) = opt.a_.block<3,3>(i, i).mean();
+    //sumA(i,i) = opt.a_.block<3,3>(i, i).mean();
   }
   //std::cout << std::endl << "A compact: " << std::endl << sumA.format(CleanFmt) << std::endl;
 

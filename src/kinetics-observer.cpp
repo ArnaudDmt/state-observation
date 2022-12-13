@@ -384,11 +384,6 @@ std::vector<Vector> KineticsObserver::getPredictedAccelerometersGravityComponent
   return predictedAccelerometersGravityComponent_;
 }
 
-Vector KineticsObserver::getPredictedAccelerationByStateDynamics() const
-{
-  return predictedAccelerationByStateDynamics_.at(0);
-}
-
 std::vector<Vector> KineticsObserver::getPredictedAccelerometers() const
 {
   //std::cout << std::endl << "predictedAccelerometers_: " << std::endl << predictedAccelerometers_.at(0) << std::endl;
@@ -1389,8 +1384,6 @@ void KineticsObserver::startNewIteration_()
 {
   if(k_est_ == k_data_)
   {
-    predictedAccelerationByStateDynamics_.clear();
-
     ++k_data_;
     numberOfContactRealSensors_ = 0;
     currentIMUSensorNumber_ = 0;

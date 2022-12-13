@@ -418,8 +418,6 @@ public:
   /// @return const Kinematics& The predicted kinematics
   std::vector<Vector> getPredictedAccelerometersGravityComponent() const;
 
-  Vector getPredictedAccelerationByStateDynamics() const;
-
   /// @brief Returns the predicted linear acceleration component of the accelerometers measurement
 
   /// @return const Kinematics& The predicted kinematics
@@ -1101,7 +1099,6 @@ protected:
   std::vector<Vector> predictedAccelerometersGravityComponent_; //the gravity component of the measurement for each accelerometer
   std::vector<Vector> predictedWorldIMUsLinAcc_; //the gravity component of the measurement for each accelerometer
   std::vector<Vector> predictedAccelerometers_;
-  std::vector<Vector> predictedAccelerationByStateDynamics_;
 
   Vector3 additionalForce_;
   Vector3 additionalTorque_;

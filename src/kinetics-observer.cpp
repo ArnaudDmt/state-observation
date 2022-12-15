@@ -1760,6 +1760,8 @@ void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroi
 
 void KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics & worldCentroidStateKinematics)
 {
+  Vector3 tempTotalCentroidForce = tempCentroidForce_;
+  Vector3 tempTotalCentroidTorque = tempCentroidTorque_;
   for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
   {
     if(i->isSet)
@@ -1772,22 +1774,14 @@ void KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics & worldCe
       Matrix3 & Kdr = i->angularDamping;
       Kinematics & worldContactPose = i->temp.worldContactPose;
 
-      Vector3 & tempContactForce = i-> temp.forceRungeKutta;
-      Vector3 & tempContactTorque = i-> temp.torqueRungeKutta;
-      Kinematics & rungeKuttaTempPose = i-> temp.rungeKuttaTempPose;
+      Kinematics & rungeKuttaTempPose = i-> temp.rungeKuttaInitPose;
 
       worldContactPose.setToProductNoAlias(worldCentroidStateKinematics, centroidContactKine);
     
-      tempContactForce += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpt * (worldContactPose.position() - rungeKuttaTempPose.position()) + Kdt * (worldContactPose.linVel() - rungeKuttaTempPose.linVel())));
-      tempContactTorque += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpr * kine::vectorComponent((worldContactPose.orientation.toQuaternion()*rungeKuttaTempPose.orientation.toQuaternion().inverse())) * 2 + Kdr * (worldContactPose.angVel() - rungeKuttaTempPose.angVel())));
-
-      rungeKuttaTempPose = worldContactPose; // we store the computed position to compute the next increment of force
-
-      tempCentroidForce_ += tempContactForce;
-      tempCentroidTorque_ += tempContactTorque;
+      tempTotalCentroidForce += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpt * (worldContactPose.position() - rungeKuttaTempPose.position()) + Kdt * (worldContactPose.linVel() - rungeKuttaTempPose.linVel())));
+      tempTotalCentroidTorque += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpr * kine::vectorComponent((worldContactPose.orientation.toQuaternion()*rungeKuttaTempPose.orientation.toQuaternion().inverse())) * 2 + Kdr * (worldContactPose.angVel() - rungeKuttaTempPose.angVel())));
     }
   }
-
   worldCentroidStateKinematics.angAcc =  worldCentroidStateKinematics.orientation.toMatrix3() * I_().inverse()
               * (tempCentroidTorque_ - Id_() * worldCentroidStateKinematics.orientation.toMatrix3().transpose() * worldCentroidStateKinematics.angVel() - sigmad_() - (worldCentroidStateKinematics.orientation.toMatrix3().transpose() * worldCentroidStateKinematics.angVel()).cross(I_() * worldCentroidStateKinematics.orientation.toMatrix3().transpose() * worldCentroidStateKinematics.angVel() + sigma_()));
 
@@ -1797,6 +1791,8 @@ void KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics & worldCe
 void KineticsObserver::computeRecursiveLocalAccelerations_(LocalKinematics & worldCentroidKinematics)
 {
   Kinematics globWorldCentroidStateKinematics(worldCentroidKinematics);
+  Vector3 tempTotalCentroidForce = tempCentroidForce_;
+  Vector3 tempTotalCentroidTorque = tempCentroidTorque_;
   for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
   {
     if(i->isSet)
@@ -1809,25 +1805,21 @@ void KineticsObserver::computeRecursiveLocalAccelerations_(LocalKinematics & wor
       Matrix3 & Kdr = i->angularDamping;
       Kinematics & worldContactPose = i->temp.worldContactPose;
 
-      Vector3 & tempContactForce = i-> temp.forceRungeKutta;
-      Vector3 & tempContactTorque = i-> temp.torqueRungeKutta;
-      Kinematics & rungeKuttaTempPose = i-> temp.rungeKuttaTempPose;
+      Vector3 tempContactForce = Eigen::Vector3d::Zero();
+      Vector3 tempContactTorque = Eigen::Vector3d::Zero();
+      
+      Kinematics & rungeKuttaTempPose = i-> temp.rungeKuttaInitPose;
 
       worldContactPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
-    
-      tempContactForce += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpt * (worldContactPose.position() - rungeKuttaTempPose.position()) + Kdt * (worldContactPose.linVel() - rungeKuttaTempPose.linVel())));
-      tempContactTorque += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpr * kine::vectorComponent((worldContactPose.orientation.toQuaternion()*rungeKuttaTempPose.orientation.toQuaternion().inverse())) * 2 + Kdr * (worldContactPose.angVel() - rungeKuttaTempPose.angVel())));
 
-      rungeKuttaTempPose = worldContactPose; // we store the computed position to compute the next increment of force
-
-      tempCentroidForce_ += tempContactForce;
-      tempCentroidTorque_ += tempContactTorque;
+      tempTotalCentroidForce += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpt * (worldContactPose.position() - rungeKuttaTempPose.position()) + Kdt * (worldContactPose.linVel() - rungeKuttaTempPose.linVel())));
+      tempTotalCentroidTorque += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpr * kine::vectorComponent((worldContactPose.orientation.toQuaternion()*rungeKuttaTempPose.orientation.toQuaternion().inverse())) * 2 + Kdr * (worldContactPose.angVel() - rungeKuttaTempPose.angVel())));
     }
   }
 
-  worldCentroidKinematics.angAcc = (tempCentroidForce_ / mass_) - worldCentroidKinematics.orientation.toMatrix3().transpose()*cst::gravity;
-  worldCentroidKinematics.linAcc = I_().inverse()
-              * (tempCentroidTorque_ - Id_() * worldCentroidKinematics.angVel() - sigmad_() - worldCentroidKinematics.angVel().cross(I_() * worldCentroidKinematics.angVel() + sigma_()));
+  worldCentroidKinematics.linAcc = (tempTotalCentroidForce / mass_) - worldCentroidKinematics.orientation.toMatrix3().transpose()*cst::gravity;
+  worldCentroidKinematics.angAcc = I_().inverse()
+              * (tempTotalCentroidTorque - Id_() * worldCentroidKinematics.angVel() - sigmad_() - worldCentroidKinematics.angVel().cross(I_() * worldCentroidKinematics.angVel() + sigma_()));
 }
 
 void KineticsObserver::computeContactForces_(VectorContactIterator i,
@@ -1995,9 +1987,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
         Matrix3 & Kpr = i->angularStiffness;
         Matrix3 & Kdr = i->angularDamping;
 
-        i->temp.rungeKuttaTempPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
-        i->temp.forceRungeKutta = x.segment<sizeForce>(contactForceIndex(i));
-        i->temp.torqueRungeKutta = x.segment<sizeTorque>(contactTorqueIndex(i));
+        i->temp.rungeKuttaInitPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
       }
     }
     worldCentroidStateKinematics.integrateRungeKutta4(dt_, *this);

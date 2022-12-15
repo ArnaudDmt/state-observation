@@ -928,10 +928,8 @@ protected:
       Kinematics worldContactPose; // the pose of the contact in the world frane obtained by forward kinematics from the centroid's frame. 
                                  // This is a temporary variable used for convenience. 
                                  // It must be called with care as it is called in several functions in the code.
-      Kinematics rungeKuttaTempPose;  // temporary contact pose in the world frame used to compute the increments of force in the Runge-Kutta approximation
+      Kinematics rungeKuttaInitPose;  // temporary contact pose in the world frame used to compute the increments of force in the Runge-Kutta approximation
 
-      Vector3 forceRungeKutta; // temporary contact forces and torques used for the Runge-Kutta approximation
-      Vector3 torqueRungeKutta;
     };
 
     Temp temp;

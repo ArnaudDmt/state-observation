@@ -1990,15 +1990,19 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
         i->temp.rungeKuttaInitPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
       }
     }
+    Kinematics glob(worldCentroidStateKinematics);
+    glob.integrateRungeKutta4(dt_, *this);
     worldCentroidStateKinematics.integrateRungeKutta4(dt_, *this);
     kineTest.integrate(dt_);
+    std::cout << std::endl << "glob: " << std::endl << glob << std::endl;
   }
-  else 
+  else
   {
     worldCentroidStateKinematics.integrate(dt_);
   }
   std::cout << std::endl << "kineTest: " << std::endl << kineTest << std::endl;
   std::cout << std::endl << "worldCentroidStateKinematics: " << std::endl << worldCentroidStateKinematics << std::endl;
+
   x.segment<sizeStateKine>(kineIndex()) = worldCentroidStateKinematics.toVector(flagsStateKine);
 
   globWorldCentroidStateKinematics = Kinematics(worldCentroidStateKinematics);

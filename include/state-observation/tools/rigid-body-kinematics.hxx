@@ -1259,13 +1259,6 @@ inline const Kinematics & Kinematics::integrateRungeKutta4(double dt, RecursiveA
   k2.angVel = y234.angVel;
   k2.linAcc = y234.linAcc;
   k2.angAcc = y234.angAcc;
-  
-  /*
-  k2.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
-  k2.angVel = y234.angVel;
-  k2.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
-  k2.angAcc = y234.angAcc;
-  */
 
   y234.position = position() + 0.5 * dt * k2.linVel;
   y234.linVel = linVel() + 0.5 * dt * k2.linAcc;
@@ -1282,13 +1275,6 @@ inline const Kinematics & Kinematics::integrateRungeKutta4(double dt, RecursiveA
   k3.linAcc = y234.linAcc;
   k3.angAcc = y234.angAcc;
 
-  /*
-  k3.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
-  k3.angVel = y234.angVel;
-  k3.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
-  k3.angAcc = y234.angAcc;
-  */
-
   y234.position = position() + dt * k3.linVel;
   y234.linVel = linVel() + dt * k3.linAcc;
 
@@ -1303,13 +1289,6 @@ inline const Kinematics & Kinematics::integrateRungeKutta4(double dt, RecursiveA
   k4.angVel = y234.angVel;
   k4.linAcc = y234.linAcc;
   k4.angAcc = y234.angAcc;
-
-  /*
-  k4.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
-  k4.angVel = y234.angVel;
-  k4.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
-  k4.angAcc = y234.angAcc;
-  */
 
   position() += dt/6 * (k1.linVel() + 2 * k2.linVel() + 2 * k3.linVel() + k4.linVel());
   orientation.integrateRightSide(dt/6 * (k1.angVel() + 2 * k2.angVel() + 2 * k3.angVel() + k4.angVel()));

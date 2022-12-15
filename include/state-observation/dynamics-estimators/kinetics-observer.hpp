@@ -38,7 +38,7 @@ namespace stateObservation
 /// This estimation is based on the assumption of viscoelastic contacts and using three kinds of measurements: IMUs, Force/Torque measurements (contact
 /// and other ones) and any absolute position measurements.
 ///
-class STATE_OBSERVATION_DLLAPI KineticsObserver : protected DynamicalSystemFunctorBase, protected kine::LocalKinematics::RecursiveAccelerationFunctorBase, protected StateVectorArithmetics
+class STATE_OBSERVATION_DLLAPI KineticsObserver : protected DynamicalSystemFunctorBase, protected kine::Kinematics::RecursiveAccelerationFunctorBase, protected kine::LocalKinematics::RecursiveAccelerationFunctorBase, protected StateVectorArithmetics
 {
 public:
   typedef kine::Kinematics Kinematics;
@@ -988,6 +988,8 @@ protected:
                              Vector3 & linAcc,
                              Vector3 & angAcc);
 
+  virtual void computeRecursiveGlobalAccelerations_(Kinematics & kine);
+  
   virtual void computeRecursiveLocalAccelerations_(LocalKinematics & locKine);
 
   /// the kinematics is not const to allow more optimized non const operators to work

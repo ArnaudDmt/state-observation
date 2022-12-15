@@ -1758,6 +1758,42 @@ void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroi
   linAcc = (totalCentroidForce / mass_) - worldCentroidStateKinematics.orientation.toMatrix3().transpose()*cst::gravity;
 }
 
+void KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics & worldCentroidStateKinematics)
+{
+  for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
+  {
+    if(i->isSet)
+    {
+      Kinematics & centroidContactKine = i->centroidContactKine; 
+
+      Matrix3 & Kpt = i->linearStiffness;
+      Matrix3 & Kdt = i->linearDamping;
+      Matrix3 & Kpr = i->angularStiffness;
+      Matrix3 & Kdr = i->angularDamping;
+      Kinematics & worldContactPose = i->temp.worldContactPose;
+
+      Vector3 & tempContactForce = i-> temp.forceRungeKutta;
+      Vector3 & tempContactTorque = i-> temp.torqueRungeKutta;
+      Kinematics & rungeKuttaTempPose = i-> temp.rungeKuttaTempPose;
+
+      worldContactPose.setToProductNoAlias(worldCentroidStateKinematics, centroidContactKine);
+    
+      tempContactForce += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpt * (worldContactPose.position() - rungeKuttaTempPose.position()) + Kdt * (worldContactPose.linVel() - rungeKuttaTempPose.linVel())));
+      tempContactTorque += -(worldContactPose.orientation.toMatrix3().transpose() * (Kpr * kine::vectorComponent((worldContactPose.orientation.toQuaternion()*rungeKuttaTempPose.orientation.toQuaternion().inverse())) * 2 + Kdr * (worldContactPose.angVel() - rungeKuttaTempPose.angVel())));
+
+      rungeKuttaTempPose = worldContactPose; // we store the computed position to compute the next increment of force
+
+      tempCentroidForce_ += tempContactForce;
+      tempCentroidTorque_ += tempContactTorque;
+    }
+  }
+
+  worldCentroidStateKinematics.angAcc =  worldCentroidStateKinematics.orientation.toMatrix3() * I_().inverse()
+              * (tempCentroidTorque_ - Id_() * worldCentroidStateKinematics.orientation.toMatrix3().transpose() * worldCentroidStateKinematics.angVel() - sigmad_() - (worldCentroidStateKinematics.orientation.toMatrix3().transpose() * worldCentroidStateKinematics.angVel()).cross(I_() * worldCentroidStateKinematics.orientation.toMatrix3().transpose() * worldCentroidStateKinematics.angVel() + sigma_()));
+
+  worldCentroidStateKinematics.linAcc = worldCentroidStateKinematics.orientation * (tempCentroidForce_ / mass_) - cst::gravity;
+}
+
 void KineticsObserver::computeRecursiveLocalAccelerations_(LocalKinematics & worldCentroidKinematics)
 {
   Kinematics globWorldCentroidStateKinematics(worldCentroidKinematics);

@@ -1229,6 +1229,96 @@ inline Kinematics & Kinematics::setZero(Kinematics::Flags::Byte flags)
   return setZero<Quaternion>(flags);
 }
 
+inline const Kinematics & Kinematics::integrateRungeKutta4(double dt, RecursiveAccelerationFunctorBase & accelerationFunctor)
+{
+  BOOST_ASSERT((position.isSet() && orientation.isSet() && linVel.isSet() && angVel.isSet()) && "The kinematics of the LocalKinematics object are not entirely set");
+  BOOST_ASSERT((linAcc.isSet() && angAcc.isSet()) && "The accelerations of the LocalKinematics object are not entirely set");
+  Kinematics y234;
+
+  Kinematics k1; // (velocities + accelerations) that have to be precomputed
+  Kinematics k2;
+  Kinematics k3;
+  Kinematics k4;
+  
+  k1.linVel = linVel;
+  k1.angVel = angVel;
+  k1.linAcc = linAcc;
+  k1.angAcc = angAcc;
+
+  y234.position = position() + 0.5 * dt * k1.linVel;
+  y234.linVel = linVel() + 0.5 * dt * k1.linAcc;
+
+  y234.orientation = orientation;
+  y234.orientation.integrateRightSide(0.5 * dt * k1.angVel);
+  y234.angVel = angVel() + 0.5 * dt * k1.angAcc;
+  
+  accelerationFunctor.computeRecursiveGlobalAccelerations_(y234); // computation of k2 (the acceleration part) in the global frame
+
+  //conversion of k2 to the local frame in order to make them compatible with the LocalKinematics object
+  k2.linVel = y234.linVel;
+  k2.angVel = y234.angVel;
+  k2.linAcc = y234.linAcc;
+  k2.angAcc = y234.angAcc;
+  
+  /*
+  k2.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
+  k2.angVel = y234.angVel;
+  k2.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
+  k2.angAcc = y234.angAcc;
+  */
+
+  y234.position = position() + 0.5 * dt * k2.linVel;
+  y234.linVel = linVel() + 0.5 * dt * k2.linAcc;
+
+  y234.orientation = orientation;
+  y234.orientation.integrateRightSide(0.5 * dt * k2.angVel);
+  y234.angVel = angVel() + 0.5 * dt * k2.angAcc;
+
+  accelerationFunctor.computeRecursiveGlobalAccelerations_(y234); // computation of k3 (the acceleration part) in the global frame
+
+  //conversion of k3 to the local frame in order to make them compatible with the LocalKinematics object
+  k3.linVel = y234.linVel;
+  k3.angVel = y234.angVel;
+  k3.linAcc = y234.linAcc;
+  k3.angAcc = y234.angAcc;
+
+  /*
+  k3.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
+  k3.angVel = y234.angVel;
+  k3.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
+  k3.angAcc = y234.angAcc;
+  */
+
+  y234.position = position() + dt * k3.linVel;
+  y234.linVel = linVel() + dt * k3.linAcc;
+
+  y234.orientation = orientation;
+  y234.orientation.integrateRightSide(dt * k3.angVel);
+  y234.angVel = angVel() + dt * k3.angAcc;
+
+  accelerationFunctor.computeRecursiveGlobalAccelerations_(y234); // computation of k4 (the acceleration part) in the global frame
+
+  //conversion of k4 to the local frame in order to make them compatible with the LocalKinematics object
+  k4.linVel = y234.linVel;
+  k4.angVel = y234.angVel;
+  k4.linAcc = y234.linAcc;
+  k4.angAcc = y234.angAcc;
+
+  /*
+  k4.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
+  k4.angVel = y234.angVel;
+  k4.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
+  k4.angAcc = y234.angAcc;
+  */
+
+  position() += dt/6 * (k1.linVel() + 2 * k2.linVel() + 2 * k3.linVel() + k4.linVel());
+  orientation.integrateRightSide(dt/6 * (k1.angVel() + 2 * k2.angVel() + 2 * k3.angVel() + k4.angVel()));
+  linVel() += dt/6 * (k1.linAcc() + 2 * k2.linAcc() + 2 * k3.linAcc() + k4.linAcc());
+  angVel() += dt/6 * (k1.angAcc() + 2 * k2.angAcc() + 2 * k3.angAcc() + k4.angAcc());
+
+  return *this;
+}
+
 inline const Kinematics & Kinematics::integrate(double dt)
 {
   if(angVel.isSet())

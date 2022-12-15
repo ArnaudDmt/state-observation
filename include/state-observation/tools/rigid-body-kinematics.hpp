@@ -495,6 +495,11 @@ struct Kinematics
     static const Byte all = position | orientation | linVel | angVel | linAcc | angAcc;
   };
 
+    struct RecursiveAccelerationFunctorBase 
+  {
+    virtual void computeRecursiveGlobalAccelerations_(Kinematics & kine) = 0;
+  };
+
   Kinematics() {}
 
   /// Constructor from a vector
@@ -526,6 +531,8 @@ struct Kinematics
   Kinematics & setZero(Flags::Byte = Flags::all);
 
   Kinematics & setZero(Flags::Byte = Flags::all);
+
+  inline const Kinematics & integrateRungeKutta4(double dt, RecursiveAccelerationFunctorBase & accelerationFunctor);
 
   inline const Kinematics & integrate(double dt);
 

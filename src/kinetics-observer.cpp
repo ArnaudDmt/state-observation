@@ -1935,10 +1935,10 @@ void KineticsObserver::measurementDifference(const Vector & measureVector1,
 Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*unused*/, TimeIndex)
 {
   Vector x = xInput;
-  Vector3 forceCentroid = additionalForce_;
-  Vector3 torqueCentroid = additionalTorque_;
+  tempCentroidForce_ = additionalForce_;
+  tempCentroidTorque_ = additionalTorque_;
 
-  addUnmodeledAndContactWrench_(x, forceCentroid, torqueCentroid);
+  addUnmodeledAndContactWrench_(x, tempCentroidForce_, tempCentroidTorque_);
 
   LocalKinematics worldCentroidStateKinematics(x.segment<sizeStateKine>(kineIndex()), flagsStateKine);
 
@@ -1991,7 +1991,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
     if(i->isSet)
     {
       Kinematics & centroidContactKine = i->centroidContactKine; 
-      Kinematics worldContactRefPose;
+      Kinematics worldContactRefPose; // not using the variable belonging to Contact as this variable must change only at the end of the update
       worldContactRefPose.fromVector(x.segment<sizePose>(contactPosIndex(i)), flagsPoseKine);
 
       Matrix3 & Kpt = i->linearStiffness;
@@ -1999,29 +1999,26 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
       Matrix3 & Kpr = i->angularStiffness;
       Matrix3 & Kdr = i->angularDamping;
 
-      Kinematics worldContactKine;  // the positon of the contact in the world frame, expressed in the contact's frame
+      Kinematics & worldContactPose = i->temp.worldContactPose;  // the positon of the contact in the world frame, expressed in the contact's frame
       //std::cout << std::endl << "k: " << std::endl << k_data_ << std::endl;
-      worldContactKine.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
+      worldContactPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
       //std::cout << std::endl << "centroidContactKine: " << std::endl << centroidContactKine << std::endl;
-      
-            /// Inverse of the orientation of the contact in the world frame = the orientation of the world frame in the contact's frame
-      Orientation contactWorldOri(worldContactKine.orientation.inverse());
       
       /// The error between the current kinematics and the rest kinematics
       /// of the flexibility
       //Kinematics errorKine;
-      //std::cout << std::endl << "worldContactKine: " << std::endl << worldContactKine << std::endl;
+      //std::cout << std::endl << "worldContactPose: " << std::endl << worldContactPose << std::endl;
       //std::cout << std::endl << "worldContactRefPose: " << std::endl << worldContactRefPose << std::endl;
-      //errorKine.setToDiffNoAlias(worldContactKine, worldContactRefPose); 
+      //errorKine.setToDiffNoAlias(worldContactPose, worldContactRefPose); 
       //std::cout << std::endl << "errorKine: " << std::endl << errorKine << std::endl;
       //std::cout << std::endl << "errorOrientation: " << std::endl << kine::vectorComponent((globWorldCentroidStateKinematics.orientation.toQuaternion()*centroidContactKine.orientation.toQuaternion()*worldContactRefPose.orientation.toQuaternion().inverse())) << std::endl;
       //x.segment<sizeForce>(contactForceIndex(i)) = -(contactWorldOri * (Kpt * errorKine.position() + Kdt * errorKine.linVel()));      
-      x.segment<sizeForce>(contactForceIndex(i)) = -(contactWorldOri * (Kpt * (worldContactKine.position() - worldContactRefPose.position()) + Kdt * worldContactKine.linVel()));
+      x.segment<sizeForce>(contactForceIndex(i)) = -(worldContactPose.orientation.toMatrix3().transpose() * (Kpt * (worldContactPose.position() - worldContactRefPose.position()) + Kdt * worldContactPose.linVel()));
       //std::cout << std::endl << "contactForce: " << std::endl << x.segment<sizeForce>(contactForceIndex(i)) << std::endl;
       //BOOST_ASSERT(x.segment<sizeForce>(contactForceIndex(i)).maxCoeff() < 1 && "Pb contact force");
       //x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent(errorKine.orientation.toQuaternion()) * 0.5 + Kdr * errorKine.angVel()));
       
-      x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr * kine::vectorComponent((worldContactKine.orientation.toQuaternion()*worldContactRefPose.orientation.toQuaternion().inverse())) * 2 + Kdr * worldContactKine.angVel()));
+      x.segment<sizeTorque>(contactTorqueIndex(i)) = -(worldContactPose.orientation.toMatrix3().transpose() * (Kpr * kine::vectorComponent((worldContactPose.orientation.toQuaternion()*worldContactRefPose.orientation.toQuaternion().inverse())) * 2 + Kdr * worldContactPose.angVel()));
 
     }
   }

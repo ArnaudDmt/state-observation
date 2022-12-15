@@ -923,7 +923,21 @@ protected:
     }
     virtual ~Contact() {}
 
-    Kinematics worldRefPose;
+    struct Temp
+    {
+      Kinematics worldContactPose; // the pose of the contact in the world frane obtained by forward kinematics from the centroid's frame. 
+                                 // This is a temporary variable used for convenience. 
+                                 // It must be called with care as it is called in several functions in the code.
+      Kinematics rungeKuttaTempPose;  // temporary contact pose in the world frame used to compute the increments of force in the Runge-Kutta approximation
+
+      Vector3 forceRungeKutta; // temporary contact forces and torques used for the Runge-Kutta approximation
+      Vector3 torqueRungeKutta;
+    };
+
+    Temp temp;
+    
+    Kinematics worldRefPose; // the reference pose of the contact in the world frame
+
     Vector6 wrenchMeasurement; /// Describes the measured wrench (forces + torques) at the contact in the sensor's frame
     CheckedMatrix6 sensorCovMatrix;
 
@@ -1110,6 +1124,11 @@ protected:
 
   Vector3 additionalForce_;
   Vector3 additionalTorque_;
+
+  Vector3 tempCentroidForce_; 
+  Vector3 tempCentroidTorque_;  // variables used to store temporary computations of the force and the torques to access in different functions,
+                                // notably for the accelerations computation with Runge-Kutta.
+                                // Use them with care as they can be changed in several parts of the code.
 
   Vector measurementVector_;
   Matrix measurementCovMatrix_;

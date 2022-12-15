@@ -588,6 +588,22 @@ struct LocalKinematics
     static const Byte all = position | orientation | linVel | angVel | linAcc | angAcc;
   };
 
+  struct Derivative
+  { 
+    Vector3 positionDot;
+    Vector3 angVel;  // the rotation remains the same from local to global so the variable doesn't need to be renamed
+
+    Vector3 linVelDot;
+    Vector3 angAcc;
+
+    inline Derivative & operator=(const LocalKinematics & locKine); 
+  };
+
+  struct RecursiveAccelerationFunctorBase 
+  {
+    virtual void computeRecursiveLocalAccelerations_(LocalKinematics & locKine) = 0;
+  };
+
   LocalKinematics() {}
 
   /// Constructor from a vector
@@ -619,6 +635,8 @@ struct LocalKinematics
   LocalKinematics & setZero(Flags::Byte = Flags::all);
 
   inline const LocalKinematics & integrate(double dt);
+
+  inline const LocalKinematics & integrateRungeKutta4(double dt, RecursiveAccelerationFunctorBase & accelerationFunctor);
 
   /// updates the LocalKinematics given its new values
   inline const LocalKinematics & update(const LocalKinematics & newValue, double dt, Flags::Byte = Flags::all);

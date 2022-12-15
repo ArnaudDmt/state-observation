@@ -564,6 +564,11 @@ void KineticsObserver::setWithInnovation(bool b)
   ekf_.withInnovation = b;
 }
 
+void KineticsObserver::useRungeKutta(bool b)
+{
+  withRungeKutta_ = b;
+}
+
 bool KineticsObserver::getWithAccelerationEstimation() const
 {
   return withAccelerationEstimation_;

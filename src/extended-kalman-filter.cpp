@@ -1,5 +1,5 @@
-#include <state-observation/observer/extended-kalman-filter.hpp>
 #include <iostream>
+#include <state-observation/observer/extended-kalman-filter.hpp>
 
 namespace stateObservation
 {
@@ -139,14 +139,13 @@ must set directInputOutputFeedthrough to 'false' in the constructor");
       opt.u_ = inputVectorZero();
     }
   }
-  
 
   return f_->measureDynamics(x, opt.u_, k);
 }
 
 Matrix displayVectorWithIndex(const Vector & vec1, const Vector & indexes) // to be removed
 {
-  Matrix C(vec1.rows(), vec1.cols()+indexes.cols());
+  Matrix C(vec1.rows(), vec1.cols() + indexes.cols());
   C << vec1, indexes;
   return C;
 }
@@ -168,53 +167,50 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
       opt.u_ = inputVectorZero();
   }
   const int nbIndexes = 48;
-  Eigen::VectorXd indexes(nbIndexes); //to be removed
-  //Eigen::VectorXd indexes(57); //to be removed
-  for (int ind = 0; ind<indexes.size(); ind++)
+  Eigen::VectorXd indexes(nbIndexes); // to be removed
+  // Eigen::VectorXd indexes(57); //to be removed
+  for(int ind = 0; ind < indexes.size(); ind++)
   {
     indexes(ind) = ind;
   }
   for(Index i = 0; i < nt_; ++i)
   {
-    //std::cout << std::endl << "col: " << std::endl << i << std::endl;
+    // std::cout << std::endl << "col: " << std::endl << i << std::endl;
     opt.dx_.setZero();
     opt.dx_[i] = dx[i];
-  
+
     arithm_->stateSum(this->x_(), opt.dx_, opt.x_);
 
     opt.xp_ = f_->stateDynamics(opt.x_, opt.u_, k);
-    
+
     arithm_->stateDifference(opt.xp_, xbar_(), opt.dx_);
 
     opt.dx_ /= dx[i];
 
     bool stopTest = false;
-    for (int j = 0; j < nt_; j++)
+    for(int j = 0; j < nt_; j++)
     {
-      
-      if (opt.dx_.coeff(j) > 1e+30 )
+
+      if(opt.dx_.coeff(j) > 1e+30)
       {
-        //std::cout << std::endl << "error indexes: " << std::endl << "(" << j << "," << i << ")" << std::endl;
-        //BOOST_ASSERT(false && "error on A");
+        // std::cout << std::endl << "error indexes: " << std::endl << "(" << j << "," << i << ")" << std::endl;
+        // BOOST_ASSERT(false && "error on A");
         stopTest = true;
       }
-
     }
-    //BOOST_ASSERT(!stopTest && "Erreurs sur A");
-
+    // BOOST_ASSERT(!stopTest && "Erreurs sur A");
 
     opt.a_.col(i) = opt.dx_;
   }
   Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
   Matrix sumA;
   sumA = Matrix::Zero(nt_, nt_);
-  for(Index i = 0; i < nt_; i+=3) // to be deleted
+  for(Index i = 0; i < nt_; i += 3) // to be deleted
   {
-    //sumA(i,i) = opt.a_.block<3,3>(i, i).mean();
+    // sumA(i,i) = opt.a_.block<3,3>(i, i).mean();
   }
-  //std::cout << std::endl << "A compact: " << std::endl << sumA.format(CleanFmt) << std::endl;
+  // std::cout << std::endl << "A compact: " << std::endl << sumA.format(CleanFmt) << std::endl;
 
-  
   return opt.a_;
 }
 

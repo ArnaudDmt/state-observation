@@ -32,8 +32,8 @@ int testSetToDiffNoAliasKinematics(int errcode)
   for(int i = 0; i < count; i++)
   {
     /*
-    std::cout << std::endl << "-----------------------------------------" << std::endl 
-                          << "New iteration" 
+    std::cout << std::endl << "-----------------------------------------" << std::endl
+                          << "New iteration"
               << std::endl << "-----------------------------------------" << std::endl;
     std::cout << "err: " << err << std::endl;
     */
@@ -122,7 +122,7 @@ int testSetToDiffNoAliasKinematics(int errcode)
     // std::cout << std::endl << "k3: " << std::endl << k3 << std::endl;
     // std::cout << std::endl << "k4: " << std::endl << k4 << std::endl;
 
-    k = k4*k3.getInverse();
+    k = k4 * k3.getInverse();
 
     if(k.position.isSet())
     {
@@ -936,8 +936,8 @@ int testKinematics(int errcode)
   for(int i = 0; i < count; i++)
   {
     /*
-    std::cout << std::endl << "-----------------------------------------" << std::endl 
-                          << "New iteration" 
+    std::cout << std::endl << "-----------------------------------------" << std::endl
+                          << "New iteration"
               << std::endl << "-----------------------------------------" << std::endl;
     std::cout << "err: " << err << std::endl;
     */
@@ -1131,7 +1131,7 @@ int main()
 {
   int returnVal;
   int errorcode = 0;
-  
+
   if((returnVal = testSetToDiffNoAliasKinematics(++errorcode)))
   {
     std::cout << "testSetToDiffNoAliasLocalKinematics Failed, error code: " << returnVal << std::endl;

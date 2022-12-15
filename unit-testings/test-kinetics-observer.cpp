@@ -79,8 +79,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
   assert(i == 1);
 
   contactKine.position.set() << 1, -0.1, 0;
-  o.addContact(contactKine, initialCov, processCov, 2, linDamping, linStiffness, angStiffness,
-               angDamping);
+  o.addContact(contactKine, initialCov, processCov, 2, linDamping, linStiffness, angStiffness, angDamping);
 
   std::cout << index << " " << x.transpose() << std::endl;
 

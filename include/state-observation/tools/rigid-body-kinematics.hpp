@@ -66,14 +66,12 @@ inline void integrateKinematics(Vector3 & position,
                                 const Vector3 & rotationAcceleration,
                                 double dt);
 
-
 /// integrates the postition/orientation given the velocities
 inline void integrateKinematics(Vector3 & position,
                                 const Vector3 & velocity,
                                 Matrix3 & orientation,
                                 const Vector3 & rotationVelocity,
                                 double dt);
-                            
 
 /// integrates the postition/orientation given the velocities
 inline void integrateKinematics(Vector3 & position,
@@ -81,7 +79,6 @@ inline void integrateKinematics(Vector3 & position,
                                 Quaternion & orientation,
                                 const Vector3 & rotationVelocity,
                                 double dt);
-
 
 /// Puts the orientation vector norm between 0 and Pi if it
 /// gets close to 2pi
@@ -423,7 +420,8 @@ public:
 
   /// use the vector dt_x_omega as the increment of rotation expressed in the
   /// world frame. Which gives R_{k+1}=\exp(S(dtxomega))R_k.
-  /// This function is also used to sum two Orientations expressed in the same frame at the same time k, even for the LocalKinematics (the integration of the orientation is different but not the sum)
+  /// This function is also used to sum two Orientations expressed in the same frame at the same time k, even for the
+  /// LocalKinematics (the integration of the orientation is different but not the sum)
   inline const Orientation & integrate(Vector3 dt_x_omega);
 
   /// use the vector dt_x_omega as the increment of rotation expressed in the
@@ -432,8 +430,9 @@ public:
 
   /// gives the log (rotation vector) of the difference of orientation
   /// gives log of R_k1*(*this).inverse().
-  /// This function is also used to differentiate two Orientations expressed in the same frame at the same time k, even for the LocalKinematics 
-      /// (the integration of the orientation is different and therefore the associated differentiation also is, but the difference remains the same)
+  /// This function is also used to differentiate two Orientations expressed in the same frame at the same time k, even
+  /// for the LocalKinematics (the integration of the orientation is different and therefore the associated
+  /// differentiation also is, but the difference remains the same)
   inline Vector3 differentiate(Orientation R_k1) const;
 
   inline Vector3 differentiateRightSide(Orientation R_k1) const;
@@ -495,7 +494,7 @@ struct Kinematics
     static const Byte all = position | orientation | linVel | angVel | linAcc | angAcc;
   };
 
-    struct RecursiveAccelerationFunctorBase 
+  struct RecursiveAccelerationFunctorBase
   {
     virtual void computeRecursiveGlobalAccelerations_(Kinematics & kine) = 0;
   };
@@ -509,7 +508,12 @@ struct Kinematics
   /// use the flags to define the structure of the vector
   Kinematics(const Vector & v, Flags::Byte = Flags::all);
 
-  Kinematics(const CheckedVector3 & position, const CheckedVector3 & linVel, const CheckedVector3 & linAcc, const Orientation & orientation, const CheckedVector3 & angVel, const CheckedVector3 & angAcc);
+  Kinematics(const CheckedVector3 & position,
+             const CheckedVector3 & linVel,
+             const CheckedVector3 & linAcc,
+             const Orientation & orientation,
+             const CheckedVector3 & angVel,
+             const CheckedVector3 & angAcc);
 
   Kinematics(const Kinematics & multiplier1, const Kinematics & multiplier2);
 
@@ -540,7 +544,6 @@ struct Kinematics
 
   inline Kinematics getInverse() const;
 
-
   /// converts the object to a vector
   /// the order of the vector is
   /// position orientation (quaternion) linevel angvel linAcc angAcc
@@ -549,11 +552,12 @@ struct Kinematics
   inline Vector toVector() const;
 
   /// composition of transformation
-  inline Kinematics operator*(const Kinematics &) const;
+  inline Kinematics operator*(const Kinematics &)const;
 
   inline Kinematics setToProductNoAlias(const Kinematics & operand1, const Kinematics & operand2);
 
-  /// Allows to compute the difference between two Kinematics objects. Has the same effect that calling setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
+  /// Allows to compute the difference between two Kinematics objects. Has the same effect that calling
+  /// setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
   inline Kinematics setToDiffNoAlias(const Kinematics & multiplier1, const Kinematics & multiplier2);
 
   inline void reset();
@@ -578,7 +582,7 @@ protected:
 struct LocalKinematics
 {
   /*
-  This structure is similar to the Kinematics one, but all the state variables are expressed in the local frame. 
+  This structure is similar to the Kinematics one, but all the state variables are expressed in the local frame.
   (They correspond to the kinematics of the local frame in the global frame, but expressed in this local frame)
   */
   struct Flags
@@ -596,17 +600,17 @@ struct LocalKinematics
   };
 
   struct Derivative
-  { 
+  {
     Vector3 positionDot;
-    Vector3 angVel;  // the rotation remains the same from local to global so the variable doesn't need to be renamed
+    Vector3 angVel; // the rotation remains the same from local to global so the variable doesn't need to be renamed
 
     Vector3 linVelDot;
     Vector3 angAcc;
 
-    inline Derivative & operator=(const LocalKinematics & locKine); 
+    inline Derivative & operator=(const LocalKinematics & locKine);
   };
 
-  struct RecursiveAccelerationFunctorBase 
+  struct RecursiveAccelerationFunctorBase
   {
     virtual void computeRecursiveLocalAccelerations_(LocalKinematics & locKine) = 0;
   };
@@ -643,7 +647,8 @@ struct LocalKinematics
 
   inline const LocalKinematics & integrate(double dt);
 
-  inline const LocalKinematics & integrateRungeKutta4(double dt, RecursiveAccelerationFunctorBase & accelerationFunctor);
+  inline const LocalKinematics & integrateRungeKutta4(double dt,
+                                                      RecursiveAccelerationFunctorBase & accelerationFunctor);
 
   /// updates the LocalKinematics given its new values
   inline const LocalKinematics & update(const LocalKinematics & newValue, double dt, Flags::Byte = Flags::all);
@@ -660,16 +665,15 @@ struct LocalKinematics
   /// composition of transformation
   inline LocalKinematics operator*(const LocalKinematics &)const;
 
-  inline LocalKinematics setToProductNoAlias(const LocalKinematics & operand1,
-                                                  const LocalKinematics & operand2);
+  inline LocalKinematics setToProductNoAlias(const LocalKinematics & operand1, const LocalKinematics & operand2);
 
-
-  /// Allows to compute the difference between two LocalKinematics objects. Has the same effect that calling setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
-  inline LocalKinematics setToDiffNoAlias(const LocalKinematics & multiplier1,
-                                                            const LocalKinematics & multiplier2);
+  /// Allows to compute the difference between two LocalKinematics objects. Has the same effect that calling
+  /// setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
+  inline LocalKinematics setToDiffNoAlias(const LocalKinematics & multiplier1, const LocalKinematics & multiplier2);
   inline void reset();
 
-  CheckedVector3 position;  // position of the frame in the destination frame of the Kinematic object, expressed in the original frame
+  CheckedVector3 position; // position of the frame in the destination frame of the Kinematic object, expressed in the
+                           // original frame
   Orientation orientation;
 
   CheckedVector3 linVel;
@@ -681,7 +685,9 @@ struct LocalKinematics
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
-  inline const LocalKinematics & update_deprecated(const LocalKinematics & newValue, double dt, Flags::Byte = Flags::all);
+  inline const LocalKinematics & update_deprecated(const LocalKinematics & newValue,
+                                                   double dt,
+                                                   Flags::Byte = Flags::all);
 
   Vector3 tempVec_;
   Vector3 tempVec_2;
@@ -693,16 +699,11 @@ protected:
 } // namespace kine
 } // namespace stateObservation
 
-
-
 inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::Kinematics & k);
 
 inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalKinematics & k);
 
 inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalKinematics::Derivative & d);
-
-
-
 
 #include <state-observation/tools/rigid-body-kinematics.hxx>
 

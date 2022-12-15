@@ -31,14 +31,18 @@ namespace stateObservation
 
 /// @brief This observer estimated the kinematics and the external forces.
 
-/// @details  The provided kinematics is the position, the orientation, the velocities and even the accelerations of a frame 1 within another frame 2.
-/// The object Kinematics is the expression of these kinematics in the global frame 2, while the LocalKinematics object is their expression in the local frame 1.
-/// Our observer estimates the local kinematics of the centroid's frame within the world frame. 
-/// The reason to choose the centroid's frame is that it simplifies many expressions, for example the expressions of the accelerations. 
-/// This estimation is based on the assumption of viscoelastic contacts and using three kinds of measurements: IMUs, Force/Torque measurements (contact
+/// @details  The provided kinematics is the position, the orientation, the velocities and even the accelerations of a
+/// frame 1 within another frame 2. The object Kinematics is the expression of these kinematics in the global frame 2,
+/// while the LocalKinematics object is their expression in the local frame 1. Our observer estimates the local
+/// kinematics of the centroid's frame within the world frame. The reason to choose the centroid's frame is that it
+/// simplifies many expressions, for example the expressions of the accelerations. This estimation is based on the
+/// assumption of viscoelastic contacts and using three kinds of measurements: IMUs, Force/Torque measurements (contact
 /// and other ones) and any absolute position measurements.
 ///
-class STATE_OBSERVATION_DLLAPI KineticsObserver : protected DynamicalSystemFunctorBase, protected kine::Kinematics::RecursiveAccelerationFunctorBase, protected kine::LocalKinematics::RecursiveAccelerationFunctorBase, protected StateVectorArithmetics
+class STATE_OBSERVATION_DLLAPI KineticsObserver : protected DynamicalSystemFunctorBase,
+                                                  protected kine::Kinematics::RecursiveAccelerationFunctorBase,
+                                                  protected kine::LocalKinematics::RecursiveAccelerationFunctorBase,
+                                                  protected StateVectorArithmetics
 {
 public:
   typedef kine::Kinematics Kinematics;
@@ -131,7 +135,7 @@ public:
   /// inputs uses default ones.
   ///
   /// The IMU is located in a sensor frame. We suppose we know the kinematics of
-  /// this sensor frame in the centroid's frame 
+  /// this sensor frame in the centroid's frame
   ///
   /// @return the number of the IMU (useful in case there are several ones)
   /// @param accelero measured value
@@ -197,9 +201,9 @@ public:
 
   /// @brief Set a new contact with the environment
   ///
-  /// @param pose  is the initial guess on the position of the contact in the WORLD frame. Only position and orientation are enough. If the
-  /// contact is compliant, you need to set the "rest" pose of the contact (i.e. the pose that gives zero reaction
-  /// force)
+  /// @param pose  is the initial guess on the position of the contact in the WORLD frame. Only position and orientation
+  /// are enough. If the contact is compliant, you need to set the "rest" pose of the contact (i.e. the pose that gives
+  /// zero reaction force)
   /// @param initialCovarianceMatrix is the covariance matrix expressing the uncertainty in the pose of the initial
   /// guess in the 6x6 upper left corner ( if no good initial guess is available give a rough position with a high
   /// initial covariance matrix, if the position is certain, set it to zero.) and the initial wrench in the 6x6 lower
@@ -229,7 +233,8 @@ public:
 
   /// @brief Set a new contact with the environment (use default covariance matrices)
   ///
-  /// @param pose  is the initial guess on the position of the contact in the WORLD frame. Only position and orientation are enough
+  /// @param pose  is the initial guess on the position of the contact in the WORLD frame. Only position and orientation
+  /// are enough
   /// @param contactNumber the number id of the contact to add. If no predefined id, use -1 (default) in order to set
   /// the number automatically
   /// @param linearStiffness the linear stiffness of the contact viscoelastic model, if unknown, set to
@@ -310,13 +315,25 @@ public:
 
   void setInitWorldCentroidStateVector(const Vector & initStateVector);
 
-  void setAllCovariances(const Matrix3 & statePositionInitCovariance, const Matrix3 & stateOriInitCovariance,
-            const Matrix3 & stateLinVelInitCovariance, const Matrix3 & stateAngVelInitCovariance, const Matrix3 & gyroBiasInitCovariance, 
-            const Matrix6 & unmodeledWrenchInitCovariance, const Matrix12 & contactInitCovariance, const Matrix3 & statePositionProcessCovariance,
-            const Matrix3 & stateOriProcessCovariance, const Matrix3 & stateLinVelProcessCovariance, const Matrix3 & stateAngVelProcessCovariance,
-            const Matrix3 & gyroBiasProcessCovariance, const Matrix6 & unmodeledWrenchProcessCovariance, const Matrix12 & contactProcessCovariance, 
-            const Matrix3 & positionSensorCovariance, const Matrix3 & orientationSensorCoVariance, const Matrix3 & acceleroSensorCovariance,
-            const Matrix3 & gyroSensorCovariance, const Matrix6 & contactSensorCovariance );
+  void setAllCovariances(const Matrix3 & statePositionInitCovariance,
+                         const Matrix3 & stateOriInitCovariance,
+                         const Matrix3 & stateLinVelInitCovariance,
+                         const Matrix3 & stateAngVelInitCovariance,
+                         const Matrix3 & gyroBiasInitCovariance,
+                         const Matrix6 & unmodeledWrenchInitCovariance,
+                         const Matrix12 & contactInitCovariance,
+                         const Matrix3 & statePositionProcessCovariance,
+                         const Matrix3 & stateOriProcessCovariance,
+                         const Matrix3 & stateLinVelProcessCovariance,
+                         const Matrix3 & stateAngVelProcessCovariance,
+                         const Matrix3 & gyroBiasProcessCovariance,
+                         const Matrix6 & unmodeledWrenchProcessCovariance,
+                         const Matrix12 & contactProcessCovariance,
+                         const Matrix3 & positionSensorCovariance,
+                         const Matrix3 & orientationSensorCoVariance,
+                         const Matrix3 & acceleroSensorCovariance,
+                         const Matrix3 & gyroSensorCovariance,
+                         const Matrix6 & contactSensorCovariance);
   /// @}
 
   // /////////////////////////////////////////////
@@ -407,8 +424,8 @@ public:
   /// @return const Vector& The state vector
   const Vector & update();
 
-
-  /// @brief Returns the predicted Kinematics object of the centroid in the world frame at the time of the measurement predictions
+  /// @brief Returns the predicted Kinematics object of the centroid in the world frame at the time of the measurement
+  /// predictions
 
   /// @return const Kinematics& The predicted kinematics
   Vector getPredictedGlobalCentroidState() const;
@@ -496,7 +513,9 @@ public:
   /// @param kine is the new kinematics of the state
   /// @param resetContactWrenches set if the contact wrenches should be reset
   /// @param resetCovariance set if the covariance of the state should be reset
-  void setWorldCentroidStateKinematics(const LocalKinematics & kine, bool resetContactWrenches = true, bool resetCovariance = true);
+  void setWorldCentroidStateKinematics(const LocalKinematics & kine,
+                                       bool resetContactWrenches = true,
+                                       bool resetCovariance = true);
 
   // TODO
   // void setVelocityGuess(const Kinematics)
@@ -918,22 +937,23 @@ protected:
 
   struct Contact : public Sensor
   {
-    Contact() : Sensor(sizeWrench), isSet(false), withRealSensor(false), stateIndex(-1), stateIndexTangent(-1) {
+    Contact() : Sensor(sizeWrench), isSet(false), withRealSensor(false), stateIndex(-1), stateIndexTangent(-1)
+    {
       worldRefPose.angVel = worldRefPose.linVel = Vector3::Zero();
     }
     virtual ~Contact() {}
 
     struct Temp
     {
-      Kinematics worldContactPose; // the pose of the contact in the world frane obtained by forward kinematics from the centroid's frame. 
-                                 // This is a temporary variable used for convenience. 
-                                 // It must be called with care as it is called in several functions in the code.
-      Kinematics rungeKuttaInitPose;  // temporary contact pose in the world frame used to compute the increments of force in the Runge-Kutta approximation
-
+      Kinematics worldContactPose; // the pose of the contact in the world frane obtained by forward kinematics from the
+                                   // centroid's frame. This is a temporary variable used for convenience. It must be
+                                   // called with care as it is called in several functions in the code.
+      Kinematics rungeKuttaInitPose; // temporary contact pose in the world frame used to compute the increments of
+                                     // force in the Runge-Kutta approximation
     };
 
     Temp temp;
-    
+
     Kinematics worldRefPose; // the reference pose of the contact in the world frame
 
     Vector6 wrenchMeasurement; /// Describes the measured wrench (forces + torques) at the contact in the sensor's frame
@@ -948,8 +968,8 @@ protected:
     bool withRealSensor;
     int stateIndex;
     int stateIndexTangent;
-    Kinematics userContactKine; /// Describes the kinematics of the contact point in the centroid's frame. 
-    Kinematics centroidContactKine; /// Describes the kinematics of the contact point in the centroid's frame. 
+    Kinematics userContactKine; /// Describes the kinematics of the contact point in the centroid's frame.
+    Kinematics centroidContactKine; /// Describes the kinematics of the contact point in the centroid's frame.
     static const Kinematics::Flags::Byte contactKineFlags = /// flags for the components of the kinematics
         Kinematics::Flags::position | Kinematics::Flags::orientation | Kinematics::Flags::linVel
         | Kinematics::Flags::angVel;
@@ -981,21 +1001,21 @@ protected:
   void addUnmodeledAndContactWrench_(const Vector & centroidStateVector, Vector3 & force, Vector3 & torque);
 
   void computeLocalAccelerations_(LocalKinematics & localStateKine,
-                             const Vector3 & totalForceLocal,
-                             const Vector3 & totalMomentLocal,
-                             Vector3 & linAcc,
-                             Vector3 & angAcc);
+                                  const Vector3 & totalForceLocal,
+                                  const Vector3 & totalMomentLocal,
+                                  Vector3 & linAcc,
+                                  Vector3 & angAcc);
 
   virtual void computeRecursiveGlobalAccelerations_(Kinematics & kine);
-  
+
   virtual void computeRecursiveLocalAccelerations_(LocalKinematics & locKine);
 
   /// the kinematics is not const to allow more optimized non const operators to work
   void computeContactForces_(VectorContactIterator i,
-                              LocalKinematics & worldCentroidStateKinematics,
-                              Kinematics & worldReferenceContactPose,
-                              Vector3 & force,
-                              Vector3 torque);
+                             LocalKinematics & worldCentroidStateKinematics,
+                             Kinematics & worldReferenceContactPose,
+                             Vector3 & force,
+                             Vector3 torque);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);
@@ -1016,10 +1036,10 @@ protected:
   virtual Index getInputSize() const;
 
 public:
+  /// @{
 
-    /// @{
-
-  /// @brief Get the measurement index of the required IMU : allows to access its corresponding measurements in the measurement vector for example
+  /// @brief Get the measurement index of the required IMU : allows to access its corresponding measurements in the
+  /// measurement vector for example
   ///
   /// @return const int &
   int getIMUMeasIndexByNum(const int & num) const;
@@ -1085,15 +1105,14 @@ public:
   /// @param b true means we use finite differences
   virtual void useRungeKutta(bool b = true);
 
-
   /// @}
 
 protected:
   Vector stateNaNCorrection_();
 
-  /// updates stateKine_ and the reference position and orientation of the contacts  from the centroidStateVector 
+  /// updates stateKine_ and the reference position and orientation of the contacts  from the centroidStateVector
   void updateKine_();
-  
+
   /// updates the global kinematics of the centroid, that can be more interpretable
   void updateGlobalKine_();
 
@@ -1118,17 +1137,18 @@ protected:
   Kinematics worldCentroidKinematics_;
 
   Vector predictedWorldCentroidState_;
-  std::vector<Vector> predictedAccelerometersGravityComponent_; //the gravity component of the measurement for each accelerometer
-  std::vector<Vector> predictedWorldIMUsLinAcc_; //the gravity component of the measurement for each accelerometer
+  std::vector<Vector>
+      predictedAccelerometersGravityComponent_; // the gravity component of the measurement for each accelerometer
+  std::vector<Vector> predictedWorldIMUsLinAcc_; // the gravity component of the measurement for each accelerometer
   std::vector<Vector> predictedAccelerometers_;
 
   Vector3 additionalForce_;
   Vector3 additionalTorque_;
 
-  Vector3 tempCentroidForce_; 
-  Vector3 tempCentroidTorque_;  // variables used to store temporary computations of the force and the torques to access in different functions,
-                                // notably for the accelerations computation with Runge-Kutta.
-                                // Use them with care as they can be changed in several parts of the code.
+  Vector3 tempCentroidForce_;
+  Vector3 tempCentroidTorque_; // variables used to store temporary computations of the force and the torques to access
+                               // in different functions, notably for the accelerations computation with Runge-Kutta. Use
+                               // them with care as they can be changed in several parts of the code.
 
   Vector measurementVector_;
   Matrix measurementCovMatrix_;
@@ -1166,14 +1186,19 @@ protected:
   virtual Matrix computeAMatrix_();
   virtual Matrix computeCMatrix_();
 
-  /// @brief Converts a LocalKinematics object from the user's frame to the centroid's frame, which is used for most of the computations
-  /// @param userKine the LocalKinematics object expressed in the user's frame. It is likely to correspond to the IMU's LocalKinematics, defined by the user in its frame.
-  /// @param centroidKine the LocalKinematics object corresponding to the converted LocalKinematics in the centroid's frame.
-  
+  /// @brief Converts a LocalKinematics object from the user's frame to the centroid's frame, which is used for most of
+  /// the computations
+  /// @param userKine the LocalKinematics object expressed in the user's frame. It is likely to correspond to the IMU's
+  /// LocalKinematics, defined by the user in its frame.
+  /// @param centroidKine the LocalKinematics object corresponding to the converted LocalKinematics in the centroid's
+  /// frame.
+
   inline void convertUserToCentroidFrame_(const Kinematics & userKine, Kinematics & centroidKine, TimeIndex k_data);
-  
-  /// @brief Converts a Kinematics object from the user's frame to the centroid's frame, which is used for most of the computations
-  /// @param userKine the Kinematics object expressed in the user's frame. It is likely to correspond to the contact's Kinematics, defined by the user in its frame.
+
+  /// @brief Converts a Kinematics object from the user's frame to the centroid's frame, which is used for most of the
+  /// computations
+  /// @param userKine the Kinematics object expressed in the user's frame. It is likely to correspond to the contact's
+  /// Kinematics, defined by the user in its frame.
 
   inline Kinematics convertUserToCentroidFrame_(const Kinematics & userKine, TimeIndex k_data);
 
@@ -1195,8 +1220,7 @@ protected:
   inline unsigned contactTorqueIndexTangent(VectorContactConstIterator i) const;
   inline unsigned contactWrenchIndexTangent(VectorContactConstIterator i) const;
 
-public:  ///////////SIZE OF VECTORS
-
+public: ///////////SIZE OF VECTORS
   static const unsigned sizeAcceleroSignal = 3;
   static const unsigned sizeGyroSignal = 3;
   static const unsigned sizeIMUSignal = sizeAcceleroSignal + sizeGyroSignal;

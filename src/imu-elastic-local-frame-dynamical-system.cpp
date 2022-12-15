@@ -81,7 +81,6 @@ IMUElasticLocalFrameDynamicalSystem::IMUElasticLocalFrameDynamicalSystem(double 
 #ifdef STATEOBSERVATION_VERBOUS_CONSTRUCTORS
   // std::cout<<std::endl<<"IMUElasticLocalFrameDynamicalSystem Constructor"<<std::endl;
 
-
 #endif // STATEOBSERVATION_VERBOUS_CONSTRUCTOR
   Kfe_ = 40000 * Matrix3::Identity();
   Kte_ = 600 * Matrix3::Identity();

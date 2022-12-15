@@ -2451,6 +2451,90 @@ inline LocalKinematics & LocalKinematics::setZero(LocalKinematics::Flags::Byte f
   return setZero<Quaternion>(flags);
 }
 
+inline const LocalKinematics & LocalKinematics::integrateRungeKutta4(double dt, RecursiveAccelerationFunctorBase & accelerationFunctor)
+{
+  BOOST_ASSERT((position.isSet() && orientation.isSet() && linVel.isSet() && angVel.isSet()) && "The kinematics of the LocalKinematics object are not entirely set");
+  BOOST_ASSERT((linAcc.isSet() && angAcc.isSet()) && "The accelerations of the LocalKinematics object are not entirely set");
+  LocalKinematics y234;
+
+  LocalKinematics::Derivative k1; // (velocities + accelerations) that have to be precomputed
+  LocalKinematics::Derivative k2;
+  LocalKinematics::Derivative k3;
+  LocalKinematics::Derivative k4;
+  
+  k1 = *this;
+  /*
+  k1.positionDot = linVel() - angVel().cross(position());
+  k1.angVel = angVel;
+  k1.linVelDot = linAcc() + angVel().cross(angVel().cross(position()) - 2*linVel()) - angAcc().cross(position());
+  k1.angAcc = angAcc;  
+  */
+
+  y234.position = position() + 0.5 * dt * k1.positionDot;
+  y234.linVel = linVel() + 0.5 * dt * k1.linVelDot;
+
+  y234.orientation = orientation;
+  y234.orientation.integrateRightSide(0.5 * dt * k1.angVel);
+  y234.angVel = angVel() + 0.5 * dt * k1.angAcc;
+  
+  accelerationFunctor.computeRecursiveLocalAccelerations_(y234); // computation of k2 (the acceleration part) in the global frame
+
+  //conversion of k2 to the local frame in order to make them compatible with the LocalKinematics object
+  k2 = y234;
+  
+  /*
+  k2.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
+  k2.angVel = y234.angVel;
+  k2.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
+  k2.angAcc = y234.angAcc;
+  */
+
+  y234.position = position() + 0.5 * dt * k2.positionDot;
+  y234.linVel = linVel() + 0.5 * dt * k2.linVelDot;
+
+  y234.orientation = orientation;
+  y234.orientation.integrateRightSide(0.5 * dt * k2.angVel);
+  y234.angVel = angVel() + 0.5 * dt * k2.angAcc;
+
+  accelerationFunctor.computeRecursiveLocalAccelerations_(y234); // computation of k3 (the acceleration part) in the global frame
+
+  //conversion of k3 to the local frame in order to make them compatible with the LocalKinematics object
+  k3 = y234;
+
+  /*
+  k3.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
+  k3.angVel = y234.angVel;
+  k3.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
+  k3.angAcc = y234.angAcc;
+  */
+
+  y234.position = position() + dt * k3.positionDot;
+  y234.linVel = linVel() + dt * k3.linVelDot;
+
+  y234.orientation = orientation;
+  y234.orientation.integrateRightSide(dt * k3.angVel);
+  y234.angVel = angVel() + dt * k3.angAcc;
+
+  accelerationFunctor.computeRecursiveLocalAccelerations_(y234); // computation of k4 (the acceleration part) in the global frame
+
+  //conversion of k4 to the local frame in order to make them compatible with the LocalKinematics object
+  k4 = y234;
+
+  /*
+  k4.positionDot = y234.linVel() - y234.angVel().cross(y234.position());
+  k4.angVel = y234.angVel;
+  k4.linVelDot = y234.linAcc() + y234.angVel().cross(y234.angVel().cross(y234.position()) - 2*y234.linVel()) - y234.angAcc().cross(y234.position());
+  k4.angAcc = y234.angAcc;
+  */
+
+  position() += dt/6 * (k1.positionDot + 2 * k2.positionDot + 2 * k3.positionDot + k4.positionDot);
+  orientation.integrateRightSide(dt/6 * (k1.angVel + 2 * k2.angVel + 2 * k3.angVel + k4.angVel));
+  linVel() += dt/6 * (k1.linVelDot + 2 * k2.linVelDot + 2 * k3.linVelDot + k4.linVelDot);
+  angVel() += dt/6 * (k1.angAcc + 2 * k2.angAcc + 2 * k3.angAcc + k4.angAcc);
+
+  return *this;
+}
+
 inline const LocalKinematics & LocalKinematics::integrate(double dt)
 {
   /*
@@ -3759,6 +3843,20 @@ inline void LocalKinematics::reset()
   angVel.reset();
   linAcc.reset();
   angAcc.reset();
+}
+
+///////////////////////////////////////////////////////////////////////
+/// -------------------Derivative structure implementation-------------
+///////////////////////////////////////////////////////////////////////
+
+inline LocalKinematics::Derivative & LocalKinematics::Derivative::operator=(const LocalKinematics & locKine)
+{
+  positionDot = locKine.linVel() - locKine.angVel().cross(locKine.position());
+  angVel = angVel;
+  linVelDot = locKine.linAcc() + locKine.angVel().cross(locKine.angVel().cross(locKine.position()) - 2*locKine.linVel()) - locKine.angAcc().cross(locKine.position());
+  angAcc = locKine.angAcc;  
+
+  return *this;
 }
 
 } // namespace kine

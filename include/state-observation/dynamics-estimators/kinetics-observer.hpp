@@ -38,7 +38,7 @@ namespace stateObservation
 /// This estimation is based on the assumption of viscoelastic contacts and using three kinds of measurements: IMUs, Force/Torque measurements (contact
 /// and other ones) and any absolute position measurements.
 ///
-class STATE_OBSERVATION_DLLAPI KineticsObserver : protected DynamicalSystemFunctorBase, protected StateVectorArithmetics
+class STATE_OBSERVATION_DLLAPI KineticsObserver : protected DynamicalSystemFunctorBase, protected kine::LocalKinematics::RecursiveAccelerationFunctorBase, protected StateVectorArithmetics
 {
 public:
   typedef kine::Kinematics Kinematics;
@@ -974,6 +974,8 @@ protected:
                              Vector3 & linAcc,
                              Vector3 & angAcc);
 
+  virtual void computeRecursiveLocalAccelerations_(LocalKinematics & locKine);
+
   /// the kinematics is not const to allow more optimized non const operators to work
   void computeContactForces_(VectorContactIterator i,
                               LocalKinematics & worldCentroidStateKinematics,
@@ -1064,6 +1066,12 @@ public:
   /// @param dx the timestep
   virtual void setFiniteDifferenceStep(const Vector & dx);
 
+  /// @brief Define if we use the Runge-Kutta approximation method or not
+  ///
+  /// @param b true means we use finite differences
+  virtual void useRungeKutta(bool b = true);
+
+
   /// @}
 
 protected:
@@ -1111,6 +1119,8 @@ protected:
   bool withGyroBias_;
   bool withUnmodeledWrench_;
   bool withAccelerationEstimation_;
+
+  bool withRungeKutta_; // defines whether to use the Runge-Kutta approximation method or not
 
   IndexedVector3 com_, comd_, comdd_;
   IndexedVector3 sigma_, sigmad_;

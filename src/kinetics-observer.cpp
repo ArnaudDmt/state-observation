@@ -1755,13 +1755,10 @@ void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroi
                                              Vector3 & linAcc,
                                              Vector3 & angAcc)
 {
-  Matrix3 Rt = worldCentroidStateKinematics.orientation.toMatrix3().transpose();
-
   angAcc =  I_().inverse()
               * (totalCentroidTorque - Id_() * worldCentroidStateKinematics.angVel() - sigmad_() - worldCentroidStateKinematics.angVel().cross(I_() * worldCentroidStateKinematics.angVel() + sigma_()));
 
-  linAcc = (totalCentroidForce / mass_) - Rt*cst::gravity;
-
+  linAcc = (totalCentroidForce / mass_) - worldCentroidStateKinematics.orientation.toMatrix3().transpose()*cst::gravity;
 }
 
 void KineticsObserver::computeRecursiveLocalAccelerations_(LocalKinematics & worldCentroidKinematics)
@@ -1809,19 +1806,17 @@ void KineticsObserver::computeContactForces_(VectorContactIterator i,
   Contact & contact = *i;
 
   Kinematics & centroidContactKine = contact.centroidContactKine; // the kinematics of the contact in the centroid's frame, expressed in the centroid's frame
+  Kinematics & worldContactPose = contact.temp.worldContactPose;
+  worldContactPose = Kinematics(worldCentroidStateKinematics), centroidContactKine; // the kinematics of the contact in the world frame, expressed in the contact's frame
 
-  Kinematics worldContactKine(Kinematics(worldCentroidStateKinematics), centroidContactKine); // the kinematics of the contact in the world frame, expressed in the contact's frame
+  force = worldContactPose.orientation.toMatrix3().transpose()
+          * (contact.linearStiffness * (worldReferenceContactPose.position() - worldContactPose.position())
+             - contact.linearDamping * worldContactPose.linVel());
 
-  Matrix3 contactWorldOri = worldContactKine.orientation.toMatrix3().transpose(); // the orientation from the world frame to the contact's frame
-
-  force = contactWorldOri
-          * (contact.linearStiffness * (worldReferenceContactPose.position() - worldContactKine.position())
-             - contact.linearDamping * worldContactKine.linVel());
-
-  torque = contactWorldOri
+  torque = worldContactPose.orientation.toMatrix3().transpose()
            * (-0.5 * contact.angularStiffness
-                  * (worldContactKine.orientation.toQuaternion() * worldReferenceContactPose.orientation.toQuaternion().inverse()).vec()
-              - contact.angularDamping * worldContactKine.angVel());
+                  * (worldContactPose.orientation.toQuaternion() * worldReferenceContactPose.orientation.toQuaternion().inverse()).vec()
+              - contact.angularDamping * worldContactPose.angVel());
 }
 
 void KineticsObserver::stateSum(const Vector & worldCentroidStateVector, const Vector & tangentVector, Vector & sum)

@@ -697,7 +697,11 @@ protected:
 
 inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::Kinematics & k);
 
-//inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalKinematics & k);
+inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalKinematics & k);
+
+inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalKinematics::Derivative & d);
+
+
 
 
 #include <state-observation/tools/rigid-body-kinematics.hxx>

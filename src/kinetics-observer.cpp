@@ -1544,10 +1544,8 @@ Matrix KineticsObserver::computeAMatrix_()
   {
     if(i->isSet)
     {
-      Orientation contactCentroidOri = i->centroidContactKine.orientation.inverse();
       Orientation predictedStateContactOri;
       predictedStateContactOri.fromVector4(statePrediction.segment<sizeOri>(contactOriIndex(i))).toMatrix3();
-
 
       // Jacobian of the linar acceleration with respect to the contact force
       Matrix3 J_linAcc_Fcis = (1/mass_)*i->centroidContactKine.orientation.toMatrix3();
@@ -1579,8 +1577,7 @@ Matrix KineticsObserver::computeAMatrix_()
       Matrix3 J_contactOri_contactOri = J_poscontact_poscontact;
       A.block<sizeOriTangent, sizeOriTangent>(contactOriIndexTangent(i), contactOriIndexTangent(i)) = J_contactOri_contactOri;
       
-      Orientation predictedCentroidWorldStateOri = predictedWorldCentroidStateOri.inverse();
-      Orientation contactWorldOri = contactCentroidOri * predictedCentroidWorldStateOri; // better to compute it now as it is used in several expressions
+      Orientation contactWorldOri ( Matrix3(i->centroidContactKine.orientation.toMatrix3().transpose() * predictedWorldCentroidStateOri.toMatrix3().transpose())); // better to compute it now as it is used in several expressions
       // Jacobians of the contacts force
       Matrix3 J_contactForce_pl_at_same_time = -(contactWorldOri.toMatrix3()*i->linearStiffness*predictedWorldCentroidStateOri.toMatrix3());
       Vector3 sumVelContact = i->centroidContactKine.linVel()+predictedWorldCentroidStateAngVel.cross(i->centroidContactKine.position())+predictedWorldCentroidStateLinVel;

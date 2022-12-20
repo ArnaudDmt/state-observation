@@ -1249,7 +1249,7 @@ inline const Kinematics & Kinematics::integrateRungeKutta4(double dt, RecursiveA
   y234.linVel = linVel() + 0.5 * dt * k1.linAcc;
 
   y234.orientation = orientation;
-  y234.orientation.integrateRightSide(0.5 * dt * k1.angVel);
+  y234.orientation.integrate(0.5 * dt * k1.angVel);
   y234.angVel = angVel() + 0.5 * dt * k1.angAcc;
   
   accelerationFunctor.computeRecursiveGlobalAccelerations_(y234); // computation of k2 (the acceleration part) in the global frame
@@ -1264,7 +1264,7 @@ inline const Kinematics & Kinematics::integrateRungeKutta4(double dt, RecursiveA
   y234.linVel = linVel() + 0.5 * dt * k2.linAcc;
 
   y234.orientation = orientation;
-  y234.orientation.integrateRightSide(0.5 * dt * k2.angVel);
+  y234.orientation.integrate(0.5 * dt * k2.angVel);
   y234.angVel = angVel() + 0.5 * dt * k2.angAcc;
 
   accelerationFunctor.computeRecursiveGlobalAccelerations_(y234); // computation of k3 (the acceleration part) in the global frame
@@ -1279,7 +1279,7 @@ inline const Kinematics & Kinematics::integrateRungeKutta4(double dt, RecursiveA
   y234.linVel = linVel() + dt * k3.linAcc;
 
   y234.orientation = orientation;
-  y234.orientation.integrateRightSide(dt * k3.angVel);
+  y234.orientation.integrate(dt * k3.angVel);
   y234.angVel = angVel() + dt * k3.angAcc;
 
   accelerationFunctor.computeRecursiveGlobalAccelerations_(y234); // computation of k4 (the acceleration part) in the global frame
@@ -1291,7 +1291,7 @@ inline const Kinematics & Kinematics::integrateRungeKutta4(double dt, RecursiveA
   k4.angAcc = y234.angAcc;
 
   position() += dt/6 * (k1.linVel() + 2 * k2.linVel() + 2 * k3.linVel() + k4.linVel());
-  orientation.integrateRightSide(dt/6 * (k1.angVel() + 2 * k2.angVel() + 2 * k3.angVel() + k4.angVel()));
+  orientation.integrate(dt / 6 * (k1.angVel() + 2 * k2.angVel() + 2 * k3.angVel() + k4.angVel()));
   linVel() += dt/6 * (k1.linAcc() + 2 * k2.linAcc() + 2 * k3.linAcc() + k4.linAcc());
   angVel() += dt/6 * (k1.angAcc() + 2 * k2.angAcc() + 2 * k3.angAcc() + k4.angAcc());
 

@@ -3909,7 +3909,7 @@ inline LocalKinematics::Derivative & LocalKinematics::Derivative::operator=(cons
 {
   positionDot = locKine.linVel() - locKine.angVel().cross(locKine.position());
   angVel = locKine.angVel;
-  linVelDot = locKine.linAcc() + locKine.angVel().cross(locKine.angVel().cross(locKine.position()) - 2*locKine.linVel()) - locKine.angAcc().cross(locKine.position());
+  linVelDot = locKine.linAcc() - locKine.angVel().cross(locKine.linVel());
   angAcc = locKine.angAcc;  
 
   return *this;

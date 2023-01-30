@@ -305,7 +305,9 @@ const Vector & KineticsObserver::update()
     ekf_.setMeasureSize(measurementSize_, measurementTangentSize_);
     ekf_.setMeasurement(measurementVector_, k_data_);
     ekf_.setR(measurementCovMatrix_);
+
     ekf_.updateStateAndMeasurementPrediction();
+
     if(finiteDifferencesJacobians_)
     {
       ekf_.setA(ekf_.getAMatrixFD(worldCentroidStateVectorDx_));
@@ -365,6 +367,7 @@ const Vector & KineticsObserver::update()
     }
     updateGlobalKine_();
   }
+
   return worldCentroidStateVector_;
 }
 
@@ -543,6 +546,7 @@ void KineticsObserver::setStateVector(const Vector & v, bool resetCovariance)
 {
   worldCentroidStateVector_ = v;
   ekf_.setState(v, k_est_);
+
   updateKine_();
 
   if(resetCovariance)
@@ -2145,15 +2149,11 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
     glob.integrateRungeKutta4(dt_, *this);
     worldCentroidStateKinematics.integrateRungeKutta4(dt_, *this);
     kineTest.integrate(dt_);
-    std::cout << std::endl << "glob: " << std::endl << glob << std::endl;
   }
   else
   {
     worldCentroidStateKinematics.integrate(dt_);
   }
-  std::cout << std::endl << "kineTest: " << std::endl << kineTest << std::endl;
-  std::cout << std::endl << "worldCentroidStateKinematics: " << std::endl << worldCentroidStateKinematics << std::endl;
-
   x.segment<sizeStateKine>(kineIndex()) = worldCentroidStateKinematics.toVector(flagsStateKine);
 
   globWorldCentroidStateKinematics = Kinematics(worldCentroidStateKinematics);

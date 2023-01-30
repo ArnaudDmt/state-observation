@@ -76,7 +76,8 @@ inline CheckedItem<T, lazy, alwaysCheck, assertion, eigenAlignedNew, additionalC
 }
 
 template<typename T, bool lazy, bool alwaysCheck, bool assertion, bool eigenAlignedNew, typename additionalChecker>
-inline T CheckedItem<T, lazy, alwaysCheck, assertion, eigenAlignedNew, additionalChecker>::chckitm_getValue() const
+inline const T & CheckedItem<T, lazy, alwaysCheck, assertion, eigenAlignedNew, additionalChecker>::chckitm_getValue()
+    const
 {
   return (*this)();
 }
@@ -96,12 +97,25 @@ inline T & CheckedItem<T, lazy, alwaysCheck, assertion, eigenAlignedNew, additio
 }
 
 template<typename T, bool lazy, bool alwaysCheck, bool assertion, bool eigenAlignedNew, typename additionalChecker>
+inline const T & CheckedItem<T, lazy, alwaysCheck, assertion, eigenAlignedNew, additionalChecker>::getRefUnchecked()
+    const
+{
+  return v_;
+}
+
+template<typename T, bool lazy, bool alwaysCheck, bool assertion, bool eigenAlignedNew, typename additionalChecker>
+inline T & CheckedItem<T, lazy, alwaysCheck, assertion, eigenAlignedNew, additionalChecker>::getRefUnchecked()
+{
+  return v_;
+}
+
+template<typename T, bool lazy, bool alwaysCheck, bool assertion, bool eigenAlignedNew, typename additionalChecker>
 inline bool CheckedItem<T, lazy, alwaysCheck, assertion, eigenAlignedNew, additionalChecker>::chckitm_check_() const
 {
   if (assertion)
   {
     BOOST_ASSERT_MSG(isSet(),assertMsg_.get());
-    BOOST_ASSERT_MSG(additionalChecker::check(v_), additionalChecker::errorMessage);
+    additionalChecker::checkAssert(v_);
   }
 
   if (alwaysCheck || isDebug)
@@ -211,14 +225,13 @@ inline bool IndexedMatrixT<MatrixType, lazy, checkNaN>::check_() const
                             use set() function.");
     if(isSet())
     {
-    BOOST_ASSERT(v_.hasNaN() && "Error: Matrix has NaN.");
-    return v_.hasNaN();
+    BOOST_ASSERT(!v_.hasNaN() && "Error: Matrix has NaN.");
+    return !v_.hasNaN(); // returns false if v has a NaN : test failed
     }
     else
     {
-    return false;
-    }
     return isSet();
+    }
 }
 
 template<typename MatrixType, bool lazy, bool checkNaN>

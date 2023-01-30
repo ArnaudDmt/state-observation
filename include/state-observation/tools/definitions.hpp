@@ -348,6 +348,10 @@ struct EmptyChecker
   {
     return true;
   }
+  static inline bool checkAssert(const T &)
+  {
+    return true;
+  }
   static constexpr char errorMessage[] = "";
   static constexpr std::exception * exception = 0x0;
 };
@@ -382,10 +386,13 @@ public:
   inline operator T() const;
   inline operator const T &() const;
 
-  inline T chckitm_getValue() const;
+  inline const T & chckitm_getValue() const;
 
   inline T & operator()();
   inline const T & operator()() const;
+
+  inline T & getRefUnchecked();
+  inline const T & getRefUnchecked() const;
 
   inline bool isSet() const;
   inline void reset();
@@ -429,7 +436,19 @@ struct checkNaN
   {
     if(doTest)
     {
-      return m.hasNaN();
+      return !m.hasNaN(); // returns false if m has a NaN : test failed
+    }
+    else
+    {
+      return true;
+    }
+  }
+  static inline bool checkAssert(const MatrixType & m)
+  {
+    if(doTest)
+    {
+      BOOST_ASSERT(!m.hasNaN() && "Matrix contains a NaN.");
+      return !m.hasNaN(); // returns false if m has a NaN : test failed
     }
     else
     {

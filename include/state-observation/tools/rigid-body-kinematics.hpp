@@ -418,7 +418,7 @@ public:
 
   inline Orientation inverse() const;
 
-  /// use the vector dt_x_omega as the increment of rotation expressed in the
+  /// uses the vector dt_x_omega as the increment of rotation expressed in the
   /// world frame. Which gives R_{k+1}=\exp(S(dtxomega))R_k.
   /// This function is also used to sum two Orientations expressed in the same frame at the same time k, even for the
   /// LocalKinematics (the integration of the orientation is different but not the sum)

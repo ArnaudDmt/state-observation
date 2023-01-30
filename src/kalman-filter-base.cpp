@@ -156,8 +156,10 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   std::cout << "A" << std::endl << a_.format(CleanFmt) << std::endl;
   std::cout << "C" << std::endl << c_.format(CleanFmt) << std::endl;
   std::cout << "P" << std::endl << pr_.format(CleanFmt) << std::endl;
+  std::cout << "Q" << std::endl << q_.format(CleanFmt) << std::endl;
+  std::cout << "R" << std::endl << r_.format(CleanFmt) << std::endl;
   std::cout << "K" << std::endl << oc_.kGain.format(CleanFmt) << std::endl;
-  std::cout << "Xbar" << std::endl << xbar().transpose().format(CleanFmt) << std::endl;
+  std::cout << "Xbar" << std::endl << xbar_().transpose().format(CleanFmt) << std::endl;
   std::cout << "inoMeasCov" << std::endl << oc_.inoMeasCov.format(CleanFmt) << std::endl;
   std::cout << "oc_.pbar" << std::endl << (oc_.pbar).format(CleanFmt) << std::endl;
   std::cout << "c_ * (oc_.pbar * c_.transpose())" << std::endl
@@ -165,7 +167,7 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   std::cout << "inoMeasCovInverse" << std::endl << oc_.inoMeasCovInverse.format(CleanFmt) << std::endl;
   std::cout << "predictedMeasurement " << std::endl << ybar_().transpose().format(CleanFmt) << std::endl;
   std::cout << "inoMeas" << std::endl << oc_.inoMeas.transpose().format(CleanFmt) << std::endl;
-  std::cout << "inovation_" << std::endl << inovation_.transpose().format(CleanFmt) << std::endl;
+  std::cout << "inovation_" << std::endl << innovation_.transpose().format(CleanFmt) << std::endl;
   std::cout << "Xhat" << std::endl << oc_.xhat.transpose().format(CleanFmt) << std::endl;
 #endif // VERBOUS_KALMANFILTER
 

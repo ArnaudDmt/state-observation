@@ -1789,7 +1789,7 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
   if(multiplier2.position.isSet() && multiplier1.position.isSet())
   {
     position.set(true);
-    Vector3 & R1p2 = position(); /// reference ( Vector3&  )
+    Vector3 & R1p2 = position.getRefUnchecked(); /// reference ( Vector3&  )
     R1p2.noalias() = multiplier1.orientation * multiplier2.position();
 
     if(multiplier2.linVel.isSet() && multiplier1.linVel.isSet() && multiplier1.angVel.isSet())
@@ -1798,7 +1798,7 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
       R1p2d.noalias() = multiplier1.orientation * multiplier2.linVel();
 
       linVel.set(true);
-      Vector3 & w1xR1p2 = linVel(); /// reference
+      Vector3 & w1xR1p2 = linVel.getRefUnchecked(); /// reference
       w1xR1p2.noalias() = multiplier1.angVel().cross(R1p2);
 
       Vector3 & w1xR1p2_R1p2d = w1xR1p2; ///  reference ( =linVel() )
@@ -2530,8 +2530,6 @@ inline const LocalKinematics & LocalKinematics::integrateRungeKutta4(double dt, 
   LocalKinematics::Derivative k2;
   LocalKinematics::Derivative k3;
   LocalKinematics::Derivative k4;
-  
-  std::cout << std::endl << "This at start: " << std::endl << *this << std::endl;
 
   k1 = *this;
 
@@ -2542,9 +2540,6 @@ inline const LocalKinematics & LocalKinematics::integrateRungeKutta4(double dt, 
   y234.orientation.integrateRightSide(0.5 * dt * k1.angVel);
   y234.angVel = angVel() + 0.5 * dt * k1.angAcc;
 
-  std::cout << std::endl << "k1: " << std::endl << k1 << std::endl;
-  std::cout << std::endl << "y234: " << std::endl << y234 << std::endl;
-  
   accelerationFunctor.computeRecursiveLocalAccelerations_(y234); // computation of k2 (the acceleration part) in the global frame
 
   //conversion of k2 to the local frame in order to make them compatible with the LocalKinematics object
@@ -2556,9 +2551,6 @@ inline const LocalKinematics & LocalKinematics::integrateRungeKutta4(double dt, 
   y234.orientation = orientation;
   y234.orientation.integrateRightSide(0.5 * dt * k2.angVel);
   y234.angVel = angVel() + 0.5 * dt * k2.angAcc;
-
-  std::cout << std::endl << "k2: " << std::endl << k1 << std::endl;
-  std::cout << std::endl << "y234: " << std::endl << y234 << std::endl;
 
   accelerationFunctor.computeRecursiveLocalAccelerations_(y234); // computation of k3 (the acceleration part) in the global frame
 
@@ -2572,9 +2564,6 @@ inline const LocalKinematics & LocalKinematics::integrateRungeKutta4(double dt, 
   y234.orientation.integrateRightSide(dt * k3.angVel);
   y234.angVel = angVel() + dt * k3.angAcc;
 
-  std::cout << std::endl << "k3: " << std::endl << k1 << std::endl;
-  std::cout << std::endl << "y234: " << std::endl << y234 << std::endl;
-
   accelerationFunctor.computeRecursiveLocalAccelerations_(y234); // computation of k4 (the acceleration part) in the global frame
 
   //conversion of k4 to the local frame in order to make them compatible with the LocalKinematics object
@@ -2584,9 +2573,6 @@ inline const LocalKinematics & LocalKinematics::integrateRungeKutta4(double dt, 
   orientation.integrateRightSide(dt/6 * (k1.angVel + 2 * k2.angVel + 2 * k3.angVel + k4.angVel));
   linVel() += dt/6 * (k1.linVelDot + 2 * k2.linVelDot + 2 * k3.linVelDot + k4.linVelDot);
   angVel() += dt/6 * (k1.angAcc + 2 * k2.angAcc + 2 * k3.angAcc + k4.angAcc);
-
-  std::cout << std::endl << "k4: " << std::endl << k1 << std::endl;
-  std::cout << std::endl << "this: " << std::endl << *this << std::endl;
 
   return *this;
 }
@@ -3555,7 +3541,7 @@ inline LocalKinematics LocalKinematics::setToProductNoAlias(const LocalKinematic
   if(multiplier2.position.isSet() && multiplier1.position.isSet())
   {
     position.set(true);
-    Vector3 & R2tp1 = position(); /// reference ( Vector3&  )
+    Vector3 & R2tp1 = position.getRefUnchecked(); /// reference ( Vector3&  )
     R2tp1.noalias() = R2t * multiplier1.position();
 
     if(multiplier2.linVel.isSet() && multiplier1.linVel.isSet() && multiplier1.angVel.isSet())
@@ -3568,7 +3554,7 @@ inline LocalKinematics LocalKinematics::setToProductNoAlias(const LocalKinematic
 
       linVel.set(true);
 
-      Vector3 & R2tw1p2 = linVel(); /// reference
+      Vector3 & R2tw1p2 = linVel.getRefUnchecked(); /// reference
       R2tw1p2.noalias() = R2tw1.cross(multiplier2.position());
 
       Vector3 & R2tw1p2_p2d = R2tw1p2; ///  reference ( =linVel() )

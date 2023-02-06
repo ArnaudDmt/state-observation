@@ -1860,6 +1860,22 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
   }
 }
 
+void KineticsObserver::addUnmodeledWrench_(const Vector & worldCentroidStateVector, Vector3 & force, Vector3 & torque)
+{
+  force += worldCentroidStateVector.segment<sizeForce>(unmodeledWrenchIndex());
+  torque += worldCentroidStateVector.segment<sizeForce>(unmodeledTorqueIndex());
+}
+
+void KineticsObserver::addContactWrench_(const Kinematics & centroidContactKine,
+                                         const Vector3 & centroidContactForce,
+                                         const Vector3 & centroidContactTorque,
+                                         Vector3 & totalCentroidForce,
+                                         Vector3 & totalCentroidTorque)
+{
+  totalCentroidForce += centroidContactForce;
+  totalCentroidTorque += centroidContactTorque + centroidContactKine.position().cross(centroidContactForce);
+}
+
 void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroidStateKinematics,
                                                   const Vector3 & totalCentroidForce,
                                                   const Vector3 & totalCentroidTorque,

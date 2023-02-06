@@ -998,6 +998,22 @@ protected:
 
   void addUnmodeledAndContactWrench_(const Vector & centroidStateVector, Vector3 & force, Vector3 & torque);
 
+  void addUnmodeledWrench_(const Vector & centroidStateVector, Vector3 & force, Vector3 & torque);
+
+  /// @brief adds the contribution of a contact wrench at the centroid to the total wrench
+  ///
+  /// @param centroidContactKine The Kinematics of the current contact at the centroid
+  /// @param centroidContactForce The contact force at the centroid to add to the total force
+  /// @param centroidContactTorque The contact torque at the centroid to add to the total torque
+  /// @param totalCentroidForce The total force exerced at the centroid, that will be completed with the contact's force
+  /// @param totalCentroidTorque The total torque exerced at the centroid, that will be completed with the contact's
+  /// torque
+  void addContactWrench_(const Kinematics & centroidContactKine,
+                         const Vector3 & centroidContactForce,
+                         const Vector3 & centroidContactTorque,
+                         Vector3 & totalCentroidForce,
+                         Vector3 & totalCentroidTorque);
+
   void computeLocalAccelerations_(LocalKinematics & localStateKine,
                                   const Vector3 & totalForceLocal,
                                   const Vector3 & totalMomentLocal,

@@ -432,7 +432,6 @@ void KalmanFilterBase::setStateArithmetics(StateVectorArithmetics * a)
 
 void KalmanFilterBase::resetPrediction()
 {
-  BOOST_ASSERT(xbar_.isSet() && "the prediction hasn't been made yet");
   xbar_.set(false);
 }
 

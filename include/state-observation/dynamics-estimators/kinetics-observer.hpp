@@ -1157,7 +1157,8 @@ protected:
   Vector predictedWorldCentroidState_;
   std::vector<Vector>
       predictedAccelerometersGravityComponent_; // the gravity component of the measurement for each accelerometer
-  std::vector<Vector> predictedWorldIMUsLinAcc_; // the gravity component of the measurement for each accelerometer
+  std::vector<Vector>
+      predictedWorldIMUsLinAcc_; // the linear acceleration component of the measurement for each accelerometer
   std::vector<Vector> predictedAccelerometers_;
 
   Vector3 additionalForce_;

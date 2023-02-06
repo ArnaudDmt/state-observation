@@ -1491,6 +1491,7 @@ Matrix KineticsObserver::computeAMatrix_()
                     + dt2_2
                           * (kine::skewSymmetric2(worldCentroidStateKinematics_.angVel())
                              - kine::skewSymmetric(worldCentroidStateKinematics_.angAcc()));
+
   A.block<sizePosTangent, sizePosTangent>(posIndexTangent(), posIndexTangent()) =
       J_pl_pl; // For optimization, we can merge the two last operations into one
   Matrix3 J_pl_R = dt2_2 * J_al_R;
@@ -1854,7 +1855,7 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
       // worldCentroidStateVector.segment<sizeForce>(contactForceIndex(i)) << std::endl;
       force += centroidContactForcei;
       // std::cout << std::endl << "force3: " << std::endl << force << std::endl;
-      torque += centroidContactKinei.orientation * worldCentroidStateVector.segment<sizeForce>(contactTorqueIndex(i))
+      torque += centroidContactKinei.orientation * worldCentroidStateVector.segment<sizeTorque>(contactTorqueIndex(i))
                 + centroidContactKinei.position().cross(centroidContactForcei);
     }
   }

@@ -948,8 +948,6 @@ protected:
       Kinematics worldContactPose; // the pose of the contact in the world frane obtained by forward kinematics from the
                                    // centroid's frame. This is a temporary variable used for convenience. It must be
                                    // called with care as it is called in several functions in the code.
-      Kinematics rungeKuttaInitPose; // temporary contact pose in the world frame used to compute the increments of
-                                     // force in the Runge-Kutta approximation
     };
 
     Temp temp;
@@ -1006,9 +1004,9 @@ protected:
                                   Vector3 & linAcc,
                                   Vector3 & angAcc);
 
-  virtual void computeRecursiveGlobalAccelerations_(Kinematics & kine);
+  virtual void computeRecursiveGlobalAccelerations_(Kinematics & predictedWorldCentroidKinematics);
 
-  virtual void computeRecursiveLocalAccelerations_(LocalKinematics & locKine);
+  virtual void computeRecursiveLocalAccelerations_(LocalKinematics & predictedWorldCentroidKinematics);
 
   /// the kinematics is not const to allow more optimized non const operators to work
   void computeContactForces_(VectorContactIterator i,
@@ -1145,10 +1143,13 @@ protected:
   Vector3 additionalForce_;
   Vector3 additionalTorque_;
 
-  Vector3 tempCentroidForce_;
-  Vector3 tempCentroidTorque_; // variables used to store temporary computations of the force and the torques to access
-                               // in different functions, notably for the accelerations computation with Runge-Kutta. Use
-                               // them with care as they can be changed in several parts of the code.
+  Vector3 initTotalCentroidForce_; // Initial total force used in the Runge-Kutta integration, coming from the current
+                                   // state's variables
+  Vector3 initTotalCentroidTorque_;
+
+  Vector3 initialVEContactForces_; // Initial contact forces used in the Runge-Kutta integration, coming from the
+                                   // visco-elastic model used on the state's kinematics.
+  Vector3 initialVEContactTorques_;
 
   Vector measurementVector_;
   Matrix measurementCovMatrix_;

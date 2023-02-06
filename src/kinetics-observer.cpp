@@ -1874,122 +1874,138 @@ void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroi
       (totalCentroidForce / mass_) - worldCentroidStateKinematics.orientation.toMatrix3().transpose() * cst::gravity;
 }
 
-void KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics & worldCentroidStateKinematics)
+void KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics & predictedWorldCentroidKinematics)
 {
-  Vector3 tempTotalCentroidForce = tempCentroidForce_;
-  Vector3 tempTotalCentroidTorque = tempCentroidTorque_;
-  for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
-  {
-    if(i->isSet)
-    {
-      Kinematics & centroidContactKine = i->centroidContactKine;
+  BOOST_ASSERT(false && "this function must be checked");
+  Vector3 predictedVEContactForces = Vector3::Zero();
+  Vector3 predictedVEContactTorques = Vector3::Zero();
 
-      Matrix3 & Kpt = i->linearStiffness;
-      Matrix3 & Kdt = i->linearDamping;
-      Matrix3 & Kpr = i->angularStiffness;
-      Matrix3 & Kdr = i->angularDamping;
-      Kinematics & worldContactPose = i->temp.worldContactPose;
+  LocalKinematics predictedLocalWorldCentroidKinematics(predictedWorldCentroidKinematics);
 
-      Kinematics & rungeKuttaTempPose = i->temp.rungeKuttaInitPose;
+  computeContactForces_(predictedLocalWorldCentroidKinematics, predictedVEContactForces, predictedVEContactTorques);
 
-      worldContactPose.setToProductNoAlias(worldCentroidStateKinematics, centroidContactKine);
+  Vector3 diffForces =
+      predictedVEContactForces - initialVEContactForces_; // computing the increment of force occuring during the
+                                                          // current integration step of the rungeKutta
+  Vector3 diffTorques = predictedVEContactTorques - initialVEContactTorques_;
 
-      tempTotalCentroidForce += -(worldContactPose.orientation.toMatrix3().transpose()
-                                  * (Kpt * (worldContactPose.position() - rungeKuttaTempPose.position())
-                                     + Kdt * (worldContactPose.linVel() - rungeKuttaTempPose.linVel())));
-      tempTotalCentroidTorque +=
-          -(worldContactPose.orientation.toMatrix3().transpose()
-            * (Kpr
-                   * kine::vectorComponent((worldContactPose.orientation.toQuaternion()
-                                            * rungeKuttaTempPose.orientation.toQuaternion().inverse()))
-                   * 2
-               + Kdr * (worldContactPose.angVel() - rungeKuttaTempPose.angVel())));
-    }
-  }
-  worldCentroidStateKinematics.angAcc =
-      worldCentroidStateKinematics.orientation.toMatrix3() * I_().inverse()
-      * (tempCentroidTorque_
-         - Id_() * worldCentroidStateKinematics.orientation.toMatrix3().transpose()
-               * worldCentroidStateKinematics.angVel()
+  Vector3 & currentStepContactForces = diffForces;
+  Vector3 & currentStepContactTorques = diffTorques;
+
+  currentStepContactForces += initTotalCentroidForce_; // Corresponds to the increment contactForce
+  currentStepContactTorques += initTotalCentroidTorque_;
+
+  predictedLocalWorldCentroidKinematics.linAcc =
+      predictedLocalWorldCentroidKinematics.orientation * (currentStepContactForces / mass_) - cst::gravity;
+
+  predictedLocalWorldCentroidKinematics.angAcc =
+      predictedLocalWorldCentroidKinematics.orientation.toMatrix3() * I_().inverse()
+      * (currentStepContactTorques
+         - Id_() * predictedLocalWorldCentroidKinematics.orientation.toMatrix3().transpose()
+               * predictedLocalWorldCentroidKinematics.angVel()
          - sigmad_()
-         - (worldCentroidStateKinematics.orientation.toMatrix3().transpose() * worldCentroidStateKinematics.angVel())
-               .cross(I_() * worldCentroidStateKinematics.orientation.toMatrix3().transpose()
-                          * worldCentroidStateKinematics.angVel()
+         - (predictedLocalWorldCentroidKinematics.orientation.toMatrix3().transpose()
+            * predictedLocalWorldCentroidKinematics.angVel())
+               .cross(I_() * predictedLocalWorldCentroidKinematics.orientation.toMatrix3().transpose()
+                          * predictedLocalWorldCentroidKinematics.angVel()
                       + sigma_()));
-
-  worldCentroidStateKinematics.linAcc =
-      worldCentroidStateKinematics.orientation * (tempCentroidForce_ / mass_) - cst::gravity;
 }
 
-void KineticsObserver::computeRecursiveLocalAccelerations_(LocalKinematics & worldCentroidKinematics)
+void KineticsObserver::computeRecursiveLocalAccelerations_(LocalKinematics & predictedWorldCentroidKinematics)
 {
-  Kinematics globWorldCentroidStateKinematics(worldCentroidKinematics);
-  Vector3 tempTotalCentroidForce = tempCentroidForce_;
-  Vector3 tempTotalCentroidTorque = tempCentroidTorque_;
-  for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
-  {
-    if(i->isSet)
-    {
-      Kinematics & centroidContactKine = i->centroidContactKine;
+  Kinematics globWorldCentroidStateKinematics(predictedWorldCentroidKinematics);
 
-      Matrix3 & Kpt = i->linearStiffness;
-      Matrix3 & Kdt = i->linearDamping;
-      Matrix3 & Kpr = i->angularStiffness;
-      Matrix3 & Kdr = i->angularDamping;
-      Kinematics & worldContactPose = i->temp.worldContactPose;
+  Vector3 predictedVEContactForces = Vector3::Zero();
+  Vector3 predictedVEContactTorques = Vector3::Zero();
 
-      Vector3 tempContactForce = Eigen::Vector3d::Zero();
-      Vector3 tempContactTorque = Eigen::Vector3d::Zero();
+  computeContactForces_(predictedWorldCentroidKinematics, predictedVEContactForces, predictedVEContactTorques);
 
-      Kinematics & rungeKuttaTempPose = i->temp.rungeKuttaInitPose;
+  Vector3 diffForces =
+      predictedVEContactForces - initialVEContactForces_; // computing the increment of force occuring during the
+                                                          // current integration step of the rungeKutta
+  Vector3 diffTorques = predictedVEContactTorques - initialVEContactTorques_;
 
-      worldContactPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
+  Vector3 & currentStepContactForces = diffForces;
+  Vector3 & currentStepContactTorques = diffTorques;
 
-      tempTotalCentroidForce += -(worldContactPose.orientation.toMatrix3().transpose()
-                                  * (Kpt * (worldContactPose.position() - rungeKuttaTempPose.position())
-                                     + Kdt * (worldContactPose.linVel() - rungeKuttaTempPose.linVel())));
-      tempTotalCentroidTorque +=
-          -(worldContactPose.orientation.toMatrix3().transpose()
-            * (Kpr
-                   * kine::vectorComponent((worldContactPose.orientation.toQuaternion()
-                                            * rungeKuttaTempPose.orientation.toQuaternion().inverse()))
-                   * 2
-               + Kdr * (worldContactPose.angVel() - rungeKuttaTempPose.angVel())));
-    }
-  }
+  currentStepContactForces += initTotalCentroidForce_; // Corresponds to the increment contactForce
+  currentStepContactTorques += initTotalCentroidTorque_;
 
-  worldCentroidKinematics.linAcc =
-      (tempTotalCentroidForce / mass_) - worldCentroidKinematics.orientation.toMatrix3().transpose() * cst::gravity;
-  worldCentroidKinematics.angAcc =
+  predictedWorldCentroidKinematics.linAcc =
+      (currentStepContactForces / mass_)
+      - predictedWorldCentroidKinematics.orientation.toMatrix3().transpose() * cst::gravity;
+  predictedWorldCentroidKinematics.angAcc =
       I_().inverse()
-      * (tempTotalCentroidTorque - Id_() * worldCentroidKinematics.angVel() - sigmad_()
-         - worldCentroidKinematics.angVel().cross(I_() * worldCentroidKinematics.angVel() + sigma_()));
+      * (currentStepContactTorques - Id_() * predictedWorldCentroidKinematics.angVel() - sigmad_()
+         - predictedWorldCentroidKinematics.angVel().cross(I_() * predictedWorldCentroidKinematics.angVel()
+                                                           + sigma_()));
 }
 
-void KineticsObserver::computeContactForces_(VectorContactIterator i,
-                                             LocalKinematics & worldCentroidStateKinematics,
-                                             Kinematics & worldReferenceContactPose,
-                                             Vector3 & force,
-                                             Vector3 torque)
+void KineticsObserver::computeContactForce_(VectorContactIterator i,
+                                            LocalKinematics & worldCentroidStateKinematics,
+                                            Kinematics & worldReferenceContactPose,
+                                            Vector3 & contactForce,
+                                            Vector3 & contactTorque)
 {
   Contact & contact = *i;
 
   Kinematics & centroidContactKine = contact.centroidContactKine; // the kinematics of the contact in the centroid's
                                                                   // frame, expressed in the centroid's frame
   Kinematics & worldContactPose = contact.temp.worldContactPose;
-  worldContactPose = Kinematics(worldCentroidStateKinematics),
-  centroidContactKine; // the kinematics of the contact in the world frame, expressed in the contact's frame
+  worldContactPose.setToProductNoAlias(
+      Kinematics(worldCentroidStateKinematics),
+      centroidContactKine); // the kinematics of the contact in the world frame, expressed in the contact's frame
 
-  force = worldContactPose.orientation.toMatrix3().transpose()
+  contactForce = worldCentroidStateKinematics.orientation.toMatrix3().transpose()
+                 * (contact.linearStiffness * (worldReferenceContactPose.position() - worldContactPose.position())
+                    - contact.linearDamping * worldContactPose.linVel());
+
+  contactTorque = worldCentroidStateKinematics.orientation.toMatrix3().transpose()
+                  * (-0.5 * contact.angularStiffness
+                         * (worldContactPose.orientation.toQuaternion()
+                            * worldReferenceContactPose.orientation.toQuaternion().inverse())
+                               .vec()
+                     - contact.angularDamping * worldContactPose.angVel());
+}
+
+void KineticsObserver::computeContactForces_(LocalKinematics & worldCentroidStateKinematics,
+                                             Vector3 & contactForce,
+                                             Vector3 & contactTorque)
+{
+  BOOST_ASSERT(contactForce.isZero() && "The contact forces must be initialized with a zero vector");
+  BOOST_ASSERT(contactTorque.isZero() && "The contact forces must be initialized with a zero vector");
+
+  for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
+  {
+    if(i->isSet)
+    {
+      Contact & contact = *i;
+
+      Kinematics & centroidContactKine = contact.centroidContactKine; // the kinematics of the contact in the centroid's
+                                                                      // frame, expressed in the centroid's frame
+      Kinematics & worldContactPose = contact.temp.worldContactPose;
+      Kinematics & worldReferenceContactPose = contact.worldRefPose;
+
+      worldContactPose.setToProductNoAlias(
+          Kinematics(worldCentroidStateKinematics),
+          centroidContactKine); // the kinematics of the contact in the world frame, expressed in the contact's frame
+
+      Vector3 centroidContactForce =
+          worldCentroidStateKinematics.orientation.toMatrix3().transpose()
           * (contact.linearStiffness * (worldReferenceContactPose.position() - worldContactPose.position())
              - contact.linearDamping * worldContactPose.linVel());
+      contactForce += centroidContactForce;
 
-  torque = worldContactPose.orientation.toMatrix3().transpose()
-           * (-0.5 * contact.angularStiffness
-                  * (worldContactPose.orientation.toQuaternion()
-                     * worldReferenceContactPose.orientation.toQuaternion().inverse())
-                        .vec()
-              - contact.angularDamping * worldContactPose.angVel());
+      Vector3 centroidContactTorque = worldCentroidStateKinematics.orientation.toMatrix3().transpose()
+                                      * (-0.5 * contact.angularStiffness
+                                             * (worldContactPose.orientation.toQuaternion()
+                                                * worldReferenceContactPose.orientation.toQuaternion().inverse())
+                                                   .vec()
+                                         - contact.angularDamping * worldContactPose.angVel());
+
+      contactTorque += centroidContactTorque + centroidContactKine.position().cross(centroidContactForce);
+    }
+  }
 }
 
 void KineticsObserver::stateSum(const Vector & worldCentroidStateVector, const Vector & tangentVector, Vector & sum)
@@ -2109,10 +2125,14 @@ void KineticsObserver::measurementDifference(const Vector & measureVector1,
 Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*unused*/, TimeIndex)
 {
   Vector x = xInput;
-  tempCentroidForce_ = additionalForce_;
-  tempCentroidTorque_ = additionalTorque_;
 
-  addUnmodeledAndContactWrench_(x, tempCentroidForce_, tempCentroidTorque_);
+  initTotalCentroidForce_ =
+      additionalForce_; // initialization of the total force at the centroid with the input additional forces.
+  initTotalCentroidTorque_ = additionalTorque_;
+
+  addUnmodeledAndContactWrench_(x, initTotalCentroidForce_,
+                                initTotalCentroidTorque_); // adding the previously estimated contact and unmodeled
+                                                           // forces to obtain the total force at the centroid
 
   LocalKinematics worldCentroidStateKinematics(x.segment<sizeStateKine>(kineIndex()), flagsStateKine);
 
@@ -2125,28 +2145,16 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
 
   Kinematics globWorldCentroidStateKinematics = Kinematics(worldCentroidStateKinematics);
 
-  computeLocalAccelerations_(worldCentroidStateKinematics, tempCentroidForce_, tempCentroidTorque_, linacc, angacc);
+  computeLocalAccelerations_(worldCentroidStateKinematics, initTotalCentroidForce_, initTotalCentroidTorque_, linacc,
+                             angacc);
 
   LocalKinematics kineTest = worldCentroidStateKinematics;
   if(withRungeKutta_)
   {
-    for(VectorContactIterator i = contacts_.begin(); i != contacts_.end();
-        ++i) // storing the initial contact variables as runge-kutta needs them
-    {
-      if(i->isSet)
-      {
-        Kinematics & centroidContactKine = i->centroidContactKine;
+    initialVEContactForces_ = Vector3::Zero();
+    initialVEContactTorques_ = Vector3::Zero();
+    computeContactForces_(worldCentroidStateKinematics, initialVEContactForces_, initialVEContactTorques_);
 
-        Matrix3 & Kpt = i->linearStiffness;
-        Matrix3 & Kdt = i->linearDamping;
-        Matrix3 & Kpr = i->angularStiffness;
-        Matrix3 & Kdr = i->angularDamping;
-
-        i->temp.rungeKuttaInitPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
-      }
-    }
-    Kinematics glob(worldCentroidStateKinematics);
-    glob.integrateRungeKutta4(dt_, *this);
     worldCentroidStateKinematics.integrateRungeKutta4(dt_, *this);
     kineTest.integrate(dt_);
   }
@@ -2154,17 +2162,15 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   {
     worldCentroidStateKinematics.integrate(dt_);
   }
+
   x.segment<sizeStateKine>(kineIndex()) = worldCentroidStateKinematics.toVector(flagsStateKine);
 
   globWorldCentroidStateKinematics = Kinematics(worldCentroidStateKinematics);
-  // std::cout << std::endl << "globWorldCentroidStateKinematics: " << std::endl << globWorldCentroidStateKinematics <<
-  // std::endl;
 
   for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
   {
     if(i->isSet)
     {
-      Kinematics & centroidContactKine = i->centroidContactKine;
       Kinematics worldContactRefPose; // not using the variable belonging to Contact as this variable must change only
                                       // at the end of the update
       worldContactRefPose.fromVector(x.segment<sizePose>(contactPosIndex(i)), flagsPoseKine);
@@ -2174,30 +2180,11 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
       Matrix3 & Kpr = i->angularStiffness;
       Matrix3 & Kdr = i->angularDamping;
 
-      Kinematics & worldContactPose =
-          i->temp.worldContactPose; // the positon of the contact in the world frame, expressed in the contact's frame
-      // std::cout << std::endl << "k: " << std::endl << k_data_ << std::endl;
-      worldContactPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
-      // std::cout << std::endl << "centroidContactKine: " << std::endl << centroidContactKine << std::endl;
+      Kinematics & worldContactPose = i->temp.worldContactPose;
 
-      /// The error between the current kinematics and the rest kinematics
-      /// of the flexibility
-      // Kinematics errorKine;
-      // std::cout << std::endl << "worldContactPose: " << std::endl << worldContactPose << std::endl;
-      // std::cout << std::endl << "worldContactRefPose: " << std::endl << worldContactRefPose << std::endl;
-      // errorKine.setToDiffNoAlias(worldContactPose, worldContactRefPose);
-      // std::cout << std::endl << "errorKine: " << std::endl << errorKine << std::endl;
-      // std::cout << std::endl << "errorOrientation: " << std::endl <<
-      // kine::vectorComponent((globWorldCentroidStateKinematics.orientation.toQuaternion()*centroidContactKine.orientation.toQuaternion()*worldContactRefPose.orientation.toQuaternion().inverse()))
-      // << std::endl; x.segment<sizeForce>(contactForceIndex(i)) = -(contactWorldOri * (Kpt * errorKine.position() + Kdt
-      // * errorKine.linVel()));
       x.segment<sizeForce>(contactForceIndex(i)) =
           -(worldContactPose.orientation.toMatrix3().transpose()
             * (Kpt * (worldContactPose.position() - worldContactRefPose.position()) + Kdt * worldContactPose.linVel()));
-      // std::cout << std::endl << "contactForce: " << std::endl << x.segment<sizeForce>(contactForceIndex(i)) <<
-      // std::endl; BOOST_ASSERT(x.segment<sizeForce>(contactForceIndex(i)).maxCoeff() < 1 && "Pb contact force");
-      // x.segment<sizeTorque>(contactTorqueIndex(i)) = -(contactWorldOri * (Kpr *
-      // kine::vectorComponent(errorKine.orientation.toQuaternion()) * 0.5 + Kdr * errorKine.angVel()));
 
       x.segment<sizeTorque>(contactTorqueIndex(i)) =
           -(worldContactPose.orientation.toMatrix3().transpose()

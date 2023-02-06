@@ -1009,11 +1009,15 @@ protected:
   virtual void computeRecursiveLocalAccelerations_(LocalKinematics & predictedWorldCentroidKinematics);
 
   /// the kinematics is not const to allow more optimized non const operators to work
-  void computeContactForces_(VectorContactIterator i,
-                             LocalKinematics & worldCentroidStateKinematics,
-                             Kinematics & worldReferenceContactPose,
-                             Vector3 & force,
-                             Vector3 torque);
+  void computeContactForce_(VectorContactIterator i,
+                            LocalKinematics & worldCentroidStateKinematics,
+                            Kinematics & worldReferenceContactPose,
+                            Vector3 & contactForce,
+                            Vector3 & contactTorque);
+
+  void computeContactForces_(LocalKinematics & worldCentroidStateKinematics,
+                             Vector3 & contactForce,
+                             Vector3 & contactTorque);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);

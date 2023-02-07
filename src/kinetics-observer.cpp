@@ -189,6 +189,11 @@ Index KineticsObserver::getStateSize() const
   return stateSize_;
 }
 
+Index KineticsObserver::getStateTangentSize() const
+{
+  return stateTangentSize_;
+}
+
 Index KineticsObserver::getMeasurementSize() const
 {
   Index size = 0;
@@ -1727,10 +1732,7 @@ Matrix KineticsObserver::computeAMatrix_()
           + J_contactTorque_omega_at_same_time * J_omega_contactTorque;
     }
   }
-  // To remove
-  compareAnalyticAndFDJacobians(ekf_, A, worldCentroidStateVectorDx_);
-  return ekf_.getA();
-  // To remove
+
   return A;
 }
 
@@ -2444,43 +2446,186 @@ const double & KineticsObserver::getMass() const
   return mass_;
 }
 
-void KineticsObserver::compareAnalyticAndFDJacobians(ExtendedKalmanFilter & ekf,
-                                                     const Matrix & A_analytic,
-                                                     const Vector & dx)
+///////////////////////////////////////////////////////////////////////
+/// -------------------Tests implementation-------------
+///////////////////////////////////////////////////////////////////////
+
+void KineticsObserver::computeLocalAccelerationsForJacobian_(const Vector & x, Vector & acceleration)
 {
-  ekf.setA(ekf.getAMatrixFD(dx));
+  Vector3 totalCentroidForce =
+      additionalForce_; // initialization of the total force at the centroid with the input additional forces.
+  Vector3 totalCentroidTorque = additionalTorque_;
+
+  addUnmodeledAndContactWrench_(x, totalCentroidForce,
+                                totalCentroidTorque); // adding the previously estimated contact and unmodeled
+                                                      // forces to obtain the total force at the centroid
+  LocalKinematics worldCentroidStateKinematics(x, flagsStateKine);
+
+  acceleration.segment<3>(0) =
+      (totalCentroidForce / mass_) - worldCentroidStateKinematics.orientation.toMatrix3().transpose() * cst::gravity;
+
+  acceleration.segment<3>(3) =
+      I_().inverse()
+      * (totalCentroidTorque - Id_() * worldCentroidStateKinematics.angVel() - sigmad_()
+         - worldCentroidStateKinematics.angVel().cross(I_() * worldCentroidStateKinematics.angVel() + sigma_()));
+}
+
+Matrix KineticsObserver::compareAccelerationsJacobians(const Vector & dx)
+{
+  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+
+  /* Finite differences Jacobian */
+  Matrix accJacobianFD = Matrix::Zero(6, stateTangentSize_);
+
+  Vector accBar = Vector6::Zero();
+  Vector accBarIncremented = Vector6::Zero();
+  Vector accBarDiff = Vector6::Zero();
+
+  Vector x = ekf_.getCurrentEstimatedState();
+  Vector xIncrement = ekf_.getCurrentEstimatedState();
+
+  computeLocalAccelerationsForJacobian_(x, accBar);
+
+  xIncrement.resize(stateTangentSize_);
+
+  for(Index i = 0; i < stateTangentSize_; ++i)
+  {
+    xIncrement.setZero();
+    xIncrement[i] = dx[i];
+
+    stateSum(x, xIncrement, x);
+
+    computeLocalAccelerationsForJacobian_(x, accBarIncremented);
+
+    accBarDiff = accBarIncremented - accBar;
+
+    accBarDiff /= dx[i];
+
+    accJacobianFD.col(i) = accBarDiff;
+
+    x = ekf_.getCurrentEstimatedState();
+  }
+
+  /* Analytical jacobian */
+
+  LocalKinematics worldCentroidKinematics(x, flagsStateKine);
+  Matrix accJacobianAnalytical = Matrix::Zero(6, stateTangentSize_);
+  Matrix3 I_inv = I_().inverse();
+
+  // Jacobians of the linear acceleration
+  accJacobianAnalytical.block<3, sizeOriTangent>(0, oriIndexTangent()) =
+      -cst::gravityConstant
+      * (worldCentroidKinematics.orientation.toMatrix3().transpose() * kine::skewSymmetric(Vector3(0, 0, 1)));
+  accJacobianAnalytical.block<3, sizeForceTangent>(0, unmodeledForceIndexTangent()) =
+      Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent) / mass_;
+
+  // Jacobians of the angular acceleration
+  accJacobianAnalytical.block<3, sizeTorqueTangent>(3, unmodeledTorqueIndexTangent()) = I_inv;
+  accJacobianAnalytical.block<3, sizeAngVelTangent>(3, angVelIndexTangent()) =
+      I_inv
+      * (kine::skewSymmetric(I_() * worldCentroidKinematics.angVel()) - Id_()
+         - kine::skewSymmetric(worldCentroidKinematics.angVel()) * I_() + kine::skewSymmetric(sigma_()));
+
+  // Jacobians with respect to the contacts
+  for(VectorContactConstIterator i = contacts_.begin(); i != contacts_.end(); ++i)
+  {
+    if(i->isSet)
+    {
+      // Jacobian of the linar acceleration with respect to the contact force
+      accJacobianAnalytical.block<3, sizeForceTangent>(0, contactForceIndexTangent(i)) =
+          (1 / mass_) * i->centroidContactKine.orientation.toMatrix3();
+      // Jacobian of the angular acceleration with respect to the contact force
+      accJacobianAnalytical.block<3, sizeTorqueTangent>(3, contactForceIndexTangent(i)) =
+          (I_inv * kine::skewSymmetric(i->centroidContactKine.position()))
+          * (i->centroidContactKine.orientation).toMatrix3();
+      // Jacobian of the angular acceleration with respect to the contact torque
+      accJacobianAnalytical.block<3, sizeTorqueTangent>(3, contactTorqueIndexTangent(i)) =
+          I_inv * i->centroidContactKine.orientation.toMatrix3();
+    }
+  }
+
+  std::cout << std::endl << "Analytical : " << std::endl << accJacobianAnalytical.format(CleanFmt) << std::endl;
+  std::cout << std::endl << "FD : " << std::endl << accJacobianFD.format(CleanFmt) << std::endl;
+
+  /* Comparison */
+
+  for(int i = 0; i < accJacobianAnalytical.rows(); i++)
+  {
+    for(int j = 0; j < accJacobianAnalytical.cols(); j++)
+    {
+      if(abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j))
+                 / std::max(abs(accJacobianAnalytical(i, j)), abs(accJacobianFD(i, j))) * 100
+             > 20
+         && abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j)) != 0)
+      {
+        std::cout << std::endl
+                  << "\033[1;31m"
+                  << "error indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << accJacobianAnalytical(i, j)
+                  << "    FD : " << accJacobianFD(i, j) << "    Relative error : "
+                  << abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j))
+                         / std::max(abs(accJacobianAnalytical(i, j)), abs(accJacobianFD(i, j))) * 100
+                  << " % "
+                  << "\033[0m\n"
+                  << std::endl;
+      }
+    }
+  }
+
+  return accJacobianAnalytical - accJacobianFD;
+}
+
+Matrix KineticsObserver::compareAnalyticalAndFDJacobians(double threshold)
+{
+  const Vector & dx = worldCentroidStateVectorDx_;
+  Matrix A_analytic = computeAMatrix_();
+  Matrix A_FD = ekf_.getAMatrixFD(dx);
+
+  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+  std::cout << std::endl << "Analytical : " << std::endl << A_analytic.format(CleanFmt) << std::endl;
+  std::cout << std::endl << "FD : " << std::endl << A_FD.format(CleanFmt) << std::endl;
+
   bool stopIT = false;
+
+  std::cout << std::endl
+            << "\033[1;34m"
+            << "New iteration"
+            << "\033[0m\n"
+            << std::endl;
+
   for(int i = 0; i < A_analytic.rows(); i++)
   {
     for(int j = 0; j < A_analytic.cols(); j++)
     {
-      if(abs(A_analytic(i, j) - ekf.getA()(i, j)) > 1e-1
-         && abs(A_analytic(i, j) - ekf.getA()(i, j)) / abs(A_analytic(i, j)) > 1e+1
-         && abs(A_analytic(i, j) - ekf.getA()(i, j)) / abs(ekf.getA()(i, j)))
+      if(abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100 > threshold
+         && abs(A_analytic(i, j) - A_FD(i, j)) != 0)
       {
-        /*
-        std::cout << std::endl << "\033[1;31m"
-              << "error indexes: " << std::endl << "(" << i << "," << j << "): " << A_analytic(i,j) << "-" <<
-        ekf.getA()(i,j) << "=" << A_analytic(i,j) - ekf.getA()(i,j)
-                  << "\033[0m\n" << std::endl;
-                  */
+        std::cout << std::endl
+                  << "\033[1;31m"
+                  << "error indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                  << "    Relative error : "
+                  << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100
+                  << " % "
+                  << "\033[0m\n"
+                  << std::endl;
         stopIT = true;
       }
       else
       {
         /*
-        std::cout << std::endl << "good indexes: " << std::endl << "(" << i << "," << j << "): "
-              << A_analytic(i,j) << "-" << ekf.getA()(i,j) << "=" << std::max(abs(A_analytic(i,j) -
-        ekf.getA()(i,j))/abs(A_analytic(i,j)), abs(A_analytic(i,j) - ekf.getA()(i,j))/abs(ekf.getA()(i,j))) <<
-        std::endl;
-        */
+        std::cout << std::endl
+                  << "good indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                  << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
+        j)), abs(A_FD(i, j))) * 100
+                  << " % " << std::endl;
+
+                  */
       }
     }
-    if(stopIT)
-    {
-      // BOOST_ASSERT(false && "PB matrice A analytique");
-    }
   }
+  return A_analytic - A_FD;
 }
 
 } // namespace stateObservation

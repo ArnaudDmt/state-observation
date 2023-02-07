@@ -647,6 +647,12 @@ public:
   /// @return Index
   Index getStateSize() const;
 
+  /// @{
+  /// @brief Get the State Vector Tangent Size.
+  ///
+  /// @return Index
+  Index getStateTangentSize() const;
+
   /// @brief Get the Measurement vector Size.
   ///
   /// @return Index
@@ -990,8 +996,6 @@ protected:
 
 protected:
   ///////////// DYNAMICAL SYSTEM IMPLEMENTATION
-  void compareAnalyticAndFDJacobians(ExtendedKalmanFilter & ekf, const Matrix & A_analytic, const Vector & dx);
-
   virtual Vector stateDynamics(const Vector & x, const Vector & u, TimeIndex k);
 
   virtual Vector measureDynamics(const Vector & x, const Vector & u, TimeIndex k);
@@ -1122,6 +1126,18 @@ public:
   ///
   /// @param b true means we use finite differences
   virtual void useRungeKutta(bool b = true);
+
+  /// @brief computes the local acceleration from a the state vector
+  void computeLocalAccelerationsForJacobian_(const Vector & x, Vector & acceleration);
+
+  /// @brief Comparison between the Jacobians of the linear and angular accelerations with respect to the state,
+  /// obtained with finited differences and analyticially.
+  Matrix compareAccelerationsJacobians(const Vector & dx);
+
+  /// @brief Comparison between the analytical Jacobian matrix A and the one obtained by finite differences. Used to
+  /// test the analytical method.
+  /// @param threshold Threshold on the relative error between both Jacobians (in percentage)
+  Matrix compareAnalyticalAndFDJacobians(double threshold);
 
   /// @}
 

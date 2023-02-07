@@ -2190,6 +2190,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   {
     if(i->isSet)
     {
+      Kinematics & centroidContactKine = i->centroidContactKine;
       Kinematics worldContactRefPose; // not using the variable belonging to Contact as this variable must change only
                                       // at the end of the update
       worldContactRefPose.fromVector(x.segment<sizePose>(contactPosIndex(i)), flagsPoseKine);
@@ -2199,7 +2200,9 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
       Matrix3 & Kpr = i->angularStiffness;
       Matrix3 & Kdr = i->angularDamping;
 
-      Kinematics & worldContactPose = i->temp.worldContactPose;
+      Kinematics & worldContactPose =
+          i->temp.worldContactPose; // the positon of the contact in the world frame, expressed in the contact's frame
+      worldContactPose.setToProductNoAlias(globWorldCentroidStateKinematics, centroidContactKine);
 
       x.segment<sizeForce>(contactForceIndex(i)) =
           -(worldContactPose.orientation.toMatrix3().transpose()

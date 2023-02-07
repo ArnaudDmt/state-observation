@@ -1603,7 +1603,7 @@ Matrix KineticsObserver::computeAMatrix_()
       Matrix3 J_linAcc_Fcis = (1 / mass_) * i->centroidContactKine.orientation.toMatrix3();
       // Jacobian of the angular acceleration with respect to the contact force
       Matrix3 J_omegadot_Fcis = (I_inv * kine::skewSymmetric(i->centroidContactKine.position()))
-                                * (i->centroidContactKine.orientation * i->centroidContactKine.orientation).toMatrix3();
+                                * i->centroidContactKine.orientation.toMatrix3();
       // Jacobian of the angular acceleration with respect to the contact torque
       Matrix3 J_omegadot_Tcis = I_inv * i->centroidContactKine.orientation.toMatrix3();
 

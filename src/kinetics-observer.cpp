@@ -2209,12 +2209,12 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
             * (Kpt * (worldContactPose.position() - worldContactRefPose.position()) + Kdt * worldContactPose.linVel()));
 
       x.segment<sizeTorque>(contactTorqueIndex(i)) =
-          -(worldContactPose.orientation.toMatrix3().transpose()
-            * (Kpr
-                   * kine::vectorComponent((worldContactPose.orientation.toQuaternion()
-                                            * worldContactRefPose.orientation.toQuaternion().inverse()))
-                   * 2
-               + Kdr * worldContactPose.angVel()));
+          -2
+          * (worldContactPose.orientation.toMatrix3().transpose()
+             * (Kpr
+                    * kine::vectorComponent((worldContactPose.orientation.toQuaternion()
+                                             * worldContactRefPose.orientation.toQuaternion().inverse()))
+                + Kdr * worldContactPose.angVel()));
     }
   }
 

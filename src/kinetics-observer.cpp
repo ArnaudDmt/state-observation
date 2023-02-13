@@ -1506,10 +1506,10 @@ Matrix KineticsObserver::computeAMatrix_()
   Matrix3 J_pl_R = dt2_2 * J_al_R;
   A.block<sizePosTangent, sizeOriTangent>(posIndexTangent(), oriIndexTangent()) = J_pl_R;
   Matrix3 J_pl_vl = dt_ * Matrix::Identity(sizePosTangent, sizeLinVelTangent)
-                    - 2 * dt2_2 * kine::skewSymmetric(worldCentroidStateKinematics_.angVel());
+                    - 2.0 * dt2_2 * kine::skewSymmetric(worldCentroidStateKinematics_.angVel());
   A.block<sizePosTangent, sizeLinVelTangent>(posIndexTangent(), linVelIndexTangent()) = J_pl_vl;
   Matrix3 J_pl_omega = kine::skewSymmetric(dt_ * worldCentroidStateKinematics_.position()
-                                           + 2 * dt2_2 * worldCentroidStateKinematics_.linVel())
+                                           + 2.0 * dt2_2 * worldCentroidStateKinematics_.linVel())
                        + dt2_2
                              * (kine::skewSymmetric(worldCentroidStateKinematics_.position()) * J_omegadot_omega
                                 + kine::skewSymmetric(kine::skewSymmetric(worldCentroidStateKinematics_.position())
@@ -1526,7 +1526,7 @@ Matrix KineticsObserver::computeAMatrix_()
   Vector delta = dt_ * worldCentroidStateKinematics_.angVel() + dt2_2 * worldCentroidStateKinematics_.angAcc();
   double sq_norm_delta = delta.squaredNorm();
   double norm_delta = delta.norm();
-  double sin_delta_2 = sin(norm_delta / 2);
+  double sin_delta_2 = sin(0.5 * norm_delta);
 
   Matrix3 J_R_delta;
   if(norm_delta > cst::epsilonAngle)
@@ -1653,6 +1653,7 @@ Matrix KineticsObserver::computeAMatrix_()
       Vector3 sumVelContact = i->centroidContactKine.linVel()
                               + predictedWorldCentroidStateAngVel.cross(i->centroidContactKine.position())
                               + predictedWorldCentroidStateLinVel;
+
       Matrix3 J_contactForce_R_at_same_time =
           contactWorldOri.toMatrix3()
           * (i->linearStiffness
@@ -1850,10 +1851,9 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
                                                      Vector3 & force,
                                                      Vector3 & torque)
 {
-  // std::cout << std::endl << "force: " << std::endl << force << std::endl;
   force += worldCentroidStateVector.segment<sizeForce>(unmodeledWrenchIndex());
-  // std::cout << std::endl << "force2: " << std::endl << force << std::endl;
-  torque += worldCentroidStateVector.segment<sizeForce>(unmodeledTorqueIndex());
+
+  torque += worldCentroidStateVector.segment<sizeTorque>(unmodeledTorqueIndex());
 
   for(VectorContactIterator i = contacts_.begin(); i != contacts_.end(); ++i)
   {
@@ -1862,12 +1862,9 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
       Kinematics & centroidContactKinei = i->centroidContactKine;
       Vector3 centroidContactForcei =
           centroidContactKinei.orientation * worldCentroidStateVector.segment<sizeForce>(contactForceIndex(i));
-      // std::cout << std::endl << "centroidContactKinei.orientation: " << std::endl <<
-      // centroidContactKinei.orientation.toRotationVector() << std::endl; std::cout << std::endl <<
-      // "worldCentroidStateVector.segment<sizeForce>(contactForceIndex(i)): " << std::endl <<
-      // worldCentroidStateVector.segment<sizeForce>(contactForceIndex(i)) << std::endl;
+
       force += centroidContactForcei;
-      // std::cout << std::endl << "force3: " << std::endl << force << std::endl;
+
       torque += centroidContactKinei.orientation * worldCentroidStateVector.segment<sizeTorque>(contactTorqueIndex(i))
                 + centroidContactKinei.position().cross(centroidContactForcei);
     }
@@ -1904,7 +1901,8 @@ void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroi
       (totalCentroidForce / mass_) - worldCentroidStateKinematics.orientation.toMatrix3().transpose() * cst::gravity;
 }
 
-void KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics & predictedWorldCentroidKinematics)
+void KineticsObserver::computeRecursiveGlobalAccelerations_(
+    Kinematics & predictedWorldCentroidKinematics) // used in the Runge-Kutta integration
 {
   BOOST_ASSERT(false && "this function must be checked");
   Vector3 predictedVEContactForces = Vector3::Zero();
@@ -1941,7 +1939,8 @@ void KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics & predict
                       + sigma_()));
 }
 
-void KineticsObserver::computeRecursiveLocalAccelerations_(LocalKinematics & predictedWorldCentroidKinematics)
+void KineticsObserver::computeRecursiveLocalAccelerations_(
+    LocalKinematics & predictedWorldCentroidKinematics) // used in the Runge-Kutta integration
 {
   Kinematics globWorldCentroidStateKinematics(predictedWorldCentroidKinematics);
 
@@ -2178,7 +2177,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   computeLocalAccelerations_(worldCentroidStateKinematics, initTotalCentroidForce_, initTotalCentroidTorque_, linacc,
                              angacc);
 
-  LocalKinematics kineTest = worldCentroidStateKinematics;
+
   if(withRungeKutta_)
   {
     initialVEContactForces_ = Vector3::Zero();
@@ -2186,7 +2185,6 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
     computeContactForces_(worldCentroidStateKinematics, initialVEContactForces_, initialVEContactTorques_);
 
     worldCentroidStateKinematics.integrateRungeKutta4(dt_, *this);
-    kineTest.integrate(dt_);
   }
   else
   {

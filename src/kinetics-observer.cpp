@@ -1678,7 +1678,7 @@ Matrix KineticsObserver::computeAMatrix_()
           J_contactForce_pl_at_same_time * J_pl_R + J_contactForce_R_at_same_time
           + J_contactForce_vl_at_same_time * J_vl_R;
       A.block<sizeForceTangent, sizeLinVelTangent>(contactForceIndexTangent(i), linVelIndexTangent()) =
-          J_contactForce_pl_at_same_time * J_pl_vl;
+          J_contactForce_pl_at_same_time * J_pl_vl + J_contactForce_vl_at_same_time * J_vl_vl;
       A.block<sizeForceTangent, sizeAngVelTangent>(contactForceIndexTangent(i), angVelIndexTangent()) =
           J_contactForce_pl_at_same_time * J_pl_omega + J_contactForce_R_at_same_time * J_R_omega
           + J_contactForce_vl_at_same_time * J_vl_omega + J_contactForce_omega_at_same_time * J_omega_omega;

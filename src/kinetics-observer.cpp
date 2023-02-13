@@ -1738,8 +1738,8 @@ Matrix KineticsObserver::computeAMatrix_()
 
       Matrix3 J_contactTorque_omega_at_same_time =
           -(contactWorldOri.toMatrix3() * i->angularDamping * predictedWorldCentroidStateOri.toMatrix3());
-      Matrix3 J_contactTorque_contactOri_at_same_time =
-          2 * (contactWorldOri.toMatrix3() * i->angularStiffness * (predictedWorldCentroidStateOri.toMatrix3() * Vk));
+
+      Matrix3 J_contactTorque_contactOri_at_same_time = 0.5 * (contactWorldOri.toMatrix3() * i->angularStiffness * Vk2);
 
       A.block<sizeTorqueTangent, sizeOriTangent>(contactTorqueIndexTangent(i), oriIndexTangent()) =
           J_contactTorque_R_at_same_time;

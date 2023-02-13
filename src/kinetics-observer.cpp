@@ -553,7 +553,7 @@ void KineticsObserver::setStateVector(const Vector & v, bool resetCovariance)
   worldCentroidStateVector_ = v;
   ekf_.setState(v, k_est_);
 
-  updateKine_();
+  updateLocalKineAndContacts_();
 
   if(resetCovariance)
   {
@@ -1818,7 +1818,7 @@ TimeIndex k_data)
 }
 */
 
-void KineticsObserver::updateKine_()
+void KineticsObserver::updateLocalKineAndContacts_()
 {
   worldCentroidStateKinematics_.fromVector(worldCentroidStateVector_.segment<sizeStateKine>(kineIndex()),
                                            flagsStateKine);

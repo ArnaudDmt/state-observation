@@ -2229,13 +2229,21 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
           -(worldContactPose.orientation.toMatrix3().transpose()
             * (Kpt * (worldContactPose.position() - worldContactRefPose.position()) + Kdt * worldContactPose.linVel()));
 
+      Matrix R = worldContactPose.orientation.toMatrix3() * worldContactRefPose.orientation.toMatrix3().transpose();
       x.segment<sizeTorque>(contactTorqueIndex(i)) =
-          -2
-          * (worldContactPose.orientation.toMatrix3().transpose()
-             * (Kpr
+          -worldContactPose.orientation.toMatrix3().transpose()
+          * (0.5 * Kpr * kine::skewSymmetricToRotationVector(R - R.transpose()) + Kdr * worldContactPose.angVel());
+
+      /*
+      // using quaternions
+      x.segment<sizeTorque>(contactTorqueIndex(i)) =
+          -worldContactPose.orientation.toMatrix3().transpose()
+          * (2
+                 * (Kpr
                     * kine::vectorComponent((worldContactPose.orientation.toQuaternion()
-                                             * worldContactRefPose.orientation.toQuaternion().inverse()))
-                + Kdr * worldContactPose.angVel()));
+                                             * worldContactRefPose.orientation.toQuaternion().inverse())))
+             + Kdr * worldContactPose.angVel());
+      */
     }
   }
 

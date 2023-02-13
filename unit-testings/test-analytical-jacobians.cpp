@@ -30,6 +30,7 @@ Vector3 linvel = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 
 Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
 
 Vector3 gyroBias1 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
+Vector3 gyroBias2 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
 
 Vector3 extForces = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 extTorques = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
@@ -43,17 +44,23 @@ Vector3 centroidContactAngVel1 = tools::ProbabilityLawSimulation::getUniformMatr
 Vector3 contactForces1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 contactTorques1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 
+Vector3 worldContactPos2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+kine::Orientation worldContactOri2(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
+Vector3 centroidContactPos2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+kine::Orientation centroidContactOri2(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
+Vector3 centroidContactLinVel2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+Vector3 centroidContactAngVel2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+Vector3 contactForces2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+Vector3 contactTorques2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Matrix3 inertiaMatrix_ = tools::ProbabilityLawSimulation::getUniformMatrix<Matrix3>();
 Matrix3 inertiaMatrix_d_ = tools::ProbabilityLawSimulation::getGaussianMatrix<Matrix3>();
 Vector3 angularMomentum = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 angularMomentum_d = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 
-Vector stateVector_(position.size() + 4 + linvel.size() + angvel.size() + gyroBias1.size() + extForces.size()
-                    + extTorques.size() + worldContactPos1.size() + worldContactOri1.toVector4().size()
-                    + contactForces1.size() + contactTorques1.size());
-
-stateObservation::KineticsObserver ko_(1, 1);
 Vector dx_;
+
+bool secondContactAndGyro_ = false;
+stateObservation::KineticsObserver ko_(1, 1);
 
 int testAccelerationsJacobians(int errcode) // 1
 {
@@ -74,14 +81,13 @@ int testAnalyticalAJacobian(int errcode) // 1
 {
   double threshold = 1e-4;
 
-  std::cout << std::endl << "LocalKine before integration : " << std::endl << "gyhuhji" << std::endl;
-  Matrix A_Jacobian = ko_.compareAnalyticalAndFDJacobians(15, dx_, false);
+  Matrix A_diff = ko_.compareAnalyticalAndFDJacobians(15, dx_, false);
 
   std::cout << "Error between Runge Kutta integrations and consecutive integrations for LocalKinematics with constant "
                "acceleration: "
-            << A_Jacobian.norm() << std::endl;
+            << A_diff.norm() << std::endl;
 
-  if(A_Jacobian.norm() > threshold)
+  if(A_diff.norm() > threshold)
   {
     return errcode;
   }
@@ -209,6 +215,8 @@ int main()
   int returnVal;
   int errorcode = 0;
 
+  Vector stateVector_;
+
   /* Kinetics Observer initialization */
   ori.setRandom();
   worldContactOri1.setRandom();
@@ -222,14 +230,14 @@ int main()
   centroidContactPose1.linVel = centroidContactLinVel1;
   centroidContactPose1.angVel = centroidContactAngVel1;
 
-  // K1.setZero();
-  K2.setZero();
-
   ko_.setCenterOfMass(com, com_d, com_dd);
+
+  // ko_.setMass(4000);
 
   ko_.setSamplingTime(dt_);
   ko_.setWithUnmodeledWrench(true);
   ko_.useRungeKutta(false);
+  ko_.setWithGyroBias(false);
 
   ko_.setAngularMomentum(angularMomentum, angularMomentum_d);
   inertiaMatrix_ = inertiaMatrix_ * inertiaMatrix_.transpose();
@@ -239,6 +247,45 @@ int main()
 
   ko_.addContact(worldContactPose1, 0, K1, K2, K3, K4);
   ko_.updateContactWithNoSensor(centroidContactPose1, 0);
+
+  if(secondContactAndGyro_)
+  {
+    worldContactOri2.setRandom();
+
+    Kinematics worldContactPose2;
+    worldContactPose2.position = worldContactPos2;
+    worldContactPose2.orientation = worldContactOri2;
+    Kinematics centroidContactPose2;
+    centroidContactPose2.position = centroidContactPos2;
+    centroidContactPose2.orientation = centroidContactOri2;
+    centroidContactPose2.linVel = centroidContactLinVel2;
+    centroidContactPose2.angVel = centroidContactAngVel2;
+
+    Matrix3 K1_2 = lin_stiffness_ * Matrix3::Identity();
+    Matrix3 K2_2 = lin_damping_ * Matrix3::Identity();
+    Matrix3 K3_2 = ang_stiffness_ * Matrix3::Identity();
+    Matrix3 K4_2 = ang_damping_ * Matrix3::Identity();
+
+    ko_.addContact(worldContactPose1, 1, K1_2, K2_2, K3_2, K4_2);
+    ko_.updateContactWithNoSensor(centroidContactPose2, 1);
+
+    stateVector_.resize(position.size() + 4 + linvel.size() + angvel.size() + gyroBias1.size() + gyroBias2.size()
+                        + extForces.size() + extTorques.size() + worldContactPos1.size()
+                        + worldContactOri1.toVector4().size() + contactForces1.size() + contactTorques1.size()
+                        + worldContactPos2.size() + worldContactOri2.toVector4().size() + contactForces2.size()
+                        + contactTorques2.size());
+    stateVector_ << position, ori.toVector4(), linvel, angvel, gyroBias1, gyroBias1, extForces, extTorques,
+        worldContactPos1, worldContactOri1.toVector4(), contactForces1, contactTorques1, worldContactPos2,
+        worldContactOri2.toVector4(), contactForces2, contactTorques2;
+  }
+  else
+  {
+    stateVector_.resize(position.size() + 4 + linvel.size() + angvel.size() + gyroBias1.size() + extForces.size()
+                        + extTorques.size() + worldContactPos1.size() + worldContactOri1.toVector4().size()
+                        + contactForces1.size() + contactTorques1.size());
+    stateVector_ << position, ori.toVector4(), linvel, angvel, gyroBias1, extForces, extTorques, worldContactPos1,
+        worldContactOri1.toVector4(), contactForces1, contactTorques1;
+  }
 
   // angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / (dt * dt);
   /*
@@ -257,9 +304,6 @@ int main()
   ko_.setAngularMomentum(angularMomentum, angularMomentum_d);
   */
   // extTorques = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 10000;
-
-  stateVector_ << position, ori.toVector4(), linvel, angvel, gyroBias1, extForces, extTorques, worldContactPos1,
-      worldContactOri1.toVector4(), contactForces1, contactTorques1;
 
   std::cout << std::endl << "State vector : " << std::endl << stateVector_ << std::endl;
 

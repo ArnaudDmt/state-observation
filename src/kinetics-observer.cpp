@@ -1663,7 +1663,8 @@ Matrix KineticsObserver::computeAMatrix_()
                                        * (predictedWorldCentroidStateOri.toMatrix3()
                                           * (i->centroidContactKine.position() + predictedWorldCentroidStatePos))
                                    + i->linearDamping * (predictedWorldCentroidStateOri.toMatrix3() * sumVelContact)
-                                   - i->linearStiffness * i->centroidContactKine.position()));
+                                   - i->linearStiffness * predictedWorldContactRestPosition));
+
       Matrix3 J_contactForce_vl_at_same_time =
           -(contactWorldOri.toMatrix3() * i->linearDamping * predictedWorldCentroidStateOri.toMatrix3());
       Matrix3 J_contactForce_omega_at_same_time =

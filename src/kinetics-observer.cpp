@@ -365,10 +365,11 @@ const Vector & KineticsObserver::update()
 
     worldCentroidStateKinematics_.reset();
 
-    updateKine_();
+    updateLocalKineAndContacts_(); // update of worldCentroidStateKinematics_ and of the contacts pose with the newly
+                                   // estimated state
     if(withAccelerationEstimation_)
     {
-      estimateAccelerations();
+      estimateAccelerations(); // update of worldCentroidStateKinematics_ with the accelerations
     }
     updateGlobalKine_();
   }

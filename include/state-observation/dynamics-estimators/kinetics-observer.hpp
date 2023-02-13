@@ -1144,10 +1144,11 @@ public:
 protected:
   Vector stateNaNCorrection_();
 
-  /// updates stateKine_ and the reference position and orientation of the contacts  from the centroidStateVector
-  void updateKine_();
+  /// @brief update of the state kinematics worldCentroidStateKinematics_ and of the contacts pose with the newly
+  /// estimated state
+  void updateLocalKineAndContacts_();
 
-  /// updates the global kinematics of the centroid, that can be more interpretable
+  /// updates the global kinematics of the centroid from the local ones, that can be more interpretable
   void updateGlobalKine_();
 
 protected:

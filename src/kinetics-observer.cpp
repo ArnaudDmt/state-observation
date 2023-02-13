@@ -1705,7 +1705,7 @@ Matrix KineticsObserver::computeAMatrix_()
       Vector3 ey = Vector3(0, 1, 0);
       Vector3 ez = Vector3(0, 0, 1);
       Orientation RRefContactToWorld =
-          predictedWorldCentroidStateOri * i->centroidContactKine.orientation * predictedStateContactOri.inverse();
+          predictedWorldCentroidStateOri * i->centroidContactKine.orientation * predictedWorldContactRestOri.inverse();
       Orientation RWorldToRefContact = RRefContactToWorld.inverse();
 
       Matrix3 Vk = -ex * ez.transpose()
@@ -1717,13 +1717,25 @@ Matrix KineticsObserver::computeAMatrix_()
                    - ez * ey.transpose()
                          * (kine::skewSymmetric(RRefContactToWorld.toMatrix3() * ex)
                             + RWorldToRefContact.toMatrix3() * kine::skewSymmetric(ex));
+
+      Matrix3 Vk2 = -ex * ez.transpose()
+                        * (kine::skewSymmetric(RWorldToRefContact.toMatrix3() * ey)
+                           + RRefContactToWorld.toMatrix3() * kine::skewSymmetric(ey))
+                    - ey * ex.transpose()
+                          * (kine::skewSymmetric(RWorldToRefContact.toMatrix3() * ez)
+                             + RRefContactToWorld.toMatrix3() * kine::skewSymmetric(ez))
+                    - ez * ey.transpose()
+                          * (kine::skewSymmetric(RWorldToRefContact.toMatrix3() * ex)
+                             + RRefContactToWorld.toMatrix3() * kine::skewSymmetric(ex));
+
       Matrix3 J_contactTorque_R_at_same_time =
           -(contactWorldOri.toMatrix3()
-            * (kine::skewSymmetric(2 * i->angularStiffness
-                                       * (kine::rotationMatrixToRotationVector(RRefContactToWorld.toMatrix3()
-                                                                               - RWorldToRefContact.toMatrix3()))
+            * (kine::skewSymmetric(0.5 * i->angularStiffness
+                                       * (kine::skewSymmetricToRotationVector(RRefContactToWorld.toMatrix3()
+                                                                              - RWorldToRefContact.toMatrix3()))
                                    + i->angularDamping * angVelSum)
-               + 2 * i->angularStiffness * Vk - i->angularDamping * kine::skewSymmetric(angVelSum)));
+               + 0.5 * i->angularStiffness * Vk - i->angularDamping * kine::skewSymmetric(angVelSum)));
+
       Matrix3 J_contactTorque_omega_at_same_time =
           -(contactWorldOri.toMatrix3() * i->angularDamping * predictedWorldCentroidStateOri.toMatrix3());
       Matrix3 J_contactTorque_contactOri_at_same_time =

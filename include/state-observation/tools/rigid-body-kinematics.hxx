@@ -2616,17 +2616,15 @@ inline const LocalKinematics & LocalKinematics::integrate(double dt)
           
           if(angAcc.isSet())
           {
-            position() += 
-                dt * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) - linVel()))
-                + linVel() + 0.5 * dt * (linAcc() - angAcc().cross(position()))) ;
-
-            
+            position() += dt
+                          * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) + linVel())) + linVel()
+                             + 0.5 * dt * (linAcc() - angAcc().cross(position())));
           }
           else
           {
-            position() += 
-                dt * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) - linVel()))
-                + linVel() + 0.5 * dt * linAcc()) ;
+            position() += dt
+                          * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) + linVel())) + linVel()
+                             + 0.5 * dt * linAcc());
           }
           linVel() += dt * (-angVel().cross(linVel()) + linAcc());
         }
@@ -2655,15 +2653,14 @@ inline const LocalKinematics & LocalKinematics::integrate(double dt)
           linVel() -= angVel().cross(linVel());
           if(angAcc.isSet())
           {
-            position() += 
-                dt * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) - linVel()))
-                + linVel() - 0.5 * dt * angAcc().cross(position())) ;
+            position() += dt
+                          * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) + linVel())) + linVel()
+                             - 0.5 * dt * angAcc().cross(position()));
           }
           else
           {
-            position() += 
-                dt * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) - linVel()))
-                + linVel()) ;
+            position() +=
+                dt * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) + linVel())) + linVel());
           }
         }
         else
@@ -3358,15 +3355,17 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
         {
           if(currentAngAcc.isSet())
           {
-            thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()) - thisLinVel()))
-                  + thisLinVel() - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
+            thisLinPos() += dt
+                            * (-currentAngVel().cross(thisLinPos()
+                                                      + dt * (0.5 * currentAngVel().cross(thisLinPos()) + thisLinVel()))
+                               + thisLinVel() - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
           }
           else
           {
-            thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()) - thisLinVel()))
-                  + thisLinVel());
-
-            
+            thisLinPos() += dt
+                            * (-currentAngVel().cross(thisLinPos()
+                                                      + dt * (0.5 * currentAngVel().cross(thisLinPos()) + thisLinVel()))
+                               + thisLinVel());
           }
         }
         else

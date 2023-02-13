@@ -390,7 +390,7 @@ int testLocalVsGlobalIntegrates(int errcode)
   Vector3 pos = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
   kine::Orientation ori = kine::Orientation::randomRotation();
   Vector3 linvel = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
-  Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+  Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() * 10;
   Vector3 linacc = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
   Vector3 angacc = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
 
@@ -406,7 +406,12 @@ int testLocalVsGlobalIntegrates(int errcode)
   lk1.integrate(dt);
   Kinematics k1 = Kinematics(lk1);
 
+  std::cout << std::endl << "k1 : " << std::endl << k1 << std::endl;
+  std::cout << std::endl << "k : " << std::endl << k << std::endl;
+
   Kinematics diff = k1 * k.getInverse();
+
+  std::cout << std::endl << "diff : " << std::endl << diff << std::endl;
 
   if(diff.position.isSet())
   {

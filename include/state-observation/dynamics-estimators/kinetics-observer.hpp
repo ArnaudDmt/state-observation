@@ -1139,6 +1139,11 @@ public:
   /// @param threshold Threshold on the relative error between both Jacobians (in percentage)
   Matrix compareAnalyticalAndFDJacobians(double threshold, const Vector & dx, const bool & displayWrongElements);
 
+  Matrix compareAnalyticalAndFDJacobians(const Matrix & A_analytic,
+                                         double threshold,
+                                         const Vector & dx,
+                                         const bool & displayWrongElements);
+
   /// @}
 
 protected:

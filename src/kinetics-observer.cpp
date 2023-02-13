@@ -1473,6 +1473,7 @@ Matrix KineticsObserver::computeAMatrix_()
 
   Matrix A = Eigen::MatrixXd::Zero(stateTangentSize_, stateTangentSize_);
 
+  std::cout << std::endl << "StateKine : " << std::endl << worldCentroidStateKinematics_ << std::endl;
 
   double dt2_2 = 0.5 * pow(dt_, 2);
   Matrix3 dt2_2_Sp = dt2_2 * kine::skewSymmetric(worldCentroidStateKinematics_.position());
@@ -1756,7 +1757,7 @@ Matrix KineticsObserver::computeAMatrix_()
           + J_contactTorque_omega_at_same_time * J_omega_contactTorque;
     }
   }
-
+  compareAnalyticalAndFDJacobians(A, 10, worldCentroidStateVectorDx_, true);
   return A;
 }
 
@@ -2189,7 +2190,6 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   computeLocalAccelerations_(worldCentroidStateKinematics, initTotalCentroidForce_, initTotalCentroidTorque_, linacc,
                              angacc);
 
-
   if(withRungeKutta_)
   {
     initialVEContactForces_ = Vector3::Zero();
@@ -2534,6 +2534,8 @@ Matrix KineticsObserver::compareAccelerationsJacobians(const Vector & dx)
 
   computeLocalAccelerationsForJacobian_(x, accBar);
 
+  std::cout << "accBar: " << std::endl << accBar << std::endl;
+
   xIncrement.resize(stateTangentSize_);
 
   for(Index i = 0; i < stateTangentSize_; ++i)
@@ -2592,8 +2594,10 @@ Matrix KineticsObserver::compareAccelerationsJacobians(const Vector & dx)
     }
   }
 
-  std::cout << std::endl << "Analytical : " << std::endl << accJacobianAnalytical.format(CleanFmt) << std::endl;
-  std::cout << std::endl << "FD : " << std::endl << accJacobianFD.format(CleanFmt) << std::endl;
+  std::cout << std::endl
+            << "Analytical : " << std::endl
+            << displayVectorWithIndex(accJacobianAnalytical).format(CleanFmt) << std::endl;
+  std::cout << std::endl << "FD : " << std::endl << displayVectorWithIndex(accJacobianFD).format(CleanFmt) << std::endl;
 
   /* Comparison */
 
@@ -2623,11 +2627,69 @@ Matrix KineticsObserver::compareAccelerationsJacobians(const Vector & dx)
   return accJacobianAnalytical - accJacobianFD;
 }
 
+Matrix KineticsObserver::compareAnalyticalAndFDJacobians(const Matrix & A_analytic,
+                                                         double threshold,
+                                                         const Vector & dx,
+                                                         const bool & displayWrongElements)
+{
+  Matrix A_FD = ekf_.getAMatrixFD(dx);
+
+  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+  std::cout << std::endl
+            << "Analytical : " << std::endl
+            << displayVectorWithIndex(A_analytic).format(CleanFmt) << std::endl;
+  std::cout << std::endl << "FD : " << std::endl << displayVectorWithIndex(A_FD).format(CleanFmt) << std::endl;
+
+  bool stopIT = false;
+
+  std::cout << std::endl
+            << "\033[1;34m"
+            << "New iteration"
+            << "\033[0m\n"
+            << std::endl;
+  if(displayWrongElements)
+  {
+    for(int i = 0; i < A_analytic.rows(); i++)
+    {
+      for(int j = 0; j < A_analytic.cols(); j++)
+      {
+        if(abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100 > threshold
+           && abs(A_analytic(i, j) - A_FD(i, j)) != 0)
+        {
+          std::cout << std::endl
+                    << "\033[1;31m"
+                    << "error indexes: " << std::endl
+                    << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                    << "    Relative error : "
+                    << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100
+                    << " % "
+                    << "\033[0m\n"
+                    << std::endl;
+          stopIT = true;
+        }
+        else
+        {
+          /*
+          std::cout << std::endl
+                    << "good indexes: " << std::endl
+                    << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                    << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
+          j)), abs(A_FD(i, j))) * 100
+                    << " % " << std::endl;
+
+                    */
+        }
+      }
+    }
+  }
+
+  return A_analytic - A_FD;
+}
+
 Matrix KineticsObserver::compareAnalyticalAndFDJacobians(double threshold,
                                                          const Vector & dx,
                                                          const bool & displayWrongElements)
 {
-  std::cout << std::endl << "LocalKine before integration : " << std::endl << "gyhuhji" << std::endl;
   Matrix A_analytic = computeAMatrix_();
 
   Matrix A_FD = ekf_.getAMatrixFD(dx);
@@ -2652,7 +2714,9 @@ Matrix KineticsObserver::compareAnalyticalAndFDJacobians(double threshold,
       for(int j = 0; j < A_analytic.cols(); j++)
       {
         if(abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100 > threshold
-           && abs(A_analytic(i, j) - A_FD(i, j)) != 0)
+           && abs(A_analytic(i, j) - A_FD(i, j)) != 0 && (abs(A_analytic(i, j)) > 1e-9 && abs(A_FD(i, j)) > 1e-9)
+           && A_analytic(i, j) != 0)
+
         {
           std::cout << std::endl
                     << "\033[1;31m"

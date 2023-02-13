@@ -1694,7 +1694,8 @@ Matrix KineticsObserver::computeAMatrix_()
           + J_contactForce_vl_at_same_time * J_vl_contactForce
           + J_contactForce_omega_at_same_time * J_omega_contactForce;
       A.block<sizeForceTangent, sizeTorqueTangent>(contactForceIndexTangent(i), contactTorqueIndexTangent(i)) =
-          J_contactForce_R_at_same_time * J_R_contactTorque + J_contactForce_omega_at_same_time * J_omega_contactTorque;
+          J_contactForce_pl_at_same_time * J_pl_contactTorque + J_contactForce_R_at_same_time * J_R_contactTorque
+          + J_contactForce_omega_at_same_time * J_omega_contactTorque;
 
       // Jacobians of the contacts torque
       Vector3 angVelSum =

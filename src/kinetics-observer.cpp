@@ -1531,12 +1531,12 @@ Matrix KineticsObserver::computeAMatrix_()
   Matrix3 J_R_delta;
   if(norm_delta > cst::epsilonAngle)
   {
-    J_R_delta.noalias() = 1 / norm_delta
-                          * (((norm_delta - 2 * sin_delta_2) / (2 * sq_norm_delta))
+    J_R_delta.noalias() = 2.0 / norm_delta
+                          * (((norm_delta - 2.0 * sin_delta_2) / (2.0 * sq_norm_delta))
                                  * (worldCentroidStateKinematics_.orientation.toMatrix3() * delta * delta.transpose())
                              + sin_delta_2
                                    * (worldCentroidStateKinematics_.orientation.toMatrix3()
-                                      * kine::rotationVectorToRotationMatrix(delta / 2)));
+                                      * kine::rotationVectorToRotationMatrix(0.5 * delta)));
   }
   else
   {

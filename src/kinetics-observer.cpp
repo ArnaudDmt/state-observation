@@ -1617,6 +1617,8 @@ Matrix KineticsObserver::computeAMatrix_()
       // Jacobian of the centroid's position with respect to the contact force
       Matrix3 J_pl_contactForce = dt2_2_Sp * J_omegadot_Fcis + dt2_2 * J_linAcc_Fcis;
       A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), contactForceIndexTangent(i)) = J_pl_contactForce;
+      Matrix3 J_pl_contactTorque = dt2_2_Sp * J_omegadot_Tcis;
+      A.block<sizePosTangent, sizeTorqueTangent>(posIndexTangent(), contactTorqueIndexTangent(i)) = J_pl_contactTorque;
       // Jacobians of the orientation with respect to the contact force and torque
       Matrix3 J_R_contactForce = J_R_omegadot * J_omegadot_Fcis;
       A.block<sizeOriTangent, sizeForceTangent>(oriIndexTangent(), contactForceIndexTangent(i)) = J_R_contactForce;

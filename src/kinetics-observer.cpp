@@ -2502,6 +2502,22 @@ void KineticsObserver::computeLocalAccelerationsForJacobian_(const Vector & x, V
          - worldCentroidStateKinematics.angVel().cross(I_() * worldCentroidStateKinematics.angVel() + sigma_()));
 }
 
+Matrix displayVectorWithIndex(Matrix A) // to be remove
+{
+  Matrix indexedA(A.rows() + 1, A.cols() + 1);
+  indexedA.block(1, 1, A.rows(), A.cols()) = A;
+
+  for(int i = 0; i < A.rows(); i++)
+  {
+    for(int j = 0; j < A.cols(); j++)
+    {
+      indexedA(0, j + 1) = j;
+      indexedA(i + 1, 0) = i;
+    }
+  }
+  return indexedA;
+}
+
 Matrix KineticsObserver::compareAccelerationsJacobians(const Vector & dx)
 {
   Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
@@ -2607,15 +2623,20 @@ Matrix KineticsObserver::compareAccelerationsJacobians(const Vector & dx)
   return accJacobianAnalytical - accJacobianFD;
 }
 
-Matrix KineticsObserver::compareAnalyticalAndFDJacobians(double threshold)
+Matrix KineticsObserver::compareAnalyticalAndFDJacobians(double threshold,
+                                                         const Vector & dx,
+                                                         const bool & displayWrongElements)
 {
-  const Vector & dx = worldCentroidStateVectorDx_;
+  std::cout << std::endl << "LocalKine before integration : " << std::endl << "gyhuhji" << std::endl;
   Matrix A_analytic = computeAMatrix_();
+
   Matrix A_FD = ekf_.getAMatrixFD(dx);
 
   Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-  std::cout << std::endl << "Analytical : " << std::endl << A_analytic.format(CleanFmt) << std::endl;
-  std::cout << std::endl << "FD : " << std::endl << A_FD.format(CleanFmt) << std::endl;
+  std::cout << std::endl
+            << "Analytical : " << std::endl
+            << displayVectorWithIndex(A_analytic).format(CleanFmt) << std::endl;
+  std::cout << std::endl << "FD : " << std::endl << displayVectorWithIndex(A_FD).format(CleanFmt) << std::endl;
 
   bool stopIT = false;
 
@@ -2624,39 +2645,42 @@ Matrix KineticsObserver::compareAnalyticalAndFDJacobians(double threshold)
             << "New iteration"
             << "\033[0m\n"
             << std::endl;
-
-  for(int i = 0; i < A_analytic.rows(); i++)
+  if(displayWrongElements)
   {
-    for(int j = 0; j < A_analytic.cols(); j++)
+    for(int i = 0; i < A_analytic.rows(); i++)
     {
-      if(abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100 > threshold
-         && abs(A_analytic(i, j) - A_FD(i, j)) != 0)
+      for(int j = 0; j < A_analytic.cols(); j++)
       {
-        std::cout << std::endl
-                  << "\033[1;31m"
-                  << "error indexes: " << std::endl
-                  << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
-                  << "    Relative error : "
-                  << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100
-                  << " % "
-                  << "\033[0m\n"
-                  << std::endl;
-        stopIT = true;
-      }
-      else
-      {
-        /*
-        std::cout << std::endl
-                  << "good indexes: " << std::endl
-                  << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
-                  << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
-        j)), abs(A_FD(i, j))) * 100
-                  << " % " << std::endl;
+        if(abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100 > threshold
+           && abs(A_analytic(i, j) - A_FD(i, j)) != 0)
+        {
+          std::cout << std::endl
+                    << "\033[1;31m"
+                    << "error indexes: " << std::endl
+                    << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                    << "    Relative error : "
+                    << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100
+                    << " % "
+                    << "\033[0m\n"
+                    << std::endl;
+          stopIT = true;
+        }
+        else
+        {
+          /*
+          std::cout << std::endl
+                    << "good indexes: " << std::endl
+                    << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                    << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
+          j)), abs(A_FD(i, j))) * 100
+                    << " % " << std::endl;
 
-                  */
+                    */
+        }
       }
     }
   }
+
   return A_analytic - A_FD;
 }
 

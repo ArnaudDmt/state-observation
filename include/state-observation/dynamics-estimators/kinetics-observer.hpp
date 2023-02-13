@@ -1137,7 +1137,7 @@ public:
   /// @brief Comparison between the analytical Jacobian matrix A and the one obtained by finite differences. Used to
   /// test the analytical method.
   /// @param threshold Threshold on the relative error between both Jacobians (in percentage)
-  Matrix compareAnalyticalAndFDJacobians(double threshold);
+  Matrix compareAnalyticalAndFDJacobians(double threshold, const Vector & dx, const bool & displayWrongElements);
 
   /// @}
 

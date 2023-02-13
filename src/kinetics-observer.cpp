@@ -1541,7 +1541,7 @@ Matrix KineticsObserver::computeAMatrix_()
   else
   {
     J_R_delta.noalias() =
-        0.5 * worldCentroidStateKinematics_.orientation.toMatrix3() * kine::rotationVectorToRotationMatrix(delta / 2);
+        worldCentroidStateKinematics_.orientation.toMatrix3() * kine::rotationVectorToRotationMatrix(0.5 * delta);
   }
 
   // the intermediate jacobian used to compute the ones with respect to the angular velocity and acceleration

@@ -1602,8 +1602,9 @@ Matrix KineticsObserver::computeAMatrix_()
   {
     if(i->isSet)
     {
-      Orientation predictedStateContactOri;
-      predictedStateContactOri.fromVector4(statePrediction.segment<sizeOri>(contactOriIndex(i))).toMatrix3();
+      Orientation predictedWorldContactRestOri;
+      predictedWorldContactRestOri.fromVector4(statePrediction.segment<sizeOri>(contactOriIndex(i))).toMatrix3();
+      Vector3 predictedWorldContactRestPosition = statePrediction.segment<sizePos>(contactPosIndex(i));
 
       // Jacobian of the linar acceleration with respect to the contact force
       Matrix3 J_linAcc_Fcis = (1 / mass_) * i->centroidContactKine.orientation.toMatrix3();

@@ -242,6 +242,28 @@ inline Matrix3 orthogonalizeRotationMatrix(const Matrix3 & M)
   return svd.matrixU() * svd.matrixV().transpose();
 }
 
+/// transform a skew symmetric 3x3 matrix into a 3d vector
+inline Vector3 skewSymmetricToRotationVector(const Matrix3 & R, Vector3 & v)
+{
+  v(0) = R(2, 1);
+  v(1) = R(0, 2);
+  v(2) = R(1, 0);
+  // R <<     0, -v[2],  v[1],
+  //      v[2],     0, -v[0],
+  //     -v[1],  v[0],     0;
+
+  return v;
+}
+
+/// transform a skew symmetric 3x3 matrix into a 3d vector
+inline Vector3 skewSymmetricToRotationVector(const Matrix3 & R)
+{
+  Vector3 v;
+  skewSymmetricToRotationVector(R, v);
+
+  return v;
+}
+
 /// transform a 3d vector into a skew symmetric 3x3 matrix
 inline Matrix3 skewSymmetric(const Vector3 & v, Matrix3 & R)
 {

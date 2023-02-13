@@ -321,7 +321,6 @@ const Vector & KineticsObserver::update()
     }
     else
     {
-      estimateAccelerations();
       ekf_.setA(computeAMatrix_());
       predictedWorldCentroidState_ = ekf_.getLastPrediction();
       ekf_.setC(computeCMatrix_());
@@ -1463,6 +1462,8 @@ NoiseBase * KineticsObserver::getMeasurementNoise() const
 
 Matrix KineticsObserver::computeAMatrix_()
 {
+  estimateAccelerations(); // update of worldCentroidStateKinematics_ with the accelerations
+
   const Vector & statePrediction = ekf_.updateStatePrediction();
   const Vector3 & predictedWorldCentroidStatePos = statePrediction.segment<sizePos>(posIndex());
   Orientation predictedWorldCentroidStateOri;
@@ -1472,7 +1473,9 @@ Matrix KineticsObserver::computeAMatrix_()
 
   Matrix A = Eigen::MatrixXd::Zero(stateTangentSize_, stateTangentSize_);
 
-  double dt2_2 = pow(dt_, 2) / 2;
+
+  double dt2_2 = 0.5 * pow(dt_, 2);
+  Matrix3 dt2_2_Sp = dt2_2 * kine::skewSymmetric(worldCentroidStateKinematics_.position());
 
   // Jacobians of the angular acceleration
   Matrix3 I_inv = I_().inverse();

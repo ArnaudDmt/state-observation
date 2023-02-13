@@ -1567,7 +1567,7 @@ Matrix KineticsObserver::computeAMatrix_()
   A.block<sizeLinVelTangent, sizeAngVelTangent>(linVelIndexTangent(), unmodeledForceIndexTangent()) = J_vl_ext_force;
 
   // Jacobians of the angular velocity
-  Matrix3 J_omega_omega = dt_ * J_omegadot_omega;
+  Matrix3 J_omega_omega = Matrix3::Identity() + dt_ * J_omegadot_omega;
   A.block<sizeAngVelTangent, sizeAngVelTangent>(angVelIndexTangent(), angVelIndexTangent()) = J_omega_omega;
   Matrix3 J_omega_ext_torque = dt_ * J_omegadot_ext_torque;
   A.block<sizeAngVelTangent, sizeTorqueTangent>(angVelIndexTangent(), unmodeledTorqueIndexTangent()) =

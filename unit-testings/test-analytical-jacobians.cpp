@@ -27,7 +27,7 @@ Vector3 com_dd = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 
 Vector3 position = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 kine::Orientation ori(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
 Vector3 linvel = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
+Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10 * 100;
 
 Vector3 gyroBias1 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
 Vector3 gyroBias2 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
@@ -43,6 +43,15 @@ Vector3 centroidContactLinVel1 = tools::ProbabilityLawSimulation::getUniformMatr
 Vector3 centroidContactAngVel1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 contactForces1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 contactTorques1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+
+Vector3 worldContactPos2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+kine::Orientation worldContactOri2(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
+Vector3 centroidContactPos2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+kine::Orientation centroidContactOri2(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
+Vector3 centroidContactLinVel2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+Vector3 centroidContactAngVel2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+Vector3 contactForces2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+Vector3 contactTorques2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 
 Vector3 worldContactPos2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 kine::Orientation worldContactOri2(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));

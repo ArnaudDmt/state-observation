@@ -3391,15 +3391,18 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
             
             if(currentAngAcc.isSet())
             {
-              
-              thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()) - thisLinVel()))
-                  + thisLinVel() + 0.5 * dt * (thisLinAcc() - currentAngAcc().cross(thisLinPos())));
-              
+
+              thisLinPos() += dt
+                              * (-currentAngVel().cross(
+                                     thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()) + thisLinVel()))
+                                 + thisLinVel() + 0.5 * dt * (thisLinAcc() - currentAngAcc().cross(thisLinPos())));
             }
             else
             {
-              thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()) - thisLinVel()))
-                  + thisLinVel() + 0.5 * dt * (thisLinAcc()));
+              thisLinPos() += dt
+                              * (-currentAngVel().cross(
+                                     thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()) + thisLinVel()))
+                                 + thisLinVel() + 0.5 * dt * (thisLinAcc()));
             }
           }
           else

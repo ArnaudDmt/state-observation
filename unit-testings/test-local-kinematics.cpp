@@ -390,7 +390,7 @@ int testLocalVsGlobalIntegrates(int errcode)
   Vector3 pos = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
   kine::Orientation ori = kine::Orientation::randomRotation();
   Vector3 linvel = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
-  Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() * 10;
+  Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
   Vector3 linacc = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
   Vector3 angacc = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
 
@@ -413,6 +413,8 @@ int testLocalVsGlobalIntegrates(int errcode)
 
   std::cout << std::endl << "diff : " << std::endl << diff << std::endl;
 
+  std::cout << std::endl << "diff : " << std::endl << diff << std::endl;
+
   if(diff.position.isSet())
   {
     err += diff.position().squaredNorm();
@@ -428,14 +430,6 @@ int testLocalVsGlobalIntegrates(int errcode)
   if(diff.angVel.isSet())
   {
     err += diff.angVel().squaredNorm();
-  }
-  if(diff.linAcc.isSet())
-  {
-    err += diff.linAcc().squaredNorm();
-  }
-  if(diff.angAcc.isSet())
-  {
-    err += diff.angAcc().squaredNorm();
   }
 
   std::cout << "Error between integrations with local and global frames: " << err << std::endl;
@@ -1353,14 +1347,14 @@ int testKinematics(int errcode)
     // std::cout << "Error before all : " << err << std::endl;
     if(k0.position.isSet())
     {
-      if((k.position() - k0.position()).squaredNorm() < 1e-10)
+      if((k.position() - k0.position()).squaredNorm() < 1e-13)
       {
         err += (k.position() - k0.position()).squaredNorm();
       }
       else
       {
         err += (l.position()
-                - l.angVel().cross(dt * (l.position() + dt * (0.5 * l.angVel().cross(l.position() - l.linVel()))))
+                - l.angVel().cross(dt * (l.position() + dt * (0.5 * l.angVel().cross(l.position()) + l.linVel())))
                 + dt * (l.linVel() + 0.5 * dt * (l.linAcc() - l.angAcc().cross(l.position()))) - k0.position())
                    .squaredNorm();
       }

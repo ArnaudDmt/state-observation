@@ -1354,7 +1354,7 @@ int testKinematics(int errcode)
       else
       {
         err += (l.position()
-                - l.angVel().cross(dt * (l.position() + dt * (0.5 * l.angVel().cross(l.position()) + l.linVel())))
+                - l.angVel().cross(dt * (l.position() + dt * (l.linVel() - 0.5 * l.angVel().cross(l.position()))))
                 + dt * (l.linVel() + 0.5 * dt * (l.linAcc() - l.angAcc().cross(l.position()))) - k0.position())
                    .squaredNorm();
       }

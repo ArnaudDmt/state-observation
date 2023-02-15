@@ -1127,6 +1127,10 @@ public:
   /// @param b true means we use finite differences
   virtual void useRungeKutta(bool b = true);
 
+  virtual Matrix computeAMatrix();
+
+  virtual Matrix computeCMatrix();
+
   /// @brief computes the local acceleration from a the state vector
   void computeLocalAccelerationsForJacobian_(const Vector & x, Vector & acceleration);
 
@@ -1226,9 +1230,6 @@ protected:
   /// detects if there is a new estimation beginning and then
   /// calls the reset of the iteration
   void startNewIteration_();
-
-  virtual Matrix computeAMatrix_();
-  virtual Matrix computeCMatrix_();
 
   /// @brief Converts a LocalKinematics object from the user's frame to the centroid's frame, which is used for most of
   /// the computations

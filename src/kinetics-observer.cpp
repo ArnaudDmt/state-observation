@@ -321,9 +321,9 @@ const Vector & KineticsObserver::update()
     }
     else
     {
-      ekf_.setA(computeAMatrix_());
+      ekf_.setA(computeAMatrix());
       predictedWorldCentroidState_ = ekf_.getLastPrediction();
-      ekf_.setC(computeCMatrix_());
+      ekf_.setC(computeCMatrix());
     }
     // std::cout << std::endl << "d_kine/d_kine : " << std::endl << ekf_.getA().block<12, 12>(posIndexTangent(),
     // posIndexTangent()) << std::endl;
@@ -1460,7 +1460,7 @@ NoiseBase * KineticsObserver::getMeasurementNoise() const
   return measurementNoise_;
 }
 
-Matrix KineticsObserver::computeAMatrix_()
+Matrix KineticsObserver::computeAMatrix()
 {
   estimateAccelerations(); // update of worldCentroidStateKinematics_ with the accelerations
 
@@ -1761,7 +1761,7 @@ Matrix KineticsObserver::computeAMatrix_()
   return A;
 }
 
-Matrix KineticsObserver::computeCMatrix_()
+Matrix KineticsObserver::computeCMatrix()
 {
   return ekf_.getCMatrixFD(worldCentroidStateVectorDx_);
 }

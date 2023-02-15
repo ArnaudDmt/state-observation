@@ -119,6 +119,14 @@ public:
 
   const double & getMass() const;
 
+  const IndexedMatrix3 & getInertiaMatrix() const;
+
+  const IndexedMatrix3 & getInertiaMatrix_d() const;
+
+  const IndexedVector3 & getAngularMomentum() const;
+
+  const IndexedVector3 & getAngularMomentum_d() const;
+
   /// @}
 
   // ///////////////////////////////////////////////////////////
@@ -1132,22 +1140,26 @@ public:
   virtual Matrix computeCMatrix();
 
   /// @brief computes the local acceleration from a the state vector
-  void computeLocalAccelerationsForJacobian_(const Vector & x, Vector & acceleration);
+  void computeLocalAccelerations(const Vector & x, Vector & acceleration);
 
   /// @brief Comparison between the Jacobians of the linear and angular accelerations with respect to the state,
-  /// obtained with finited differences and analyticially.
-  Matrix compareAccelerationsJacobians(const Vector & dx);
+  /// obtained with finite differences and analyticially.
+  friend int testAccelerationsJacobians(int errcode,
+                                        double relativeErrorThreshold,
+                                        double threshold); // declared out of namespace state-observation
 
   /// @brief Comparison between the analytical Jacobian matrix A and the one obtained by finite differences. Used to
   /// test the analytical method.
   /// @param threshold Threshold on the relative error between both Jacobians (in percentage)
-  Matrix compareAnalyticalAndFDJacobians(double threshold, const Vector & dx, const bool & displayWrongElements);
+  friend int testAnalyticalAJacobianVsFD(int errcode,
+                                         double relativeErrorThreshold,
+                                         double threshold); // declared out of namespace state-observation
 
-  Matrix compareAnalyticalAndFDJacobians(const Matrix & A_analytic,
-                                         double threshold,
-                                         const Vector & dx,
-                                         const bool & displayWrongElements);
-
+  /// @brief Comparison between the Jacobians of orientation integration with respect to an increment vector delta,
+  /// obtained with finite differences and analyticially.
+  friend int testOrientationsJacobians(int errcode,
+                                       double relativeErrorThreshold,
+                                       double threshold); // declared out of namespace state-observation
   /// @}
 
 protected:

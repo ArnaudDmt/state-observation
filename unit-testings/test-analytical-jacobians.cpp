@@ -1,12 +1,15 @@
 #include <bitset>
 #include <iostream>
+#include <state-observation/tools/definitions.hpp>
 
 #include <state-observation/dynamics-estimators/kinetics-observer.hpp>
 #include <state-observation/tools/probability-law-simulation.hpp>
 #include <state-observation/tools/rigid-body-kinematics.hpp>
 
-using namespace stateObservation;
-using namespace kine;
+using namespace stateObservation::kine;
+
+namespace stateObservation
+{
 
 double dt_ = 0.005;
 
@@ -41,8 +44,8 @@ Vector3 centroidContactPos1 = tools::ProbabilityLawSimulation::getUniformMatrix<
 kine::Orientation centroidContactOri1(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
 Vector3 centroidContactLinVel1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 centroidContactAngVel1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-Vector3 contactForces1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-Vector3 contactTorques1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
+Vector3 contactForces1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 10000;
+Vector3 contactTorques1 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 10;
 
 Vector3 worldContactPos2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 kine::Orientation worldContactOri2(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
@@ -53,65 +56,169 @@ Vector3 centroidContactAngVel2 = tools::ProbabilityLawSimulation::getUniformMatr
 Vector3 contactForces2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 contactTorques2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 
-Vector3 worldContactPos2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-kine::Orientation worldContactOri2(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
-Vector3 centroidContactPos2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-kine::Orientation centroidContactOri2(Vector3(tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10));
-Vector3 centroidContactLinVel2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-Vector3 centroidContactAngVel2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-Vector3 contactForces2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-Vector3 contactTorques2 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Matrix3 inertiaMatrix_ = tools::ProbabilityLawSimulation::getUniformMatrix<Matrix3>();
 Matrix3 inertiaMatrix_d_ = tools::ProbabilityLawSimulation::getGaussianMatrix<Matrix3>();
 Vector3 angularMomentum = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 angularMomentum_d = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 
+Eigen::IOFormat CleanFmt_(4, 0, ", ", "\n", "[", "]");
+
 Vector dx_;
+double error_ = 0;
 
 bool secondContactAndGyro_ = false;
-stateObservation::KineticsObserver ko_(1, 1);
+KineticsObserver ko_(1, 1);
 
-int testAccelerationsJacobians(int errcode) // 1
+///////////////////////////////////////////////////////////////////////
+/// -------------------Intermediary functions for the tests-------------
+///////////////////////////////////////////////////////////////////////
+
+Matrix displayVectorWithIndex(Matrix A) // to be remove
 {
-  double threshold = 1e-4;
+  Matrix indexedA(A.rows() + 1, A.cols() + 1);
+  indexedA.block(1, 1, A.rows(), A.cols()) = A;
 
-  Matrix accDiffJacobian = ko_.compareAccelerationsJacobians(dx_);
+  for(int i = 0; i < A.rows(); i++)
+  {
+    for(int j = 0; j < A.cols(); j++)
+    {
+      indexedA(0, j + 1) = j;
+      indexedA(i + 1, 0) = i;
+    }
+  }
+  return indexedA;
+}
 
-  std::cout << "Error between the analytical and the finite differences A Jacobian: " << accDiffJacobian.norm()
+///////////////////////////////////////////////////////////////////////
+/// -------------------Tests implementation-------------
+///////////////////////////////////////////////////////////////////////
+
+int testAccelerationsJacobians(int errcode, double relativeErrorThreshold, double threshold) // 1
+{
+  /* Finite differences Jacobian */
+  Matrix accJacobianFD = Matrix::Zero(6, ko_.getStateTangentSize());
+
+  Vector accBar = Vector6::Zero();
+  Vector accBarIncremented = Vector6::Zero();
+  Vector accBarDiff = Vector6::Zero();
+
+  Vector x = ko_.getEKF().getCurrentEstimatedState();
+  Vector xIncrement = ko_.getEKF().getCurrentEstimatedState();
+
+  ko_.computeLocalAccelerations(x, accBar);
+
+  std::cout << "accBar: " << std::endl << accBar << std::endl;
+
+  xIncrement.resize(ko_.getStateTangentSize());
+
+  for(Index i = 0; i < ko_.getStateTangentSize(); ++i)
+  {
+    xIncrement.setZero();
+    xIncrement[i] = dx_[i];
+
+    ko_.stateSum(x, xIncrement, x);
+
+    ko_.computeLocalAccelerations(x, accBarIncremented);
+
+    accBarDiff = accBarIncremented - accBar;
+
+    accBarDiff /= dx_[i];
+
+    accJacobianFD.col(i) = accBarDiff;
+
+    x = ko_.getEKF().getCurrentEstimatedState();
+  }
+
+  /* Analytical jacobian */
+
+  LocalKinematics worldCentroidKinematics(x, ko_.flagsStateKine);
+  Matrix accJacobianAnalytical = Matrix::Zero(6, ko_.getStateTangentSize());
+  Matrix3 I_inv = ko_.getInertiaMatrix()().inverse();
+
+  // Jacobians of the linear acceleration
+  accJacobianAnalytical.block<3, ko_.sizeOriTangent>(0, ko_.oriIndexTangent()) =
+      -cst::gravityConstant
+      * (worldCentroidKinematics.orientation.toMatrix3().transpose() * kine::skewSymmetric(Vector3(0, 0, 1)));
+  accJacobianAnalytical.block<3, ko_.sizeForceTangent>(0, ko_.unmodeledForceIndexTangent()) =
+      Matrix::Identity(ko_.sizeLinAccTangent, ko_.sizeTorqueTangent) / ko_.getMass();
+
+  // Jacobians of the angular acceleration
+  accJacobianAnalytical.block<3, ko_.sizeTorqueTangent>(3, ko_.unmodeledTorqueIndexTangent()) = I_inv;
+  accJacobianAnalytical.block<3, ko_.sizeAngVelTangent>(3, ko_.angVelIndexTangent()) =
+      I_inv
+      * (kine::skewSymmetric(ko_.getInertiaMatrix()() * worldCentroidKinematics.angVel()) - ko_.getInertiaMatrix_d()()
+         - kine::skewSymmetric(worldCentroidKinematics.angVel()) * ko_.getInertiaMatrix()()
+         + kine::skewSymmetric(ko_.getAngularMomentum()()));
+
+  // Jacobians with respect to the contacts
+  for(KineticsObserver::VectorContactConstIterator i = ko_.contacts_.begin(); i != ko_.contacts_.end(); ++i)
+  {
+    if(i->isSet)
+    {
+      // Jacobian of the linar acceleration with respect to the contact force
+      accJacobianAnalytical.block<3, ko_.sizeForceTangent>(0, ko_.contactForceIndexTangent(i)) =
+          (1.0 / ko_.getMass()) * i->centroidContactKine.orientation.toMatrix3();
+      // Jacobian of the angular acceleration with respect to the contact force
+      accJacobianAnalytical.block<3, ko_.sizeTorqueTangent>(3, ko_.contactForceIndexTangent(i)) =
+          (I_inv * kine::skewSymmetric(i->centroidContactKine.position()))
+          * (i->centroidContactKine.orientation).toMatrix3();
+      // Jacobian of the angular acceleration with respect to the contact torque
+      accJacobianAnalytical.block<3, ko_.sizeTorqueTangent>(3, ko_.contactTorqueIndexTangent(i)) =
+          I_inv * i->centroidContactKine.orientation.toMatrix3();
+    }
+  }
+
+  std::cout << std::endl
+            << "Analytical : " << std::endl
+            << displayVectorWithIndex(accJacobianAnalytical).format(CleanFmt_) << std::endl;
+  std::cout << std::endl
+            << "FD : " << std::endl
+            << displayVectorWithIndex(accJacobianFD).format(CleanFmt_) << std::endl;
+
+  /* Comparison */
+
+  for(int i = 0; i < accJacobianAnalytical.rows(); i++)
+  {
+    for(int j = 0; j < accJacobianAnalytical.cols(); j++)
+    {
+      if(abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j))
+                 / std::max(abs(accJacobianAnalytical(i, j)), abs(accJacobianFD(i, j))) * 100
+             > relativeErrorThreshold
+         && abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j)) != 0)
+      {
+        std::cout << std::endl
+                  << "\033[1;31m"
+                  << "error indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << accJacobianAnalytical(i, j)
+                  << "    FD : " << accJacobianFD(i, j) << "    Relative error : "
+                  << abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j))
+                         / std::max(abs(accJacobianAnalytical(i, j)), abs(accJacobianFD(i, j))) * 100
+                  << " % "
+                  << "\033[0m\n"
+                  << std::endl;
+      }
+    }
+  }
+
+  error_ = (accJacobianAnalytical - accJacobianFD).squaredNorm();
+
+  std::cout << "Error between the analytical and the finite differences acceleration Jacobians: " << error_
             << std::endl;
 
-  if(accDiffJacobian.norm() > threshold)
+  if(error_ > threshold)
   {
     return errcode;
   }
 }
 
-int testAnalyticalAJacobian(int errcode) // 1
+int testOrientationsJacobians(int errcode, double relativeErrorThreshold, double threshold) // 2
 {
-  double threshold = 1e-4;
-
-  Matrix A_diff = ko_.compareAnalyticalAndFDJacobians(15, dx_, false);
-
-  std::cout << "Error between Runge Kutta integrations and consecutive integrations for LocalKinematics with constant "
-               "acceleration: "
-            << A_diff.norm() << std::endl;
-
-  if(A_diff.norm() > threshold)
-  {
-    return errcode;
-  }
-}
-
-void testOrientationsJacobians(const Vector & dx)
-{
-  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-
   /* Finite differences Jacobian */
   Matrix rotationJacobianDeltaFD = Matrix::Zero(3, 3);
 
   Vector currentState = ko_.getEKF().getCurrentEstimatedState();
   Vector accelerations = Vector6::Zero();
-  ko_.computeLocalAccelerationsForJacobian_(currentState, accelerations);
+  ko_.computeLocalAccelerations(currentState, accelerations);
   LocalKinematics kineTestOri(currentState);
 
   kineTestOri.linAcc = accelerations.segment<3>(0);
@@ -134,7 +241,7 @@ void testOrientationsJacobians(const Vector & dx)
   for(Index i = 0; i < 3; ++i)
   {
     xIncrement.setZero();
-    xIncrement[i] = dx[i];
+    xIncrement[i] = dx_[i];
 
     Vector3 incremented_dt_x_omega = dt_x_omega + xIncrement;
 
@@ -142,82 +249,121 @@ void testOrientationsJacobians(const Vector & dx)
 
     oriBarDiff = oriBar.differentiate(oriBarIncremented);
 
-    oriBarDiff /= dx[i];
+    oriBarDiff /= dx_[i];
 
     rotationJacobianDeltaFD.col(i) = oriBarDiff;
     oriBarIncremented = kineTestOri.orientation;
   }
 
-  Matrix compareWRTDelta2 =
+  Matrix rotationJacobianDeltaAnalytical =
       2.0 / dt_x_omega.norm()
       * (((dt_x_omega.norm() - 2.0 * sin(dt_x_omega.norm() / 2.0)) / (2.0 * dt_x_omega.squaredNorm()))
              * kineTestOri.orientation.toMatrix3() * dt_x_omega * dt_x_omega.transpose()
          + sin(dt_x_omega.norm() / 2.0) * kineTestOri.orientation.toMatrix3()
                * kine::rotationVectorToRotationMatrix(dt_x_omega / 2.0));
 
-  Matrix compareWRTDelta3 = kineTestOri.orientation.toMatrix3();
+  for(int i = 0; i < rotationJacobianDeltaAnalytical.rows(); i++)
+  {
+    for(int j = 0; j < rotationJacobianDeltaAnalytical.cols(); j++)
+    {
+      if(abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j))
+                 / std::max(abs(rotationJacobianDeltaAnalytical(i, j)), abs(rotationJacobianDeltaFD(i, j))) * 100
+             > relativeErrorThreshold
+         && abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j)) != 0)
+      {
+        std::cout << std::endl
+                  << "\033[1;31m"
+                  << "error indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << rotationJacobianDeltaAnalytical(i, j)
+                  << "    FD : " << rotationJacobianDeltaFD(i, j) << "    Relative error : "
+                  << abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j))
+                         / std::max(abs(rotationJacobianDeltaAnalytical(i, j)), abs(rotationJacobianDeltaFD(i, j)))
+                         * 100
+                  << " % "
+                  << "\033[0m\n"
+                  << std::endl;
+      }
+    }
+  }
 
-  std::cout << std::endl << "v : " << std::endl << dt_x_omega << std::endl;
+  error_ = (rotationJacobianDeltaAnalytical - rotationJacobianDeltaFD).squaredNorm();
 
-  std::cout << std::endl << "Ori Jacobian delta : " << std::endl << rotationJacobianDeltaFD << std::endl;
-  // std::cout << std::endl << "Ori Jacobian delta comparison 1 : " << std::endl << compareWRTDelta1 << std::endl;
-  // std::cout << std::endl << "Ori Jacobian delta comparison 2 : " << std::endl << compareWRTDelta2 << std::endl;
-  std::cout << std::endl << "compareWRTDelta3 : " << std::endl << compareWRTDelta3 << std::endl;
+  std::cout << "Error between the analytical and the finite differences Jacobians of the orientation integration wrt "
+               "an increment delta: "
+            << error_ << std::endl;
+
+  if(error_ > threshold)
+  {
+    return errcode;
+  }
 }
 
-/*
-void testContactTorqueWRTOrientationJacobian(const Vector & dx)
+int testAnalyticalAJacobianVsFD(int errcode, double relativeErrorThreshold, double threshold) // 3
 {
-  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+  Matrix A_analytic = ko_.computeAMatrix();
 
-Matrix torqueOriFD = Matrix::Zero(3, 3);
+  Matrix A_FD = ko_.getEKF().getAMatrixFD(dx_);
 
-Vector predictedState = ko_.getEKF().getLastPrediction();
-Vector accelerations = Vector6::Zero();
-ko_.computeLocalAccelerationsForJacobian_(predictedState, accelerations);
+  std::cout << std::endl
+            << "Analytical : " << std::endl
+            << displayVectorWithIndex(A_analytic).format(CleanFmt_) << std::endl;
+  std::cout << std::endl << "FD : " << std::endl << displayVectorWithIndex(A_FD).format(CleanFmt_) << std::endl;
 
-kineTestOri.linAcc = accelerations.segment<3>(0);
-kineTestOri.angAcc = accelerations.segment<3>(3);
+  bool stopIT = false;
 
-Vector3 torqueBar = Vector3::Zero();
-Vector3 torqueBarIncremented = Vector3::Zero();
-Vector3 torqueBarDiff = Vector3::Zero();
+  std::cout << std::endl
+            << "\033[1;34m"
+            << "New iteration"
+            << "\033[0m\n"
+            << std::endl;
 
-Vector3 force = Vector3::Zero();
-torqueBar = currentState.segment<3>(ko_.contactTorqueIndex(0));
-torqueBarIncremented = currentState.segment<3>(ko_.contactTorqueIndex(0));
+  for(int i = 0; i < A_analytic.rows(); i++)
+  {
+    for(int j = 0; j < A_analytic.cols(); j++)
+    {
+      if(abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100
+             > relativeErrorThreshold
+         && abs(A_analytic(i, j) - A_FD(i, j)) != 0 && (abs(A_analytic(i, j)) > 1.0e-9 && abs(A_FD(i, j)) > 1.0e-9))
+      {
+        std::cout << std::endl
+                  << "\033[1;31m"
+                  << "error indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                  << "    Relative error : "
+                  << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100
+                  << " % "
+                  << "\033[0m\n"
+                  << std::endl;
+        stopIT = true;
+      }
+      else
+      {
+        /*
+        std::cout << std::endl
+                  << "good indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                  << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
+        j)), abs(A_FD(i, j))) * 100
+                  << " % " << std::endl;
 
-Kinematics worldContactRefPose;
-worldContactRefPose.fromVector(currentState.segment<7>(ko_.contactPosIndex(0)), ko_.flagsPoseKine);
+                  */
+      }
+    }
+  }
 
-LocalKinematics stateLocalKine = ko_.estimateAccelerations();
-ko_.computeContactForce_(0, stateLocalKine, worldContactRefPose, force, torqueBar);
+  error_ = (A_analytic - A_FD).squaredNorm();
 
-Vector3 xIncrement = Vector3::Zero();
-Vector incrementedX = currentState;
+  std::cout << "Error between the analytical and the finite differences A Jacobian: " << error_ << std::endl;
 
-for(Index i = 0; i < 3; ++i)
-{
-  xIncrement.setZero();
-  xIncrement[i] = dx[i];
-
-  incrementedX = currentState + xIncrement;
-
-  worldContactRefPose.fromVector(incrementedX.segment<7>(ko_.contactPosIndex(0)), ko_.flagsPoseKine);
-
-  stateLocalKine = ko_.estimateAccelerations();
-  ko_.computeContactForce_(0, stateLocalKine, worldContactRefPose, force, torqueBar);
-  oriBarIncremented.integrateRightSide(incremented_dt_x_omega);
-
-  oriBarDiff = oriBar.differentiate(oriBarIncremented);
-
-  oriBarDiff /= dx[i];
-
-  torqueOriFD.col(i) = oriBarDiff;
-  stateLocalKine = ko_.estimateAccelerations();
+  if(error_ > relativeErrorThreshold)
+  {
+    return errcode;
+  }
 }
-}
-*/
+
+} // end namespace stateObservation
+
+using namespace stateObservation;
 
 int main()
 {
@@ -246,7 +392,7 @@ int main()
   ko_.setSamplingTime(dt_);
   ko_.setWithUnmodeledWrench(true);
   ko_.useRungeKutta(false);
-  ko_.setWithGyroBias(false);
+  ko_.setWithGyroBias(true);
 
   ko_.setAngularMomentum(angularMomentum, angularMomentum_d);
   inertiaMatrix_ = inertiaMatrix_ * inertiaMatrix_.transpose();
@@ -296,24 +442,6 @@ int main()
         worldContactOri1.toVector4(), contactForces1, contactTorques1;
   }
 
-  // angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / (dt * dt);
-  /*
-  position.setZero();
-  angvel.setZero();
-  contactForces1.setZero();
-  contactTorques1.setZero();
-  extTorques.setZero();
-  linvel.setZero();
-  extForces.setZero();
-  angularMomentum.setZero();
-  angularMomentum_d.setZero();
-  inertiaMatrix_d.setZero();
-  ori.setZeroRotation();
-  ko_.setInertiaMatrix(inertiaMatrix, inertiaMatrix_d);
-  ko_.setAngularMomentum(angularMomentum, angularMomentum_d);
-  */
-  // extTorques = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 10000;
-
   std::cout << std::endl << "State vector : " << std::endl << stateVector_ << std::endl;
 
   ko_.setInitWorldCentroidStateVector(stateVector_);
@@ -321,11 +449,54 @@ int main()
   ko_.getEKF().updateStatePrediction();
 
   dx_.resize(ko_.getStateTangentSize());
-  dx_.setConstant(1e-6);
+  dx_.setZero();
+  dx_.setConstant(1e-5);
 
-  testOrientationsJacobians(dx_);
+  /*
+  for(int i = 0; i < stateVector_.size(); i++)
+  {
+    dx_.segment<ko_.sizePosTangent>(ko_.posIndexTangent())
+        .setConstant(stateVector_.segment<ko_.sizePos>(ko_.posIndex()).norm() * 1e-8);
+    dx_.segment<ko_.sizeOriTangent>(ko_.oriIndexTangent())
+        .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.oriIndex()).norm() * 1e-8);
+    dx_.segment<ko_.sizeLinVelTangent>(ko_.linVelIndexTangent())
+        .setConstant(stateVector_.segment<ko_.sizeLinVel>(ko_.linVelIndex()).norm() * 1e-8);
+    dx_.segment<ko_.sizeAngVelTangent>(ko_.angVelIndexTangent())
+        .setConstant(stateVector_.segment<ko_.sizeAngVel>(ko_.angVelIndex()).norm() * 1e-8);
+    dx_.segment<ko_.sizeGyroBiasTangent>(ko_.gyroBiasIndexTangent(0))
+        .setConstant(stateVector_.segment<ko_.sizeGyroBias>(ko_.gyroBiasIndex(0)).norm() * 1e-8);
+    dx_.segment<ko_.sizeForceTangent>(ko_.unmodeledForceIndexTangent())
+        .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.unmodeledForceIndex()).norm() * 1e-8);
+    dx_.segment<ko_.sizePosTangent>(ko_.unmodeledTorqueIndexTangent())
+        .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.unmodeledTorqueIndex()).norm() * 1e-8);
+    dx_.segment<ko_.sizePosTangent>(ko_.contactPosIndexTangent(0))
+        .setConstant(stateVector_.segment<ko_.sizePos>(ko_.contactPosIndex(0)).norm() * 1e-8);
+    dx_.segment<ko_.sizeOriTangent>(ko_.contactOriIndexTangent(0))
+        .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.contactOriIndex(0)).norm() * 1e-8);
+    dx_.segment<ko_.sizeForceTangent>(ko_.contactForceIndexTangent(0))
+        .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.contactForceIndex(0)).norm() * 1e-8);
+    dx_.segment<ko_.sizeTorqueTangent>(ko_.contactTorqueIndexTangent(0))
+        .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.contactTorqueIndex(0)).norm() * 1e-8);
+    if(secondContactAndGyro_)
+    {
+      dx_.segment<ko_.sizeGyroBiasTangent>(ko_.gyroBiasIndexTangent(1))
+          .setConstant(stateVector_.segment<ko_.sizeGyroBias>(ko_.gyroBiasIndex(1)).norm() * 1e-8);
+      dx_.segment<ko_.sizePosTangent>(ko_.contactPosIndexTangent(0))
+          .setConstant(stateVector_.segment<ko_.sizePos>(ko_.contactPosIndex(1)).norm() * 1e-8);
+      dx_.segment<ko_.sizeOriTangent>(ko_.contactOriIndexTangent(0))
+          .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.contactOriIndex(1)).norm() * 1e-8);
+      dx_.segment<ko_.sizeForceTangent>(ko_.contactForceIndexTangent(0))
+          .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.contactForceIndex(1)).norm() * 1e-8);
+      dx_.segment<ko_.sizeTorqueTangent>(ko_.contactTorqueIndexTangent(0))
+          .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.contactTorqueIndex(1)).norm() * 1e-8);
+    }
+  }
+  */
 
-  if((returnVal = testAccelerationsJacobians(++errorcode)))
+  std::cout << std::endl << "dx_ : " << std::endl << dx_ << std::endl;
+
+  std::cout << "Starting testAccelerationsJacobians." << std::endl;
+  if((returnVal = testAccelerationsJacobians(++errorcode, 0.1, 1e-4)))
   {
     std::cout << "testAccelerationsJacobians Failed, error code: " << returnVal << std::endl;
   }
@@ -334,13 +505,24 @@ int main()
     std::cout << "testAccelerationsJacobians succeeded" << std::endl;
   }
 
-  if((returnVal = testAnalyticalAJacobian(++errorcode)))
+  std::cout << "Starting testOrientationsJacobians." << std::endl;
+  if((returnVal = testOrientationsJacobians(++errorcode, 0.1, 1e-4)))
   {
-    std::cout << "testAnalyticalAJacobian Failed, error code: " << returnVal << std::endl;
+    std::cout << "testOrientationsJacobians Failed, error code: " << returnVal << std::endl;
   }
   else
   {
-    std::cout << "testAnalyticalAJacobian succeeded" << std::endl;
+    std::cout << "testOrientationsJacobians succeeded" << std::endl;
+  }
+
+  std::cout << "Starting testAnalyticalAJacobianVsFD." << std::endl;
+  if((returnVal = testAnalyticalAJacobianVsFD(++errorcode, 0.05, 1e-4)))
+  {
+    std::cout << "testAnalyticalAJacobianVsFD Failed, error code: " << returnVal << std::endl;
+  }
+  else
+  {
+    std::cout << "testAnalyticalAJacobianVsFD succeeded" << std::endl;
   }
 
   std::cout << "test succeeded" << std::endl;

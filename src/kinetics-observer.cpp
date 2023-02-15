@@ -1757,7 +1757,6 @@ Matrix KineticsObserver::computeAMatrix()
           + J_contactTorque_omega_at_same_time * J_omega_contactTorque;
     }
   }
-  compareAnalyticalAndFDJacobians(A, 10, worldCentroidStateVectorDx_, true);
   return A;
 }
 
@@ -1912,6 +1911,26 @@ void KineticsObserver::computeLocalAccelerations_(LocalKinematics & worldCentroi
 
   linAcc =
       (totalCentroidForce / mass_) - worldCentroidStateKinematics.orientation.toMatrix3().transpose() * cst::gravity;
+}
+
+void KineticsObserver::computeLocalAccelerations(const Vector & x, Vector & acceleration)
+{
+  Vector3 totalCentroidForce =
+      additionalForce_; // initialization of the total force at the centroid with the input additional forces.
+  Vector3 totalCentroidTorque = additionalTorque_;
+
+  addUnmodeledAndContactWrench_(x, totalCentroidForce,
+                                totalCentroidTorque); // adding the previously estimated contact and unmodeled
+                                                      // forces to obtain the total force at the centroid
+  LocalKinematics worldCentroidStateKinematics(x, flagsStateKine);
+
+  acceleration.segment<3>(0) =
+      (totalCentroidForce / mass_) - worldCentroidStateKinematics.orientation.toMatrix3().transpose() * cst::gravity;
+
+  acceleration.segment<3>(3) =
+      I_().inverse()
+      * (totalCentroidTorque - Id_() * worldCentroidStateKinematics.angVel() - sigmad_()
+         - worldCentroidStateKinematics.angVel().cross(I_() * worldCentroidStateKinematics.angVel() + sigma_()));
 }
 
 void KineticsObserver::computeRecursiveGlobalAccelerations_(
@@ -2414,19 +2433,6 @@ void KineticsObserver::setAllCovariances(const Matrix3 & statePositionInitCovari
   resetProcessCovarianceMat();
 }
 
-Matrix displayVectorWithIndex(const Vector & vec1, const int & numbIndexes) // to be removed
-{
-  Eigen::VectorXd indexes(numbIndexes); // to be removed
-  // Eigen::VectorXd indexes(57); //to be removed
-  for(int ind = 0; ind < indexes.size(); ind++)
-  {
-    indexes(ind) = ind;
-  }
-  Matrix C(vec1.rows(), vec1.cols() + indexes.cols());
-  C << vec1, indexes;
-  return C;
-}
-
 int KineticsObserver::getIMUMeasIndexByNum(const int & num) const
 {
   return imuSensors_[num].measIndex;
@@ -2478,274 +2484,24 @@ const double & KineticsObserver::getMass() const
   return mass_;
 }
 
-///////////////////////////////////////////////////////////////////////
-/// -------------------Tests implementation-------------
-///////////////////////////////////////////////////////////////////////
-
-void KineticsObserver::computeLocalAccelerationsForJacobian_(const Vector & x, Vector & acceleration)
+const IndexedMatrix3 & KineticsObserver::getInertiaMatrix() const
 {
-  Vector3 totalCentroidForce =
-      additionalForce_; // initialization of the total force at the centroid with the input additional forces.
-  Vector3 totalCentroidTorque = additionalTorque_;
-
-  addUnmodeledAndContactWrench_(x, totalCentroidForce,
-                                totalCentroidTorque); // adding the previously estimated contact and unmodeled
-                                                      // forces to obtain the total force at the centroid
-  LocalKinematics worldCentroidStateKinematics(x, flagsStateKine);
-
-  acceleration.segment<3>(0) =
-      (totalCentroidForce / mass_) - worldCentroidStateKinematics.orientation.toMatrix3().transpose() * cst::gravity;
-
-  acceleration.segment<3>(3) =
-      I_().inverse()
-      * (totalCentroidTorque - Id_() * worldCentroidStateKinematics.angVel() - sigmad_()
-         - worldCentroidStateKinematics.angVel().cross(I_() * worldCentroidStateKinematics.angVel() + sigma_()));
+  return I_;
 }
 
-Matrix displayVectorWithIndex(Matrix A) // to be remove
+const IndexedMatrix3 & KineticsObserver::getInertiaMatrix_d() const
 {
-  Matrix indexedA(A.rows() + 1, A.cols() + 1);
-  indexedA.block(1, 1, A.rows(), A.cols()) = A;
-
-  for(int i = 0; i < A.rows(); i++)
-  {
-    for(int j = 0; j < A.cols(); j++)
-    {
-      indexedA(0, j + 1) = j;
-      indexedA(i + 1, 0) = i;
-    }
-  }
-  return indexedA;
+  return Id_;
 }
 
-Matrix KineticsObserver::compareAccelerationsJacobians(const Vector & dx)
+const IndexedVector3 & KineticsObserver::getAngularMomentum() const
 {
-  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-
-  /* Finite differences Jacobian */
-  Matrix accJacobianFD = Matrix::Zero(6, stateTangentSize_);
-
-  Vector accBar = Vector6::Zero();
-  Vector accBarIncremented = Vector6::Zero();
-  Vector accBarDiff = Vector6::Zero();
-
-  Vector x = ekf_.getCurrentEstimatedState();
-  Vector xIncrement = ekf_.getCurrentEstimatedState();
-
-  computeLocalAccelerationsForJacobian_(x, accBar);
-
-  std::cout << "accBar: " << std::endl << accBar << std::endl;
-
-  xIncrement.resize(stateTangentSize_);
-
-  for(Index i = 0; i < stateTangentSize_; ++i)
-  {
-    xIncrement.setZero();
-    xIncrement[i] = dx[i];
-
-    stateSum(x, xIncrement, x);
-
-    computeLocalAccelerationsForJacobian_(x, accBarIncremented);
-
-    accBarDiff = accBarIncremented - accBar;
-
-    accBarDiff /= dx[i];
-
-    accJacobianFD.col(i) = accBarDiff;
-
-    x = ekf_.getCurrentEstimatedState();
-  }
-
-  /* Analytical jacobian */
-
-  LocalKinematics worldCentroidKinematics(x, flagsStateKine);
-  Matrix accJacobianAnalytical = Matrix::Zero(6, stateTangentSize_);
-  Matrix3 I_inv = I_().inverse();
-
-  // Jacobians of the linear acceleration
-  accJacobianAnalytical.block<3, sizeOriTangent>(0, oriIndexTangent()) =
-      -cst::gravityConstant
-      * (worldCentroidKinematics.orientation.toMatrix3().transpose() * kine::skewSymmetric(Vector3(0, 0, 1)));
-  accJacobianAnalytical.block<3, sizeForceTangent>(0, unmodeledForceIndexTangent()) =
-      Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent) / mass_;
-
-  // Jacobians of the angular acceleration
-  accJacobianAnalytical.block<3, sizeTorqueTangent>(3, unmodeledTorqueIndexTangent()) = I_inv;
-  accJacobianAnalytical.block<3, sizeAngVelTangent>(3, angVelIndexTangent()) =
-      I_inv
-      * (kine::skewSymmetric(I_() * worldCentroidKinematics.angVel()) - Id_()
-         - kine::skewSymmetric(worldCentroidKinematics.angVel()) * I_() + kine::skewSymmetric(sigma_()));
-
-  // Jacobians with respect to the contacts
-  for(VectorContactConstIterator i = contacts_.begin(); i != contacts_.end(); ++i)
-  {
-    if(i->isSet)
-    {
-      // Jacobian of the linar acceleration with respect to the contact force
-      accJacobianAnalytical.block<3, sizeForceTangent>(0, contactForceIndexTangent(i)) =
-          (1 / mass_) * i->centroidContactKine.orientation.toMatrix3();
-      // Jacobian of the angular acceleration with respect to the contact force
-      accJacobianAnalytical.block<3, sizeTorqueTangent>(3, contactForceIndexTangent(i)) =
-          (I_inv * kine::skewSymmetric(i->centroidContactKine.position()))
-          * (i->centroidContactKine.orientation).toMatrix3();
-      // Jacobian of the angular acceleration with respect to the contact torque
-      accJacobianAnalytical.block<3, sizeTorqueTangent>(3, contactTorqueIndexTangent(i)) =
-          I_inv * i->centroidContactKine.orientation.toMatrix3();
-    }
-  }
-
-  std::cout << std::endl
-            << "Analytical : " << std::endl
-            << displayVectorWithIndex(accJacobianAnalytical).format(CleanFmt) << std::endl;
-  std::cout << std::endl << "FD : " << std::endl << displayVectorWithIndex(accJacobianFD).format(CleanFmt) << std::endl;
-
-  /* Comparison */
-
-  for(int i = 0; i < accJacobianAnalytical.rows(); i++)
-  {
-    for(int j = 0; j < accJacobianAnalytical.cols(); j++)
-    {
-      if(abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j))
-                 / std::max(abs(accJacobianAnalytical(i, j)), abs(accJacobianFD(i, j))) * 100
-             > 20
-         && abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j)) != 0)
-      {
-        std::cout << std::endl
-                  << "\033[1;31m"
-                  << "error indexes: " << std::endl
-                  << "(" << i << "," << j << "):  Analytic : " << accJacobianAnalytical(i, j)
-                  << "    FD : " << accJacobianFD(i, j) << "    Relative error : "
-                  << abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j))
-                         / std::max(abs(accJacobianAnalytical(i, j)), abs(accJacobianFD(i, j))) * 100
-                  << " % "
-                  << "\033[0m\n"
-                  << std::endl;
-      }
-    }
-  }
-
-  return accJacobianAnalytical - accJacobianFD;
+  return sigma_;
 }
 
-Matrix KineticsObserver::compareAnalyticalAndFDJacobians(const Matrix & A_analytic,
-                                                         double threshold,
-                                                         const Vector & dx,
-                                                         const bool & displayWrongElements)
+const IndexedVector3 & KineticsObserver::getAngularMomentum_d() const
 {
-  Matrix A_FD = ekf_.getAMatrixFD(dx);
-
-  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-  std::cout << std::endl
-            << "Analytical : " << std::endl
-            << displayVectorWithIndex(A_analytic).format(CleanFmt) << std::endl;
-  std::cout << std::endl << "FD : " << std::endl << displayVectorWithIndex(A_FD).format(CleanFmt) << std::endl;
-
-  bool stopIT = false;
-
-  std::cout << std::endl
-            << "\033[1;34m"
-            << "New iteration"
-            << "\033[0m\n"
-            << std::endl;
-  if(displayWrongElements)
-  {
-    for(int i = 0; i < A_analytic.rows(); i++)
-    {
-      for(int j = 0; j < A_analytic.cols(); j++)
-      {
-        if(abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100 > threshold
-           && abs(A_analytic(i, j) - A_FD(i, j)) != 0)
-        {
-          std::cout << std::endl
-                    << "\033[1;31m"
-                    << "error indexes: " << std::endl
-                    << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
-                    << "    Relative error : "
-                    << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100
-                    << " % "
-                    << "\033[0m\n"
-                    << std::endl;
-          stopIT = true;
-        }
-        else
-        {
-          /*
-          std::cout << std::endl
-                    << "good indexes: " << std::endl
-                    << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
-                    << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
-          j)), abs(A_FD(i, j))) * 100
-                    << " % " << std::endl;
-
-                    */
-        }
-      }
-    }
-  }
-
-  return A_analytic - A_FD;
-}
-
-Matrix KineticsObserver::compareAnalyticalAndFDJacobians(double threshold,
-                                                         const Vector & dx,
-                                                         const bool & displayWrongElements)
-{
-  Matrix A_analytic = computeAMatrix_();
-
-  Matrix A_FD = ekf_.getAMatrixFD(dx);
-
-  Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
-  std::cout << std::endl
-            << "Analytical : " << std::endl
-            << displayVectorWithIndex(A_analytic).format(CleanFmt) << std::endl;
-  std::cout << std::endl << "FD : " << std::endl << displayVectorWithIndex(A_FD).format(CleanFmt) << std::endl;
-
-  bool stopIT = false;
-
-  std::cout << std::endl
-            << "\033[1;34m"
-            << "New iteration"
-            << "\033[0m\n"
-            << std::endl;
-  if(displayWrongElements)
-  {
-    for(int i = 0; i < A_analytic.rows(); i++)
-    {
-      for(int j = 0; j < A_analytic.cols(); j++)
-      {
-        if(abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100 > threshold
-           && abs(A_analytic(i, j) - A_FD(i, j)) != 0 && (abs(A_analytic(i, j)) > 1e-9 && abs(A_FD(i, j)) > 1e-9)
-           && A_analytic(i, j) != 0)
-
-        {
-          std::cout << std::endl
-                    << "\033[1;31m"
-                    << "error indexes: " << std::endl
-                    << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
-                    << "    Relative error : "
-                    << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i, j)), abs(A_FD(i, j))) * 100
-                    << " % "
-                    << "\033[0m\n"
-                    << std::endl;
-          stopIT = true;
-        }
-        else
-        {
-          /*
-          std::cout << std::endl
-                    << "good indexes: " << std::endl
-                    << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
-                    << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
-          j)), abs(A_FD(i, j))) * 100
-                    << " % " << std::endl;
-
-                    */
-        }
-      }
-    }
-  }
-
-  return A_analytic - A_FD;
+  return sigmad_;
 }
 
 } // namespace stateObservation

@@ -2617,13 +2617,13 @@ inline const LocalKinematics & LocalKinematics::integrate(double dt)
           if(angAcc.isSet())
           {
             position() += dt
-                          * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) + linVel())) + linVel()
+                          * (-angVel().cross(position() + dt * (linVel() - 0.5 * angVel().cross(position()))) + linVel()
                              + 0.5 * dt * (linAcc() - angAcc().cross(position())));
           }
           else
           {
             position() += dt
-                          * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) + linVel())) + linVel()
+                          * (-angVel().cross(position() + dt * (linVel() - 0.5 * angVel().cross(position()))) + linVel()
                              + 0.5 * dt * linAcc());
           }
           linVel() += dt * (-angVel().cross(linVel()) + linAcc());
@@ -2654,13 +2654,13 @@ inline const LocalKinematics & LocalKinematics::integrate(double dt)
           if(angAcc.isSet())
           {
             position() += dt
-                          * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) + linVel())) + linVel()
+                          * (-angVel().cross(position() + dt * (linVel() - 0.5 * angVel().cross(position()))) + linVel()
                              - 0.5 * dt * angAcc().cross(position()));
           }
           else
           {
             position() +=
-                dt * (-angVel().cross(position() + dt * (0.5 * angVel().cross(position()) + linVel())) + linVel());
+                dt * (-angVel().cross(position() + dt * (linVel() - 0.5 * angVel().cross(position()))) + linVel());
           }
         }
         else
@@ -3220,8 +3220,9 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
           {
             thisLinAcc = -2 * (thisLinPos() + thisAngVel().cross(thisLinPos()) / dt) / dt;
             thisLinVel = -thisLinPos() / dt;
-            thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos())))
-                  - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
+            thisLinPos() += dt
+                            * (-currentAngVel().cross(thisLinPos() + dt * (-0.5 * currentAngVel().cross(thisLinPos())))
+                               - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
             thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;                  
             thisLinAcc() += thisAngAcc().cross(thisLinPos())
                               + thisAngVel().cross(thisAngVel().cross(thisLinPos()))
@@ -3234,16 +3235,20 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
             {
               thisLinAcc = -thisLinVel() / dt;
               thisLinVel = -thisLinPos() / dt;
-              thisLinPos() += thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos())))
-                  - 0.5 * dt * currentAngAcc().cross(thisLinPos())); // newpos
+              thisLinPos() += thisLinPos() +=
+                  dt
+                  * (-currentAngVel().cross(thisLinPos() + dt * (-0.5 * currentAngVel().cross(thisLinPos())))
+                     - 0.5 * dt * currentAngAcc().cross(thisLinPos())); // newpos
               thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt; // f(newpos)
               thisLinAcc() += thisAngVel().cross(thisLinVel()) + thisLinVel() / dt;
             }
             else
             {
               thisLinVel = -thisLinPos() / dt;
-              thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos())))
-                  - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
+              thisLinPos() +=
+                  dt
+                  * (-currentAngVel().cross(thisLinPos() + dt * (-0.5 * currentAngVel().cross(thisLinPos())))
+                     - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
               thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;
             }
           }
@@ -3252,8 +3257,9 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
         else // if(linAccMethod == usePosFromAngVelAndAcc)
         {
           thisLinAcc = -2 * (thisLinPos() + thisAngVel().cross(thisLinPos()) / dt) / dt;
-          thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos())))
-                  - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
+          thisLinPos() += dt
+                          * (-currentAngVel().cross(thisLinPos() + dt * (-0.5 * currentAngVel().cross(thisLinPos())))
+                             - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
           thisLinAcc() += thisAngAcc().cross(thisLinPos())
                               + thisAngVel().cross(thisAngVel().cross(thisLinPos()))
                               + 2 * (thisAngVel().cross(thisLinPos()) + thisLinPos() / dt) / dt;
@@ -3262,8 +3268,9 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
       }
       else
       {
-        thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos())))
-                  - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
+        thisLinPos() += dt
+                        * (-currentAngVel().cross(thisLinPos() + dt * (-0.5 * currentAngVel().cross(thisLinPos())))
+                           - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
       }
     }
 
@@ -3278,21 +3285,24 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
           {
             thisLinAcc = -thisLinVel() / dt;
             thisLinVel = -thisLinPos() / dt;
-            thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * 0.5 * currentAngVel().cross(thisLinPos())));
+            thisLinPos() +=
+                dt * (-currentAngVel().cross(thisLinPos() - dt * 0.5 * currentAngVel().cross(thisLinPos())));
             thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;
             thisLinAcc() += thisAngVel().cross(thisLinVel()) + thisLinVel() / dt;
           }
           else
           {
             thisLinVel = -thisLinPos() / dt;
-            thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * 0.5 * currentAngVel().cross(thisLinPos())));
+            thisLinPos() +=
+                dt * (-currentAngVel().cross(thisLinPos() - dt * 0.5 * currentAngVel().cross(thisLinPos())));
             thisLinVel() += thisAngVel().cross(thisLinPos()) + thisLinPos() / dt;
           }
         }
         if(linAccMethod == usePosFromAngVel)
         {
           thisLinAcc = -2 * (thisLinPos() + thisAngVel().cross(thisLinPos()) / dt) / dt;
-          thisLinPos() += -currentAngVel().cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()))));
+          thisLinPos() +=
+              -currentAngVel().cross(dt * (thisLinPos() - dt * (0.5 * currentAngVel().cross(thisLinPos()))));
           thisLinAcc() += thisAngAcc().cross(thisLinPos())
                              + thisAngVel().cross(thisAngVel().cross(thisLinPos()))
                              + 2 * (thisAngVel().cross(thisLinPos()) + thisLinPos() / dt) / dt;
@@ -3300,8 +3310,7 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
       }
       else
       {
-        thisLinPos() +=
-            -currentAngVel().cross(dt * (thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()))));
+        thisLinPos() += -currentAngVel().cross(dt * (thisLinPos() - dt * (0.5 * currentAngVel().cross(thisLinPos()))));
       }
     }
 
@@ -3330,9 +3339,8 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
         {
           thisLinAcc = -2 * (thisLinPos() + thisAngVel().cross(thisLinPos()) / dt) / dt;
           thisLinPos() -= 0.5 * dt * dt * currentAngAcc().cross(thisLinPos());
-          thisLinAcc() += thisLinAcc() +=
-              thisAngAcc().cross(thisLinPos()) + thisAngVel().cross(thisAngVel().cross(thisLinPos()))
-              + 2 * (thisAngVel().cross(thisLinPos()) + thisLinPos() / dt) / dt;
+          thisLinAcc() += thisAngAcc().cross(thisLinPos()) + thisAngVel().cross(thisAngVel().cross(thisLinPos()))
+                          + 2 * (thisAngVel().cross(thisLinPos()) + thisLinPos() / dt) / dt;
         }
       }
 
@@ -3357,14 +3365,14 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
           {
             thisLinPos() += dt
                             * (-currentAngVel().cross(thisLinPos()
-                                                      + dt * (0.5 * currentAngVel().cross(thisLinPos()) + thisLinVel()))
+                                                      + dt * (thisLinVel() - 0.5 * currentAngVel().cross(thisLinPos())))
                                + thisLinVel() - 0.5 * dt * currentAngAcc().cross(thisLinPos()));
           }
           else
           {
             thisLinPos() += dt
                             * (-currentAngVel().cross(thisLinPos()
-                                                      + dt * (0.5 * currentAngVel().cross(thisLinPos()) + thisLinVel()))
+                                                      + dt * (thisLinVel() - 0.5 * currentAngVel().cross(thisLinPos())))
                                + thisLinVel());
           }
         }
@@ -3394,14 +3402,14 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
 
               thisLinPos() += dt
                               * (-currentAngVel().cross(
-                                     thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()) + thisLinVel()))
+                                     thisLinPos() + dt * (thisLinVel() - 0.5 * currentAngVel().cross(thisLinPos())))
                                  + thisLinVel() + 0.5 * dt * (thisLinAcc() - currentAngAcc().cross(thisLinPos())));
             }
             else
             {
               thisLinPos() += dt
                               * (-currentAngVel().cross(
-                                     thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos()) + thisLinVel()))
+                                     thisLinPos() + dt * (thisLinVel() - 0.5 * currentAngVel().cross(thisLinPos())))
                                  + thisLinVel() + 0.5 * dt * (thisLinAcc()));
             }
           }
@@ -3424,14 +3432,18 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
             if(currentAngVel.isSet())
             {
               if(currentAngAcc.isSet())
-              { 
-                thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos())))
-                    + 0.5 * dt * (thisLinAcc() - currentAngAcc().cross(thisLinPos())));
+              {
+                thisLinPos() +=
+                    dt
+                    * (-currentAngVel().cross(thisLinPos() - dt * (0.5 * currentAngVel().cross(thisLinPos())))
+                       + 0.5 * dt * (thisLinAcc() - currentAngAcc().cross(thisLinPos())));
               }
               else
               {
-                thisLinPos() += dt * (-currentAngVel().cross(thisLinPos() + dt * (0.5 * currentAngVel().cross(thisLinPos())))
-                    + 0.5 * dt * thisLinAcc());
+                thisLinPos() +=
+                    dt
+                    * (-currentAngVel().cross(thisLinPos() - dt * (0.5 * currentAngVel().cross(thisLinPos())))
+                       + 0.5 * dt * thisLinAcc());
               }
             }
             else

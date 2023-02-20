@@ -1770,7 +1770,119 @@ Matrix KineticsObserver::computeAMatrix()
 
 Matrix KineticsObserver::computeCMatrix()
 {
-  return ekf_.getCMatrixFD(worldCentroidStateVectorDx_);
+  const Vector & statePrediction = ekf_.updateStatePrediction();
+  const Vector3 & predictedWorldCentroidStatePos = statePrediction.segment<sizePos>(posIndex());
+  Orientation predictedWorldCentroidStateOri;
+  predictedWorldCentroidStateOri.fromVector4(statePrediction.segment<sizeOri>(oriIndex())).toMatrix3();
+  const Vector3 & predictedWorldCentroidStateLinVel = statePrediction.segment<sizeLinVel>(linVelIndex());
+  const Vector3 & predictedWorldCentroidStateAngVel = statePrediction.segment<sizeAngVel>(angVelIndex());
+
+  Vector3 forceCentroid = additionalForce_;
+  Vector3 torqueCentroid = additionalTorque_;
+
+  addUnmodeledAndContactWrench_(statePrediction, forceCentroid, torqueCentroid);
+
+  LocalKinematics predictedWorldCentroidStateKinematics(statePrediction.segment<sizeStateKine>(kineIndex()),
+                                                        flagsStateKine);
+
+  /// The accelerations are about to be computed so we set them to "initialized"
+  predictedWorldCentroidStateKinematics.linAcc.set(true);
+  predictedWorldCentroidStateKinematics.angAcc.set(true);
+
+  Vector3 & linacc = predictedWorldCentroidStateKinematics.linAcc();
+  Vector3 & angacc = predictedWorldCentroidStateKinematics.angAcc();
+
+  computeLocalAccelerations_(predictedWorldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
+
+  Matrix C = Matrix::Zero(measurementTangentSize_, stateTangentSize_);
+
+  Matrix3 Iinv = I_().inverse();
+
+  // Jacobians of the gyrometer bias
+  if(withGyroBias_)
+  {
+    for(VectorIMUConstIterator i = imuSensors_.begin(); i != imuSensors_.end(); ++i)
+    {
+      if(i->time == k_data_)
+      {
+        const IMU & imu = *i;
+
+        /// accelerometer
+
+        /*
+        C.block<sizeAcceleroSignal, sizeOriTangent>(imu.measIndex, oriIndexTangent()) =
+            oriCentroidToImu
+            * (predictedWorldCentroidStateKinematics.orientation.toMatrix3().transpose()
+                   * kine::skewSymmetric(cst::gravity)
+               - cst::gravityConstant * predictedWorldCentroidStateKinematics.orientation.toMatrix3().transpose()
+                     * kine::skewSymmetric(Vector3::UnitZ()));
+                     */
+        Matrix3 oriCentroidToImu = imu.centroidImuKinematics.orientation.toMatrix3().transpose();
+
+        C.block<sizeAcceleroSignal, sizeAngVelTangent>(imu.measIndex, angVelIndexTangent()) =
+            -kine::skewSymmetric(
+                (oriCentroidToImu * predictedWorldCentroidStateAngVel).cross(imu.centroidImuKinematics.position()))
+                * oriCentroidToImu
+            - kine::skewSymmetric(oriCentroidToImu * predictedWorldCentroidStateAngVel)
+                  * kine::skewSymmetric(imu.centroidImuKinematics.position()) * oriCentroidToImu
+            - kine::skewSymmetric(imu.centroidImuKinematics.position()) * oriCentroidToImu
+                  * (Iinv
+                     * (kine::skewSymmetric(I_() * predictedWorldCentroidStateAngVel) - Id_()
+                        - kine::skewSymmetric(predictedWorldCentroidStateAngVel) * I_()
+                        + kine::skewSymmetric(sigma_())))
+            - 2 * kine::skewSymmetric(imu.centroidImuKinematics.linVel()) * oriCentroidToImu;
+
+        C.block<sizeAcceleroSignal, sizeForce>(imu.measIndex, unmodeledForceIndexTangent()) =
+            1.0 / mass_ * oriCentroidToImu;
+
+        C.block<sizeAcceleroSignal, sizeTorque>(imu.measIndex, unmodeledTorqueIndexTangent()) =
+            -kine::skewSymmetric(imu.centroidImuKinematics.position()) * oriCentroidToImu * Iinv;
+
+        for(VectorContactConstIterator i = contacts_.begin(); i != contacts_.end(); ++i)
+        {
+          if(i->isSet)
+          {
+            C.block<sizeAcceleroSignal, sizeForceTangent>(imu.measIndex, contactForceIndexTangent(i)) =
+                oriCentroidToImu * 1.0 / mass_ * i->centroidContactKine.orientation.toMatrix3()
+                - kine::skewSymmetric(imu.centroidImuKinematics.position()) * oriCentroidToImu * Iinv
+                      * kine::skewSymmetric(i->centroidContactKine.position())
+                      * i->centroidContactKine.orientation.toMatrix3();
+
+            C.block<sizeAcceleroSignal, sizeTorqueTangent>(imu.measIndex, contactTorqueIndexTangent(i)) =
+                -kine::skewSymmetric(imu.centroidImuKinematics.position()) * oriCentroidToImu * Iinv
+                * i->centroidContactKine.orientation.toMatrix3();
+          }
+        }
+
+        /// gyrometer
+        C.block<sizeGyroSignal, sizeAngVelTangent>(imu.measIndex + sizeAcceleroSignal, angVelIndexTangent()) =
+            oriCentroidToImu;
+
+        C.block<sizeGyroSignal, sizeAngVelTangent>(imu.measIndex + sizeAcceleroSignal, gyroBiasIndexTangent(imu.num)) =
+            Matrix3::Identity();
+      }
+    }
+  }
+
+  for(VectorContactConstIterator i = contacts_.begin(); i != contacts_.end(); ++i)
+  {
+    if(i->withRealSensor)
+    {
+      C.block<sizeForceTangent, sizeForceTangent>(i->measIndex, contactForceIndexTangent(i)) = Matrix3::Identity();
+      C.block<sizeTorqueTangent, sizeTorqueTangent>(i->measIndex + sizeForceTangent, contactTorqueIndexTangent(i)) =
+          Matrix3::Identity();
+    }
+  }
+
+  if(absPoseSensor_.time == k_data_)
+  {
+    C.block<sizePosTangent, sizePosTangent>(absPoseSensor_.measIndex, posIndexTangent()) =
+        predictedWorldCentroidStateOri.toMatrix3();
+    C.block<sizeOriTangent, sizeOriTangent>(absPoseSensor_.measIndex + sizePosTangent, oriIndexTangent()) =
+        Matrix3::Identity();
+  }
+
+  return C;
 }
 
 void KineticsObserver::convertUserToCentroidFrame_(const Kinematics & userKine,

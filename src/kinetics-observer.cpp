@@ -2205,9 +2205,9 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
 
   LocalKinematics worldCentroidStateKinematics(x.segment<sizeStateKine>(kineIndex()), flagsStateKine);
 
-  /// The accelerations are about to be computed so we set them to "initialized"
-  worldCentroidStateKinematics.linAcc.set(true);
-  worldCentroidStateKinematics.angAcc.set(true);
+  /// The accelerations are about to be computed so we initialize them
+  worldCentroidStateKinematics.linAcc = Vector3::Zero();
+  worldCentroidStateKinematics.angAcc = Vector3::Zero();
 
   Vector3 & linacc = worldCentroidStateKinematics.linAcc(); /// reference (Vector3&)
   Vector3 & angacc = worldCentroidStateKinematics.angAcc(); /// reference
@@ -2262,15 +2262,31 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
           * (0.5 * Kpr * kine::skewSymmetricToRotationVector(R - R.transpose()) + Kdr * worldContactPose.angVel());
 
       /*
+      std::cout << std::endl << "worldContactPose: " << std::endl << worldContactPose << std::endl;
+        std::cout << std::endl << "worldContactRefPose: " << std::endl << worldContactRefPose << std::endl;
+        std::cout << std::endl
+                  << "worldContactPose.position() - worldContactRefPose.position(): " << std::endl
+                  << worldContactPose.position() - worldContactRefPose.position() << std::endl;
+        std::cout << std::endl << "worldContactPose.linVel(): " << std::endl << worldContactPose.linVel() << std::endl;
+        std::cout << std::endl << "force: " << std::endl << x.segment<sizeForce>(contactForceIndex(i)) << std::endl;
+
+        std::cout << std::endl
+                  << "kine::skewSymmetricToRotationVector(R - R.transpose()): " << std::endl
+                  << kine::skewSymmetricToRotationVector(R - R.transpose()) << std::endl;
+        std::cout << std::endl << "worldContactPose.angVel(): " << std::endl << worldContactPose.angVel() << std::endl;
+        std::cout << std::endl << "torque: " << std::endl << x.segment<sizeTorque>(contactTorqueIndex(i)) << std::endl;
+        */
+      /*
       // using quaternions
       x.segment<sizeTorque>(contactTorqueIndex(i)) =
-          -worldContactPose.orientation.toMatrix3().transpose()
-          * (2
-                 * (Kpr
-                    * kine::vectorComponent((worldContactPose.orientation.toQuaternion()
-                                             * worldContactRefPose.orientation.toQuaternion().inverse())))
-             + Kdr * worldContactPose.angVel());
-      */
+         -worldContactPose.orientation.toMatrix3().transpose()
+         * (2
+                * (Kpr
+                   * kine::vectorComponent((worldContactPose.orientation.toQuaternion()
+                                            * worldContactRefPose.orientation.toQuaternion().inverse())))
+            + Kdr * worldContactPose.angVel());
+
+     */
     }
   }
 
@@ -2282,31 +2298,29 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   return x;
 }
 
-Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unused*/, TimeIndex k)
+Vector KineticsObserver::measureDynamics(const Vector & x_bar, const Vector & /*unused*/, TimeIndex k)
 {
-
   Vector y(getMeasurementSize());
 
   Vector3 forceCentroid = additionalForce_;
   Vector3 torqueCentroid = additionalTorque_;
 
-  addUnmodeledAndContactWrench_(x, forceCentroid, torqueCentroid);
+  addUnmodeledAndContactWrench_(x_bar, forceCentroid, torqueCentroid);
 
-  LocalKinematics worldCentroidStateKinematics(x.segment<sizeStateKine>(kineIndex()), flagsStateKine);
+  LocalKinematics worldCentroidStateKinematics(x_bar.segment<sizeStateKine>(kineIndex()), flagsStateKine);
 
-  /// The accelerations are about to be computed so we set them to "initialized"
-  worldCentroidStateKinematics.linAcc.set(true);
-  worldCentroidStateKinematics.angAcc.set(true);
+  /// The accelerations are about to be computed so we initialize them
+
+  worldCentroidStateKinematics.linAcc = Vector3::Zero();
+  worldCentroidStateKinematics.angAcc = Vector3::Zero();
 
   Vector3 & linacc = worldCentroidStateKinematics.linAcc();
   Vector3 & angacc = worldCentroidStateKinematics.angAcc();
   // std::cout << std::endl << "torqueCentroid: " << std::endl << torqueCentroid << std::endl;
   computeLocalAccelerations_(worldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
-  // std::cout << std::endl << "linacc2: " << std::endl << linacc << std::endl;
+
   // std::cout << std::endl << "worldCentroidStateKinematics: " << std::endl << worldCentroidStateKinematics <<
   // std::endl;
-
-  LocalKinematics & worldImuKinematics = opt_.locKine;
 
   predictedAccelerometersGravityComponent_
       .clear(); // just for debug, to be removed. Clears the gravity component of the measurement for each accelerometer
@@ -2320,8 +2334,8 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
   {
     if(i->time == k_data_)
     {
-
       const IMU & imu = *i;
+      LocalKinematics worldImuKinematics;
       worldImuKinematics.setToProductNoAlias(
           worldCentroidStateKinematics,
           imu.centroidImuKinematics); // the kinematics of the IMU in the world frame, expressed in the IMU's frame
@@ -2337,7 +2351,8 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
       predictedWorldIMUsLinAcc_.push_back(worldImuKinematics.linAcc());
       predictedAccelerometersGravityComponent_.push_back(worldImuOri.transpose() * cst::gravity);
       predictedAccelerometers_.push_back(y.segment<sizeAcceleroSignal>(imu.measIndex));
-      // std::cout << std::endl << "y_: " << std::endl << y.segment<sizeAcceleroSignal>(imu.measIndex) << std::endl;
+      // std::cout << std::endl << "y_: " << std::endl << y.segment<sizeAcceleroSignal>(imu.measIndex) <<
+      // std::endl;
 
       /// gyrometer
       y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() = worldImuKinematics.angVel();
@@ -2349,14 +2364,16 @@ Vector KineticsObserver::measureDynamics(const Vector & x, const Vector & /*unus
   {
     if(i->isSet && i->time == k_data_ && i->withRealSensor)
     {
-      y.segment<sizeWrench>(i->measIndex) = x.segment<sizeWrench>(contactWrenchIndex(i));
+      y.segment<sizeWrench>(i->measIndex) = x_bar.segment<sizeWrench>(contactWrenchIndex(i));
     }
   }
   // std::cout << std::endl << "y3_: " << std::endl << y << std::endl;
 
   if(absPoseSensor_.time == k)
   {
-    y.segment<sizePose>(absPoseSensor_.measIndex) = worldCentroidStateKinematics.toVector(flagsPoseKine);
+    y.segment<sizePos>(absPoseSensor_.measIndex) =
+        worldCentroidStateKinematics.orientation.toMatrix3() * worldCentroidStateKinematics.toVector(flagsPosKine);
+    y.segment<sizeOri>(absPoseSensor_.measIndex + sizePos) = worldCentroidStateKinematics.orientation.toVector4();
   }
 
   if(measurementNoise_ != 0x0)

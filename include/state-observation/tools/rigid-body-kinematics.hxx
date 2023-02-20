@@ -3633,7 +3633,7 @@ inline LocalKinematics LocalKinematics::setToProductNoAlias(const LocalKinematic
     if(multiplier2.angVel.isSet() && multiplier1.angVel.isSet())
     {
       angVel.set(true);
-      Vector3 & R2tw1 = angVel(); /// reference
+      Vector3 & R2tw1 = angVel.getRefUnchecked(); /// reference
       R2tw1.noalias() = R2t * multiplier1.angVel();
 
       if(multiplier2.angAcc.isSet() && multiplier1.angAcc.isSet())

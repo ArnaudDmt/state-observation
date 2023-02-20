@@ -925,6 +925,7 @@ protected:
   {
     Sensor(int signalSize) : measIndex(-1), measIndexTangent(-1), size(signalSize), time(0) {}
     virtual ~Sensor() {}
+    int num;
     int measIndex;
     int measIndexTangent;
     int size;

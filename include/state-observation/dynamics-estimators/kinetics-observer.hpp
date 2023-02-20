@@ -1327,6 +1327,8 @@ public: ///////////SIZE OF VECTORS
 
   static const Kinematics::Flags::Byte flagsPoseKine = Kinematics::Flags::position | Kinematics::Flags::orientation;
 
+  static const Kinematics::Flags::Byte flagsPosKine = Kinematics::Flags::position;
+
   static const Kinematics::Flags::Byte flagsIMUKine = Kinematics::Flags::position | Kinematics::Flags::orientation
                                                       | Kinematics::Flags::linVel | Kinematics::Flags::angVel
                                                       | Kinematics::Flags::linAcc;

@@ -2355,7 +2355,8 @@ Vector KineticsObserver::measureDynamics(const Vector & x_bar, const Vector & /*
       // std::endl;
 
       /// gyrometer
-      y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() = worldImuKinematics.angVel();
+      y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() =
+          worldImuKinematics.angVel() + x_bar.segment<sizeGyroBias>(gyroBiasIndex(imu.num));
     }
   }
   // std::cout << std::endl << "y2_: " << std::endl << y << std::endl;

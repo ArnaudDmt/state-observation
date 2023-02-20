@@ -424,6 +424,10 @@ public:
   /// /////////////////////////////////////////////////////////
   /// @{
 
+  /// @brief Updates the measurements.
+  /// @details Updates the measurement sensors and the associated vectors and covariance matrices
+  void updateMeasurements();
+
   /// @brief Runs the estimation.
   /// @details This is the function that allows to
   /// 1- compute the estimation

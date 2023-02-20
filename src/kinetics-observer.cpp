@@ -230,86 +230,91 @@ void KineticsObserver::setMass(double m)
   mass_ = m;
 }
 
+void KineticsObserver::updateMeasurements()
+{
+  for(VectorContactIterator i = contacts_.begin(), ie = contacts_.end(); i != ie; ++i)
+  {
+    if(i->isSet)
+    {
+      BOOST_ASSERT((i->time == k_data_) && "The contacts have not all been updated. \
+              Either remove lost contacts using removeContact \
+              or Run updateContactWithWrenchSensor or updateContactWithNoSensor on every existing contact");
+
+      /// the following code is only an attempt to maintain a consistent state of the state observer
+      /// therefore we unset the state
+      if(i->time != k_data_)
+      {
+        if(i->withRealSensor)
+        {
+          i->withRealSensor = false;
+          numberOfContactRealSensors_--;
+        }
+        i->isSet = false;
+      }
+    }
+  }
+
+  ///////////// initialize the measurement Vector and matrix //////////////
+
+  measurementSize_ = sizeIMUSignal * currentIMUSensorNumber_ + sizeWrench * numberOfContactRealSensors_;
+  measurementTangentSize_ = measurementSize_;
+  if(absPoseSensor_.time == k_data_)
+  {
+    measurementSize_ += sizePose;
+    measurementTangentSize_ += sizePoseTangent;
+  }
+
+  measurementVector_.resize(measurementSize_);
+  measurementCovMatrix_.resize(measurementTangentSize_, measurementTangentSize_);
+  measurementCovMatrix_.setZero();
+
+  int curMeasIndex = 0;
+
+  for(VectorIMUIterator i = imuSensors_.begin(), ie = imuSensors_.end(); i != ie; ++i)
+  {
+    if(i->time == k_data_)
+    {
+      i->measIndex = curMeasIndex;
+      measurementVector_.segment<sizeIMUSignal>(curMeasIndex) = i->acceleroGyro;
+      measurementCovMatrix_.block<sizeAcceleroSignal, sizeAcceleroSignal>(curMeasIndex, curMeasIndex) =
+          i->covMatrixAccelero;
+      curMeasIndex += sizeAcceleroSignal;
+      measurementCovMatrix_.block<sizeGyroSignal, sizeGyroSignal>(curMeasIndex, curMeasIndex) = i->covMatrixGyro;
+      curMeasIndex += sizeGyroSignal;
+    }
+  }
+
+  for(VectorContactIterator i = contacts_.begin(), ie = contacts_.end(); i != ie; ++i)
+  {
+    if(i->withRealSensor)
+    {
+      i->measIndex = curMeasIndex;
+      measurementVector_.segment<sizeWrench>(curMeasIndex) = i->wrenchMeasurement;
+      measurementCovMatrix_.block<sizeWrench, sizeWrench>(curMeasIndex, curMeasIndex) = i->sensorCovMatrix();
+      curMeasIndex += sizeWrench;
+    }
+  }
+
+  if(absPoseSensor_.time == k_data_)
+  {
+    absPoseSensor_.measIndex = curMeasIndex;
+    BOOST_ASSERT(absPoseSensor_.pose.position.isSet() && absPoseSensor_.pose.orientation.isSet()
+                 && "The absolute pose needs to contain the position and the orientation");
+    measurementVector_.segment<sizePose>(curMeasIndex) = absPoseSensor_.pose.toVector(flagsPoseKine);
+    measurementCovMatrix_.block<sizePoseTangent, sizePoseTangent>(curMeasIndex, curMeasIndex) =
+        absPoseSensor_.covMatrix();
+  }
+
+  ekf_.setMeasureSize(measurementSize_, measurementTangentSize_);
+  ekf_.setMeasurement(measurementVector_, k_data_);
+  ekf_.setR(measurementCovMatrix_);
+}
+
 const Vector & KineticsObserver::update()
 {
   if(k_est_ != k_data_)
   {
-    for(VectorContactIterator i = contacts_.begin(), ie = contacts_.end(); i != ie; ++i)
-    {
-      if(i->isSet)
-      {
-        BOOST_ASSERT((i->time == k_data_) && "The contacts have not all been updated. \
-              Either remove lost contacts using removeContact \
-              or Run updateContactWithWrenchSensor or updateContactWithNoSensor on every existing contact");
-
-        /// the following code is only an attempt to maintain a consistent state of the state observer
-        /// therefore we unset the state
-        if(i->time != k_data_)
-        {
-          if(i->withRealSensor)
-          {
-            i->withRealSensor = false;
-            numberOfContactRealSensors_--;
-          }
-          i->isSet = false;
-        }
-      }
-    }
-
-    ///////////// initialize the measurement Vector and matrix //////////////
-
-    measurementSize_ = sizeIMUSignal * currentIMUSensorNumber_ + sizeWrench * numberOfContactRealSensors_;
-    measurementTangentSize_ = measurementSize_;
-    if(absPoseSensor_.time == k_data_)
-    {
-      measurementSize_ += sizePose;
-      measurementTangentSize_ += sizePoseTangent;
-    }
-
-    measurementVector_.resize(measurementSize_);
-    measurementCovMatrix_.resize(measurementTangentSize_, measurementTangentSize_);
-    measurementCovMatrix_.setZero();
-
-    int curMeasIndex = 0;
-
-    for(VectorIMUIterator i = imuSensors_.begin(), ie = imuSensors_.end(); i != ie; ++i)
-    {
-      if(i->time == k_data_)
-      {
-        i->measIndex = curMeasIndex;
-        measurementVector_.segment<sizeIMUSignal>(curMeasIndex) = i->acceleroGyro;
-        measurementCovMatrix_.block<sizeAcceleroSignal, sizeAcceleroSignal>(curMeasIndex, curMeasIndex) =
-            i->covMatrixAccelero;
-        curMeasIndex += sizeAcceleroSignal;
-        measurementCovMatrix_.block<sizeGyroSignal, sizeGyroSignal>(curMeasIndex, curMeasIndex) = i->covMatrixGyro;
-        curMeasIndex += sizeGyroSignal;
-      }
-    }
-
-    for(VectorContactIterator i = contacts_.begin(), ie = contacts_.end(); i != ie; ++i)
-    {
-      if(i->withRealSensor)
-      {
-        i->measIndex = curMeasIndex;
-        measurementVector_.segment<sizeWrench>(curMeasIndex) = i->wrenchMeasurement;
-        measurementCovMatrix_.block<sizeWrench, sizeWrench>(curMeasIndex, curMeasIndex) = i->sensorCovMatrix();
-        curMeasIndex += sizeWrench;
-      }
-    }
-
-    if(absPoseSensor_.time == k_data_)
-    {
-      absPoseSensor_.measIndex = curMeasIndex;
-      BOOST_ASSERT(absPoseSensor_.pose.position.isSet() && absPoseSensor_.pose.orientation.isSet()
-                   && "The absolute pose needs to contain the position and the orientation");
-      measurementVector_.segment<sizePose>(curMeasIndex) = absPoseSensor_.pose.toVector(flagsPoseKine);
-      measurementCovMatrix_.block<sizePoseTangent, sizePoseTangent>(curMeasIndex, curMeasIndex) =
-          absPoseSensor_.covMatrix();
-    }
-
-    ekf_.setMeasureSize(measurementSize_, measurementTangentSize_);
-    ekf_.setMeasurement(measurementVector_, k_data_);
-    ekf_.setR(measurementCovMatrix_);
+    updateMeasurements();
 
     ekf_.updateStateAndMeasurementPrediction();
 

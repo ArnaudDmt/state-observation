@@ -315,14 +315,85 @@ const Vector & KineticsObserver::update()
   if(k_est_ != k_data_)
   {
     updateMeasurements();
+    MODIFIER TOUS LES INPUT AUSSI AVEC LES MEMES VALEURS QUE LE TEST Vector stateTemp = ekf_.getCurrentEstimatedState();
+    stateTemp << 0.0322053, 0.00287065, 0.769771, 0.000188336, -0.00256324, 1.63073e-05, 0.999997, 0.0388738, 0.0134236,
+        -0.0470932, 0.00607427, 0.0210703, -0.00290669, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0245188, 0.080997,
+        0.00077336, -7.87579e-05, 0.00504102, -0.0011182, 0.999987, 1.92111, -42.3394, 178.001, -7.64832, 5.0657,
+        2.67891, 0.0258562, -0.0784297, 0.000782872, -0.000498232, 0.00457751, 0.0011634, 0.999989, 0.186025, -42.1272,
+        192.886, -7.60783, 5.09597, 2.69835;
+    setStateVector(stateTemp);
+
+    std::cout << std::endl << "x " << std::endl << ekf_.getCurrentEstimatedState() << std::endl;
+
+    std::cout << std::endl << "com " << std::endl << com_() << std::endl;
+    std::cout << std::endl << "comd " << std::endl << comd_() << std::endl;
+    std::cout << std::endl << "comdd " << std::endl << comdd_() << std::endl;
+    std::cout << std::endl << "sigma " << std::endl << sigma_() << std::endl;
+    std::cout << std::endl << "sigmad " << std::endl << sigmad_() << std::endl;
+    std::cout << std::endl << "I " << std::endl << I_() << std::endl;
+    std::cout << std::endl << "Id_ " << std::endl << Id_() << std::endl;
+    std::cout << std::endl << "mass " << std::endl << mass_ << std::endl;
+    std::cout << std::endl << "contact1 Kinematics world " << std::endl << contacts_.at(0).worldRefPose << std::endl;
+
+    std::cout << std::endl
+              << "contact1 centroid Kinematics " << std::endl
+              << contacts_.at(0).centroidContactKine << std::endl;
+    std::cout << std::endl
+              << "imu1 LocalKinematics " << std::endl
+              << imuSensors_.at(0).centroidImuKinematics << std::endl;
+    std::cout << std::endl << "contact2 Kinematics world " << std::endl << contacts_.at(1).worldRefPose << std::endl;
+    std::cout << std::endl
+              << "contact2 centroid Kinematics " << std::endl
+              << contacts_.at(1).centroidContactKine << std::endl;
+
+    std::cout << std::endl
+              << "imu2 LocalKinematics " << std::endl
+              << imuSensors_.at(1).centroidImuKinematics << std::endl;
 
     ekf_.updateStateAndMeasurementPrediction();
-
+    std::cout << std::endl << "xbar " << std::endl << ekf_.getLastPrediction() << std::endl;
     if(finiteDifferencesJacobians_)
     {
       ekf_.setA(ekf_.getAMatrixFD(worldCentroidStateVectorDx_));
       predictedWorldCentroidState_ = ekf_.getLastPrediction();
       ekf_.setC(ekf_.getCMatrixFD(worldCentroidStateVectorDx_));
+
+      Aanalytical = computeAMatrix();
+
+      for(int i = 0; i < Aanalytical.rows(); i++)
+      {
+        for(int j = 0; j < Aanalytical.cols(); j++)
+        {
+          if(abs(Aanalytical(i, j) - ekf_.getA()(i, j)) / std::max(abs(Aanalytical(i, j)), abs(ekf_.getA()(i, j))) * 100
+                 > 10.0
+             && abs(Aanalytical(i, j) - ekf_.getA()(i, j)) != 0
+             && (abs(Aanalytical(i, j)) > 1.0e-9 && abs(ekf_.getA()(i, j)) > 1.0e-9))
+          {
+            std::cout << std::endl
+                      << "\033[1;31m"
+                      << "error indexes: " << std::endl
+                      << "(" << i << "," << j << "):  Analytic : " << Aanalytical(i, j)
+                      << "    FD : " << ekf_.getA()(i, j) << "    Relative error : "
+                      << abs(Aanalytical(i, j) - ekf_.getA()(i, j))
+                             / std::max(abs(Aanalytical(i, j)), abs(ekf_.getA()(i, j))) * 100
+                      << " % "
+                      << "\033[0m\n"
+                      << std::endl;
+          }
+          else
+          {
+            /*
+            std::cout << std::endl
+                      << "good indexes: " << std::endl
+                      << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
+                      << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
+            j)), abs(A_FD(i, j))) * 100
+                      << " % " << std::endl;
+
+                      */
+          }
+        }
+      }
     }
     else
     {
@@ -342,7 +413,8 @@ const Vector & KineticsObserver::update()
         // 12>(contactPosIndexTangent(), posIndexTangent()) << std::endl; std::cout << std::endl << "contact " +
         // std::to_string(j) + " : d_kine/d_contact : " << std::endl << ekf_.getA().block<12, 12>(posIndexTangent(),
         // contactPosIndexTangent(i)) << std::endl; std::cout << std::endl << "contact " + std::to_string(j) + " :
-        // d_contact/d_kine : " << std::endl << ekf_.getA().block<12, 12>(contactPosIndexTangent(i), posIndexTangent())
+        // d_contact/d_kine : " << std::endl << ekf_.getA().block<12, 12>(contactPosIndexTangent(i),
+        // posIndexTangent())
         // << std::endl; std::cout << std::endl << "contact " + std::to_string(j) + " : d_contact/d_contact : " <<
         // std::endl << ekf_.getA().block<12, 12>(contactPosIndexTangent(i), contactPosIndexTangent(i)) << std::endl;
         // std::cout << std::endl << "contact " + std::to_string(j) + " : Kinematics : " << std::endl <<
@@ -1472,7 +1544,9 @@ Matrix KineticsObserver::computeAMatrix()
 {
   estimateAccelerations(); // update of worldCentroidStateKinematics_ with the accelerations
 
-  const Vector & statePrediction = ekf_.updateStatePrediction();
+  std::cout << std::endl << "worldCentroidStateKine 2" << std::endl << worldCentroidStateKinematics_ << std::endl;
+
+  const Vector & statePrediction = ekf_.getLastPrediction();
   const Vector3 & predictedWorldCentroidStatePos = statePrediction.segment<sizePos>(posIndex());
   Orientation predictedWorldCentroidStateOri;
   predictedWorldCentroidStateOri.fromVector4(statePrediction.segment<sizeOri>(oriIndex())).toMatrix3();
@@ -1984,6 +2058,7 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
                                                      Vector3 & force,
                                                      Vector3 & torque)
 {
+  std::cout << std::endl << "worldCentroidStateVector : " << std::endl << worldCentroidStateVector << std::endl;
   force += worldCentroidStateVector.segment<sizeForce>(unmodeledWrenchIndex());
 
   torque += worldCentroidStateVector.segment<sizeTorque>(unmodeledTorqueIndex());
@@ -2002,6 +2077,9 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
                 + centroidContactKinei.position().cross(centroidContactForcei);
     }
   }
+  std::cout << std::endl << "force : " << std::endl << force << std::endl;
+  std::cout << std::endl << "torque : " << std::endl << torque << std::endl;
+  std::exit(0);
 }
 
 void KineticsObserver::addUnmodeledWrench_(const Vector & worldCentroidStateVector, Vector3 & force, Vector3 & torque)
@@ -2330,6 +2408,8 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   computeLocalAccelerations_(worldCentroidStateKinematics, initTotalCentroidForce_, initTotalCentroidTorque_, linacc,
                              angacc);
 
+  std::cout << std::endl << "worldCentroidStateKine 1" << std::endl << worldCentroidStateKinematics << std::endl;
+
   if(withRungeKutta_)
   {
     initialVEContactForces_ = Vector3::Zero();
@@ -2476,15 +2556,11 @@ Vector KineticsObserver::measureDynamics(const Vector & x_bar, const Vector & /*
       predictedWorldIMUsLinAcc_.push_back(worldImuKinematics.linAcc());
       predictedAccelerometersGravityComponent_.push_back(worldImuOri.transpose() * cst::gravity);
       predictedAccelerometers_.push_back(y.segment<sizeAcceleroSignal>(imu.measIndex));
-      // std::cout << std::endl << "y_: " << std::endl << y.segment<sizeAcceleroSignal>(imu.measIndex) <<
-      // std::endl;
-
       /// gyrometer
       y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() =
           worldImuKinematics.angVel() + x_bar.segment<sizeGyroBias>(gyroBiasIndex(imu.num));
     }
   }
-  // std::cout << std::endl << "y2_: " << std::endl << y << std::endl;
 
   for(VectorContactConstIterator i = contacts_.begin(); i != contacts_.end(); ++i)
   {

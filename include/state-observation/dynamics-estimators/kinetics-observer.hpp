@@ -1205,6 +1205,9 @@ protected:
   LocalKinematics worldCentroidStateKinematics_;
   Kinematics worldCentroidKinematics_;
 
+  Matrix Acompare;
+  Matrix Aanalytical;
+
   Vector predictedWorldCentroidState_;
   std::vector<Vector>
       predictedAccelerometersGravityComponent_; // the gravity component of the measurement for each accelerometer

@@ -90,8 +90,17 @@ Eigen::IOFormat CleanFmt_(4, 0, ", ", "\n", "[", "]");
 Vector dx_;
 double error_ = 0;
 
+Kinematics worldContactPose1_;
+Kinematics centroidContactPose1_;
+Kinematics centroidIMUPose1_;
+
+Kinematics worldContactPose2_;
+Kinematics centroidIMUPose2_;
+Kinematics centroidContactPose2_;
+
 KineticsObserver ko_1_(1, 1);
 KineticsObserver ko_2_(2, 2);
+KineticsObserver ko_3_(2, 2);
 
 ///////////////////////////////////////////////////////////////////////
 /// -------------------Intermediary functions for the tests-------------
@@ -216,6 +225,7 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
+        return errcode;
       }
     }
   }
@@ -302,6 +312,7 @@ int testOrientationsJacobians(KineticsObserver & ko_, int errcode, double relati
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
+        return errcode;
       }
     }
   }
@@ -327,8 +338,6 @@ int testAnalyticalAJacobianVsFD(KineticsObserver & ko_,
 
   Matrix A_FD = ko_.getEKF().getAMatrixFD(dx_);
 
-  bool stopIT = false;
-
   for(int i = 0; i < A_analytic.rows(); i++)
   {
     for(int j = 0; j < A_analytic.cols(); j++)
@@ -346,7 +355,7 @@ int testAnalyticalAJacobianVsFD(KineticsObserver & ko_,
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
-        stopIT = true;
+        return errcode;
       }
       else
       {
@@ -382,8 +391,6 @@ int testAnalyticalCJacobianVsFD(KineticsObserver & ko_,
 
   Matrix C_FD = ko_.getEKF().getCMatrixFD(dx_);
 
-  bool stopIT = false;
-
   for(int i = 0; i < C_analytic.rows(); i++)
   {
     for(int j = 0; j < C_analytic.cols(); j++)
@@ -401,7 +408,7 @@ int testAnalyticalCJacobianVsFD(KineticsObserver & ko_,
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
-        stopIT = true;
+        return errcode;
       }
       else
       {
@@ -444,21 +451,22 @@ int main()
 
   ori_.setRandom();
 
-  /* Kinetics Observer 1 initialization */
+  /*
+  /// Kinetics Observer 1 initialization ///
 
   worldContactOri1_.setRandom();
-  Kinematics worldContactPose1_;
+
   worldContactPose1_.position = worldContactPos1_;
   worldContactPose1_.orientation = worldContactOri1_;
   centroidContactOri1_.setRandom();
-  Kinematics centroidContactPose1_;
+
   centroidContactPose1_.position = centroidContactPos1_;
   centroidContactPose1_.orientation = centroidContactOri1_;
   centroidContactPose1_.linVel = centroidContactLinVel1_;
   centroidContactPose1_.angVel = centroidContactAngVel1_;
 
   centroidIMUOri1_.setRandom();
-  Kinematics centroidIMUPose1_;
+
   centroidIMUPose1_.position = centroidIMUPos1_;
   centroidIMUPose1_.orientation = centroidIMUOri1_;
   centroidIMUPose1_.linVel = centroidIMULinVel1_;
@@ -472,6 +480,7 @@ int main()
   ko_1_.setWithUnmodeledWrench(true);
   ko_1_.useRungeKutta(false);
   ko_1_.setWithGyroBias(true);
+  ko_1_.setWithUnmodeledWrench(true);
 
   ko_1_.setAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_1_.setInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
@@ -499,107 +508,21 @@ int main()
 
   ko_1_.getEKF().updateStatePrediction();
 
-  std::cout << std::endl << "Tests with 1 contact and 1 gyrometer: " << std::endl << std::endl;
-
-  /*
-  for(int i = 0; i < stateVector_.size(); i++)
-  {
-    dx_.segment<ko_.sizePosTangent>(ko_.posIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizePos>(ko_.posIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizeOriTangent>(ko_.oriIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.oriIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizeLinVelTangent>(ko_.linVelIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeLinVel>(ko_.linVelIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizeAngVelTangent>(ko_.angVelIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeAngVel>(ko_.angVelIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizeGyroBiasTangent>(ko_.gyroBiasIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizeGyroBias>(ko_.gyroBiasIndex(0)).norm() * 1e-8);
-    dx_.segment<ko_.sizeForceTangent>(ko_.unmodeledForceIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.unmodeledForceIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizePosTangent>(ko_.unmodeledTorqueIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.unmodeledTorqueIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizePosTangent>(ko_.contactPosIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizePos>(ko_.contactPosIndex(0)).norm() * 1e-8);
-    dx_.segment<ko_.sizeOriTangent>(ko_.contactOriIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.contactOriIndex(0)).norm() * 1e-8);
-    dx_.segment<ko_.sizeForceTangent>(ko_.contactForceIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.contactForceIndex(0)).norm() * 1e-8);
-    dx_.segment<ko_.sizeTorqueTangent>(ko_.contactTorqueIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.contactTorqueIndex(0)).norm() * 1e-8);
-    if(secondContactAndGyro_)
-    {
-      dx_.segment<ko_.sizeGyroBiasTangent>(ko_.gyroBiasIndexTangent(1))
-          .setConstant(stateVector_.segment<ko_.sizeGyroBias>(ko_.gyroBiasIndex(1)).norm() * 1e-8);
-      dx_.segment<ko_.sizePosTangent>(ko_.contactPosIndexTangent(0))
-          .setConstant(stateVector_.segment<ko_.sizePos>(ko_.contactPosIndex(1)).norm() * 1e-8);
-      dx_.segment<ko_.sizeOriTangent>(ko_.contactOriIndexTangent(0))
-          .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.contactOriIndex(1)).norm() * 1e-8);
-      dx_.segment<ko_.sizeForceTangent>(ko_.contactForceIndexTangent(0))
-          .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.contactForceIndex(1)).norm() * 1e-8);
-      dx_.segment<ko_.sizeTorqueTangent>(ko_.contactTorqueIndexTangent(0))
-          .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.contactTorqueIndex(1)).norm() * 1e-8);
-    }
-  }
-  */
-  std::cout << "Starting testAccelerationsJacobians." << std::endl;
-  if((returnVal = testAccelerationsJacobians(ko_1_, ++errorcode, 0.1, 5e-11)))
-  {
-    std::cout << "testAccelerationsJacobians Failed, error code: " << returnVal << std::endl;
-    return returnVal;
-  }
-  else
-  {
-    std::cout << "testAccelerationsJacobians succeeded" << std::endl;
-  }
-
-  std::cout << "Starting testOrientationsJacobians." << std::endl;
-  if((returnVal = testOrientationsJacobians(ko_1_, ++errorcode, 0.1, 1.66e-16)))
-  {
-    std::cout << "testOrientationsJacobians Failed, error code: " << returnVal << std::endl;
-    return returnVal;
-  }
-  else
-  {
-    std::cout << "testOrientationsJacobians succeeded" << std::endl;
-  }
-
-  std::cout << "Starting testAnalyticalAJacobianVsFD." << std::endl;
-  if((returnVal = testAnalyticalAJacobianVsFD(ko_1_, ++errorcode, 2.5, 0.005)))
-  {
-    std::cout << "testAnalyticalAJacobianVsFD Failed, error code: " << returnVal << std::endl;
-    return returnVal;
-  }
-  else
-  {
-    std::cout << "testAnalyticalAJacobianVsFD succeeded" << std::endl;
-  }
-
-  std::cout << "Starting testAnalyticalCJacobianVsFD." << std::endl;
-  if((returnVal = testAnalyticalCJacobianVsFD(ko_1_, ++errorcode, 0.05, 8e-11)))
-  {
-    std::cout << "testAnalyticalCJacobianVsFD Failed, error code: " << returnVal << std::endl;
-    return returnVal;
-  }
-  else
-  {
-    std::cout << "testAnalyticalCJacobianVsFD succeeded" << std::endl;
-  }
-
-  /* Kinetics Observer 2 initialization */
+  /// Kinetics Observer 2 initialization ///
 
   worldContactOri2_.setRandom();
-  Kinematics worldContactPose2_;
+
   worldContactPose2_.position = worldContactPos2_;
   worldContactPose2_.orientation = worldContactOri2_;
   centroidContactOri2_.setRandom();
-  Kinematics centroidContactPose2_;
+
   centroidContactPose2_.position = centroidContactPos2_;
   centroidContactPose2_.orientation = centroidContactOri2_;
   centroidContactPose2_.linVel = centroidContactLinVel2_;
   centroidContactPose2_.angVel = centroidContactAngVel2_;
 
   centroidIMUOri2_.setRandom();
-  Kinematics centroidIMUPose2_;
+
   centroidIMUPose2_.position = centroidIMUPos2_;
   centroidIMUPose2_.orientation = centroidIMUOri2_;
   centroidIMUPose2_.linVel = centroidIMULinVel2_;
@@ -613,6 +536,7 @@ int main()
   ko_2_.setWithUnmodeledWrench(true);
   ko_2_.useRungeKutta(false);
   ko_2_.setWithGyroBias(true);
+  ko_2_.setWithUnmodeledWrench(true);
 
   ko_2_.setAngularMomentum(angularMomentum_, angularMomentum_d_);
 
@@ -649,47 +573,6 @@ int main()
   ko_2_.getEKF().updateStatePrediction();
 
   std::cout << std::endl << "Tests with 2 contacts and 2 gyrometers: " << std::endl << std::endl;
-
-  /*
-  for(int i = 0; i < stateVector_.size(); i++)
-  {
-    dx_.segment<ko_.sizePosTangent>(ko_.posIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizePos>(ko_.posIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizeOriTangent>(ko_.oriIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.oriIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizeLinVelTangent>(ko_.linVelIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeLinVel>(ko_.linVelIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizeAngVelTangent>(ko_.angVelIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeAngVel>(ko_.angVelIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizeGyroBiasTangent>(ko_.gyroBiasIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizeGyroBias>(ko_.gyroBiasIndex(0)).norm() * 1e-8);
-    dx_.segment<ko_.sizeForceTangent>(ko_.unmodeledForceIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.unmodeledForceIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizePosTangent>(ko_.unmodeledTorqueIndexTangent())
-        .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.unmodeledTorqueIndex()).norm() * 1e-8);
-    dx_.segment<ko_.sizePosTangent>(ko_.contactPosIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizePos>(ko_.contactPosIndex(0)).norm() * 1e-8);
-    dx_.segment<ko_.sizeOriTangent>(ko_.contactOriIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.contactOriIndex(0)).norm() * 1e-8);
-    dx_.segment<ko_.sizeForceTangent>(ko_.contactForceIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.contactForceIndex(0)).norm() * 1e-8);
-    dx_.segment<ko_.sizeTorqueTangent>(ko_.contactTorqueIndexTangent(0))
-        .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.contactTorqueIndex(0)).norm() * 1e-8);
-    if(secondContactAndGyro_)
-    {
-      dx_.segment<ko_.sizeGyroBiasTangent>(ko_.gyroBiasIndexTangent(1))
-          .setConstant(stateVector_.segment<ko_.sizeGyroBias>(ko_.gyroBiasIndex(1)).norm() * 1e-8);
-      dx_.segment<ko_.sizePosTangent>(ko_.contactPosIndexTangent(0))
-          .setConstant(stateVector_.segment<ko_.sizePos>(ko_.contactPosIndex(1)).norm() * 1e-8);
-      dx_.segment<ko_.sizeOriTangent>(ko_.contactOriIndexTangent(0))
-          .setConstant(stateVector_.segment<ko_.sizeOri>(ko_.contactOriIndex(1)).norm() * 1e-8);
-      dx_.segment<ko_.sizeForceTangent>(ko_.contactForceIndexTangent(0))
-          .setConstant(stateVector_.segment<ko_.sizeForce>(ko_.contactForceIndex(1)).norm() * 1e-8);
-      dx_.segment<ko_.sizeTorqueTangent>(ko_.contactTorqueIndexTangent(0))
-          .setConstant(stateVector_.segment<ko_.sizeTorque>(ko_.contactTorqueIndex(1)).norm() * 1e-8);
-    }
-  }
-  */
 
   std::cout << "Starting testAccelerationsJacobians." << std::endl;
   if((returnVal = testAccelerationsJacobians(ko_2_, ++errorcode, 0.1, 4.95e-11)))
@@ -736,5 +619,193 @@ int main()
   }
 
   std::cout << "test succeeded" << std::endl;
+  */
+  /* Kinetics Observer 3 initialization with variables coherent obtained from real simulation */
+
+  std::cout << std::endl
+            << "Tests with 2 contacts and 2 gyrometers using simulation values: " << std::endl
+            << std::endl;
+
+  Vector3 ori;
+  Vector3 tempVec;
+  tempVec << 0.0245188, 0.080997, 0.00077336;
+  worldContactPose1_.position = tempVec;
+  ori << -0.000157517, 0.0100821, -0.00223641;
+  worldContactPose1_.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << -0.00259903, 0.0792194, -0.779776;
+  centroidContactPose1_.position = tempVec;
+  ori << 0.000367755, 0.00842225, -0.0025534;
+  centroidContactPose1_.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << 8.45645e-07, 2.50606e-08, 1.31682e-06;
+  centroidContactPose1_.linVel = tempVec;
+  tempVec << 0, 0, 0;
+  centroidContactPose1_.angVel = tempVec;
+
+  LocalKinematics localCentroidIMU1;
+
+  tempVec << -0.0325, 0, 0.856687;
+  localCentroidIMU1.position = tempVec;
+  ori << 0, 0, 0;
+  localCentroidIMU1.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << 0, 0, 0;
+  localCentroidIMU1.linVel = tempVec;
+  tempVec << 0, 0, 0;
+  localCentroidIMU1.angVel = tempVec;
+  tempVec << 0, 0, 0;
+  localCentroidIMU1.linAcc = tempVec;
+  tempVec << 0, 0, 0;
+  localCentroidIMU1.angAcc = tempVec;
+
+  centroidIMUPose1_ = localCentroidIMU1;
+
+  tempVec << 0.0258562, -0.0784297, 0.000782872;
+  worldContactPose2_.position = tempVec;
+  ori << -0.000996467, 0.00915504, 0.00232681;
+  worldContactPose2_.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+
+  tempVec << -0.00120752, -0.0802216, -0.779767;
+  centroidContactPose2_.position = tempVec;
+  ori << -0.000495544, 0.00749715, 0.00199812;
+  centroidContactPose2_.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << 8.45645e-07, 2.50606e-08, 1.31682e-06;
+  centroidContactPose2_.linVel = tempVec;
+  tempVec << 0, 0, 0;
+  centroidContactPose2_.angVel = tempVec;
+
+  LocalKinematics localCentroidIMU2;
+
+  tempVec << 0, 0, 0.747187;
+  localCentroidIMU2.position = tempVec;
+  ori << 0, 0, 0;
+  localCentroidIMU2.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << 0, 0, 0;
+  localCentroidIMU2.linVel = tempVec;
+  tempVec << 0, 0, 0;
+  localCentroidIMU2.angVel = tempVec;
+  tempVec << 0, 0, 0;
+  localCentroidIMU2.linAcc = tempVec;
+  tempVec << 0, 0, 0;
+  localCentroidIMU2.angAcc = tempVec;
+
+  centroidIMUPose2_ = localCentroidIMU2;
+
+  com_ << 0.0208054, 0.000453782, 0.780549;
+  com_d_ << -8.45645e-07, -2.50606e-08, -1.31682e-06;
+  com_dd_ << 1.73329e-06, 6.16717e-08, 3.34942e-06;
+
+  angularMomentum_ << 1.24961e-06, 1.08498e-05, 5.28098e-07;
+  angularMomentum_d_ << -2.86686e-06, -2.52373e-05, -1.20837e-06;
+
+  inertiaMatrix_.row(0) << 28.91, -0.000423273, -0.492491;
+  inertiaMatrix_.row(1) << -0.000423273, 28.6053, -0.00993046;
+  inertiaMatrix_.row(2) << -0.492491, -0.00993046, 0.46347;
+
+  inertiaMatrix_d_.row(0) << -7.87275e-05, 3.46417e-08, 2.62965e-05;
+  inertiaMatrix_d_.row(1) << 3.46417e-08, -8.00725e-05, 7.71861e-07;
+  inertiaMatrix_d_.row(2) << 2.62965e-05, 7.71861e-07, -1.3468e-06;
+
+  ko_3_.setCenterOfMass(com_, com_d_, com_dd_);
+  ko_3_.setMass(38.0549);
+
+  ko_3_.setSamplingTime(dt_);
+  ko_3_.setWithUnmodeledWrench(true);
+  ko_3_.useRungeKutta(false);
+  ko_3_.setWithGyroBias(true);
+  ko_3_.setWithUnmodeledWrench(true);
+
+  ko_3_.setAngularMomentum(angularMomentum_, angularMomentum_d_);
+
+  ko_3_.setInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
+
+  Vector3 K;
+  K << 4e4, 4e4, 4e4;
+  Matrix K1 = K.asDiagonal();
+  K << 65.76, 65.76, 65.76;
+  Matrix K2 = K.asDiagonal();
+  K << 727, 727, 727;
+  Matrix K3 = K.asDiagonal();
+  K << 17, 17, 17;
+  Matrix K4 = K.asDiagonal();
+
+  ko_3_.addContact(worldContactPose1_, 0, K1, K2, K3, K4);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);
+  ko_3_.addContact(worldContactPose2_, 1, K1, K2, K3, K4);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2_, 1);
+
+  ko_3_.setIMU(Vector3::Zero(), Vector3::Zero(), centroidIMUPose1_, 0);
+  ko_3_.setIMU(Vector3::Zero(), Vector3::Zero(), centroidIMUPose2_, 1);
+
+  stateVector_.resize(ko_3_.sizePos + ko_3_.sizeOri + ko_3_.sizeLinVel + ko_3_.sizeAngVel + ko_3_.sizeGyroBias * 2
+                      + ko_3_.sizeForce + ko_3_.sizeTorque // ext wrench
+                      + (ko_3_.sizePos + ko_3_.sizeOri + ko_3_.sizeForce + ko_3_.sizeTorque) * 2); // contacts)
+
+  stateVector_ << 0.0322053, 0.00287065, 0.769771, 0.000188336, -0.00256324, 1.63073e-05, 0.999997, 0.0388738,
+      0.0134236, -0.0470932, 0.00607427, 0.0210703, -0.00290669, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0245188,
+      0.080997, 0.00077336, -7.87579e-05, 0.00504102, -0.0011182, 0.999987, 1.92111, -42.3394, 178.001, -7.64832,
+      5.0657, 2.67891, 0.0258562, -0.0784297, 0.000782872, -0.000498232, 0.00457751, 0.0011634, 0.999989, 0.186025,
+      -42.1272, 192.886, -7.60783, 5.09597, 2.69835;
+
+  ko_3_.setInitWorldCentroidStateVector(stateVector_);
+  std::cout << std::endl << "x : " << std::endl << ko_3_.getEKF().getCurrentEstimatedState() << std::endl;
+  dx_.resize(ko_3_.getStateTangentSize());
+  dx_.setZero();
+  dx_.setConstant(1e-6);
+
+  ko_3_.updateMeasurements();
+
+  ko_3_.getEKF().updateStatePrediction();
+
+  std::cout << std::endl << "Tests with 2 contacts and 2 gyrometers: " << std::endl << std::endl;
+
+  std::cout << std::endl << "x : " << std::endl << ko_3_.getEKF().getCurrentEstimatedState() << std::endl;
+  std::cout << std::endl << "xbar : " << std::endl << ko_3_.getEKF().getLastPrediction() << std::endl;
+
+  /*
+  std::cout << "Starting testAccelerationsJacobians." << std::endl;
+  if((returnVal = testAccelerationsJacobians(ko_3_, ++errorcode, 0.1, 4.95e-11)))
+  {
+    std::cout << "testAccelerationsJacobians Failed, error code: " << returnVal << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "testAccelerationsJacobians succeeded" << std::endl;
+  }
+
+  std::cout << "Starting testOrientationsJacobians." << std::endl;
+  if((returnVal = testOrientationsJacobians(ko_3_, ++errorcode, 0.1, 1.64e-16)))
+  {
+    std::cout << "testOrientationsJacobians Failed, error code: " << returnVal << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "testOrientationsJacobians succeeded" << std::endl;
+  }
+  */
+  std::cout << "Starting testAnalyticalAJacobianVsFD." << std::endl;
+  if((returnVal = testAnalyticalAJacobianVsFD(ko_3_, ++errorcode, 0.2, 6)))
+  {
+    std::cout << "testAnalyticalAJacobianVsFD Failed, error code: " << returnVal << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "testAnalyticalAJacobianVsFD succeeded" << std::endl;
+  }
+
+  std::cout << "Starting testAnalyticalCJacobianVsFD." << std::endl;
+  if((returnVal = testAnalyticalCJacobianVsFD(ko_3_, ++errorcode, 0.77, 1.18e-10)))
+  {
+    std::cout << "testAnalyticalCJacobianVsFD Failed, error code: " << returnVal << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "testAnalyticalCJacobianVsFD succeeded" << std::endl;
+  }
+
+  std::cout << "test succeeded" << std::endl;
+
   return 0;
 }

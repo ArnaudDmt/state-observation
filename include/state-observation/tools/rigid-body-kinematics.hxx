@@ -3683,7 +3683,7 @@ inline LocalKinematics LocalKinematics::setToDiffNoAlias(const LocalKinematics &
   if(multiplier2.position.isSet() && multiplier1.position.isSet())
   {
     position.set(true);
-    Vector3 & R2tp1 = position(); /// reference ( Vector3&  )
+    Vector3 & R2tp1 = position.getRefUnchecked(); /// reference ( Vector3&  )
 
     Vector3 & inv_pos2 = tempVec_3; // inversed position of multiplier 2
     inv_pos2.noalias() = -(multiplier2.orientation*multiplier2.position());
@@ -3699,7 +3699,7 @@ inline LocalKinematics LocalKinematics::setToDiffNoAlias(const LocalKinematics &
 
       linVel.set(true);
 
-      Vector3 & R2tw1p2 = linVel(); /// reference
+      Vector3 & R2tw1p2 = linVel.getRefUnchecked(); /// reference
       R2tw1p2.noalias() = R2tw1.cross(inv_pos2);
 
       Vector3 & R2tw1p2_p2d = R2tw1p2; ///  reference ( =linVel() )
@@ -3751,7 +3751,7 @@ inline LocalKinematics LocalKinematics::setToDiffNoAlias(const LocalKinematics &
     if(multiplier2.angVel.isSet() && multiplier1.angVel.isSet())
     {
       angVel.set(true);
-      Vector3 & R2tw1 = angVel(); /// reference
+      Vector3 & R2tw1 = angVel.getRefUnchecked(); /// reference
       R2tw1.noalias() = R2t * multiplier1.angVel();
 
       if(multiplier2.angAcc.isSet() && multiplier1.angAcc.isSet())

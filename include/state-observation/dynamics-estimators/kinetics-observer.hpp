@@ -1149,20 +1149,28 @@ public:
 
   /// @brief Comparison between the Jacobians of the linear and angular accelerations with respect to the state,
   /// obtained with finite differences and analyticially.
-  friend int testAccelerationsJacobians(int errcode,
+  friend int testAccelerationsJacobians(KineticsObserver & ko,
+                                        int errcode,
                                         double relativeErrorThreshold,
                                         double threshold); // declared out of namespace state-observation
 
   /// @brief Comparison between the analytical Jacobian matrix A and the one obtained by finite differences. Used to
   /// test the analytical method.
   /// @param threshold Threshold on the relative error between both Jacobians (in percentage)
-  friend int testAnalyticalAJacobianVsFD(int errcode,
+  friend int testAnalyticalAJacobianVsFD(KineticsObserver & ko,
+                                         int errcode,
+                                         double relativeErrorThreshold,
+                                         double threshold); // declared out of namespace state-observation
+
+  friend int testAnalyticalCJacobianVsFD(KineticsObserver & ko,
+                                         int errcode,
                                          double relativeErrorThreshold,
                                          double threshold); // declared out of namespace state-observation
 
   /// @brief Comparison between the Jacobians of orientation integration with respect to an increment vector delta,
   /// obtained with finite differences and analyticially.
-  friend int testOrientationsJacobians(int errcode,
+  friend int testOrientationsJacobians(KineticsObserver & ko,
+                                       int errcode,
                                        double relativeErrorThreshold,
                                        double threshold); // declared out of namespace state-observation
   /// @}

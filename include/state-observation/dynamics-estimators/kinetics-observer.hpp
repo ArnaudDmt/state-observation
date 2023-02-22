@@ -1177,6 +1177,11 @@ public:
                                        int errcode,
                                        double relativeErrorThreshold,
                                        double threshold); // declared out of namespace state-observation
+
+  void testAccelerationsJacobians(int errcode, double relativeErrorThreshold, double threshold);
+
+  void testOrientationsJacobians(int errcode, double relativeErrorThreshold, double threshold);
+
   /// @}
 
 protected:

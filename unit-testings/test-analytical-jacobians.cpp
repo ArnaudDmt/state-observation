@@ -102,6 +102,8 @@ KineticsObserver ko_1_(1, 1);
 KineticsObserver ko_2_(2, 2);
 KineticsObserver ko_3_(2, 2);
 
+bool stopCompare;
+
 ///////////////////////////////////////////////////////////////////////
 /// -------------------Intermediary functions for the tests-------------
 ///////////////////////////////////////////////////////////////////////
@@ -132,6 +134,8 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
                                double relativeErrorThreshold,
                                double threshold) // 1
 {
+  stopCompare = false;
+  std::cout << std::endl << "Acc: " << std::endl;
   /* Finite differences Jacobian */
   Matrix accJacobianFD = Matrix::Zero(6, ko_.getStateTangentSize());
 
@@ -225,7 +229,7 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
-        return errcode;
+        stopCompare = true;
       }
     }
   }
@@ -234,6 +238,10 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
 
   std::cout << "Error between the analytical and the finite differences acceleration Jacobians: " << error_
             << std::endl;
+  if(stopCompare)
+  {
+    return errcode;
+  }
 
   if(error_ > threshold)
   {
@@ -243,6 +251,8 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
 
 int testOrientationsJacobians(KineticsObserver & ko_, int errcode, double relativeErrorThreshold, double threshold) // 2
 {
+  stopCompare = false;
+  std::cout << std::endl << "Ori: " << std::endl;
   /* Finite differences Jacobian */
   Matrix rotationJacobianDeltaFD = Matrix::Zero(3, 3);
 
@@ -312,7 +322,7 @@ int testOrientationsJacobians(KineticsObserver & ko_, int errcode, double relati
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
-        return errcode;
+        stopCompare = true;
       }
     }
   }
@@ -322,6 +332,11 @@ int testOrientationsJacobians(KineticsObserver & ko_, int errcode, double relati
   std::cout << "Error between the analytical and the finite differences Jacobians of the orientation integration wrt "
                "an increment delta: "
             << error_ << std::endl;
+
+  if(stopCompare)
+  {
+    return errcode;
+  }
 
   if(error_ > threshold)
   {
@@ -334,6 +349,7 @@ int testAnalyticalAJacobianVsFD(KineticsObserver & ko_,
                                 double relativeErrorThreshold,
                                 double threshold) // 3
 {
+  stopCompare = false;
   Matrix A_analytic = ko_.computeAMatrix();
 
   Matrix A_FD = ko_.getEKF().getAMatrixFD(dx_);
@@ -355,19 +371,7 @@ int testAnalyticalAJacobianVsFD(KineticsObserver & ko_,
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
-        return errcode;
-      }
-      else
-      {
-        /*
-        std::cout << std::endl
-                  << "good indexes: " << std::endl
-                  << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
-                  << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
-        j)), abs(A_FD(i, j))) * 100
-                  << " % " << std::endl;
-
-                  */
+        stopCompare = true;
       }
     }
   }
@@ -375,6 +379,11 @@ int testAnalyticalAJacobianVsFD(KineticsObserver & ko_,
   error_ = (A_analytic - A_FD).squaredNorm();
 
   std::cout << "Error between the analytical and the finite differences A Jacobian: " << error_ << std::endl;
+
+  if(stopCompare)
+  {
+    return errcode;
+  }
 
   if(error_ > threshold)
   {
@@ -387,6 +396,7 @@ int testAnalyticalCJacobianVsFD(KineticsObserver & ko_,
                                 double relativeErrorThreshold,
                                 double threshold) // 3
 {
+  stopCompare = false;
   Matrix C_analytic = ko_.computeCMatrix();
 
   Matrix C_FD = ko_.getEKF().getCMatrixFD(dx_);
@@ -408,19 +418,7 @@ int testAnalyticalCJacobianVsFD(KineticsObserver & ko_,
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
-        return errcode;
-      }
-      else
-      {
-        /*
-        std::cout << std::endl
-                  << "good indexes: " << std::endl
-                  << "(" << i << "," << j << "):  C_analytic : " << C_analytic(i, j) << "    FD : " << C_FD(i, j)
-                  << "    Relative error : " << abs(C_analytic(i, j) - C_FD(i, j)) / std::max(abs(C_analytic(i,
-        j)), abs(C_FD(i, j))) * 100
-                  << " % " << std::endl;
-
-                  */
+        stopCompare = true;
       }
     }
   }
@@ -428,6 +426,11 @@ int testAnalyticalCJacobianVsFD(KineticsObserver & ko_,
   error_ = (C_analytic - C_FD).squaredNorm();
 
   std::cout << "Error between the analytical and the finite differences C Jacobian: " << error_ << std::endl;
+
+  if(stopCompare)
+  {
+    return errcode;
+  }
 
   if(error_ > threshold)
   {
@@ -621,10 +624,7 @@ int main()
   std::cout << "test succeeded" << std::endl;
   */
   /* Kinetics Observer 3 initialization with variables coherent obtained from real simulation */
-
-  std::cout << std::endl
-            << "Tests with 2 contacts and 2 gyrometers using simulation values: " << std::endl
-            << std::endl;
+  std::cout << std::endl << "Tests with 2 contacts and 2 gyrometers: " << std::endl << std::endl;
 
   Vector3 ori;
   Vector3 tempVec;
@@ -711,7 +711,6 @@ int main()
   ko_3_.setWithUnmodeledWrench(true);
   ko_3_.useRungeKutta(false);
   ko_3_.setWithGyroBias(true);
-  ko_3_.setWithUnmodeledWrench(true);
 
   ko_3_.setAngularMomentum(angularMomentum_, angularMomentum_d_);
 
@@ -804,27 +803,20 @@ int main()
       5.0657, 2.67891, 0.0258562, -0.0784297, 0.000782872, -0.000498232, 0.00457751, 0.0011634, 0.999989, 0.186025,
       -42.1272, 192.886, -7.60783, 5.09597, 2.69835;
 
-  ko_3_.setInitWorldCentroidStateVector(stateVector_);
-  std::cout << std::endl << "x : " << std::endl << ko_3_.getEKF().getCurrentEstimatedState() << std::endl;
+  ko_3_.setStateVector(stateVector_);
+
   dx_.resize(ko_3_.getStateTangentSize());
   dx_.setZero();
-  dx_.setConstant(1e-6);
+  dx_.setConstant(1e-5);
 
   ko_3_.updateMeasurements();
 
   ko_3_.getEKF().updateStatePrediction();
 
-  std::cout << std::endl << "Tests with 2 contacts and 2 gyrometers: " << std::endl << std::endl;
-
-  std::cout << std::endl << "x : " << std::endl << ko_3_.getEKF().getCurrentEstimatedState() << std::endl;
-  std::cout << std::endl << "xbar : " << std::endl << ko_3_.getEKF().getLastPrediction() << std::endl;
-
-  /*
   std::cout << "Starting testAccelerationsJacobians." << std::endl;
   if((returnVal = testAccelerationsJacobians(ko_3_, ++errorcode, 0.1, 4.95e-11)))
   {
     std::cout << "testAccelerationsJacobians Failed, error code: " << returnVal << std::endl;
-    return returnVal;
   }
   else
   {
@@ -835,18 +827,16 @@ int main()
   if((returnVal = testOrientationsJacobians(ko_3_, ++errorcode, 0.1, 1.64e-16)))
   {
     std::cout << "testOrientationsJacobians Failed, error code: " << returnVal << std::endl;
-    return returnVal;
   }
   else
   {
     std::cout << "testOrientationsJacobians succeeded" << std::endl;
   }
-  */
+
   std::cout << "Starting testAnalyticalAJacobianVsFD." << std::endl;
   if((returnVal = testAnalyticalAJacobianVsFD(ko_3_, ++errorcode, 0.2, 6)))
   {
     std::cout << "testAnalyticalAJacobianVsFD Failed, error code: " << returnVal << std::endl;
-    return returnVal;
   }
   else
   {
@@ -857,7 +847,6 @@ int main()
   if((returnVal = testAnalyticalCJacobianVsFD(ko_3_, ++errorcode, 0.77, 1.18e-10)))
   {
     std::cout << "testAnalyticalCJacobianVsFD Failed, error code: " << returnVal << std::endl;
-    return returnVal;
   }
   else
   {

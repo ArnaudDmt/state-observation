@@ -310,6 +310,183 @@ void KineticsObserver::updateMeasurements()
   ekf_.setR(measurementCovMatrix_);
 }
 
+void KineticsObserver::testOrientationsJacobians(int errcode, double relativeErrorThreshold, double threshold)
+{
+  std::cout << std::endl << "Ori: " << std::endl;
+  /* Finite differences Jacobian */
+  Matrix rotationJacobianDeltaFD = Matrix::Zero(3, 3);
+
+  Vector currentState = ekf_.getCurrentEstimatedState();
+  Vector accelerations = Vector6::Zero();
+  computeLocalAccelerations(currentState, accelerations);
+  LocalKinematics kineTestOri(currentState);
+
+  kineTestOri.linAcc = accelerations.segment<3>(0);
+  kineTestOri.angAcc = accelerations.segment<3>(3);
+
+  Orientation oriBar = Orientation::zeroRotation();
+  Orientation oriBarIncremented = Orientation::zeroRotation();
+  Vector3 oriBarDiff = Vector3::Zero();
+
+  oriBar = kineTestOri.orientation;
+  oriBarIncremented = kineTestOri.orientation;
+
+  // Vector3 dt_x_omega(10000, 24265, 589);
+  Vector3 dt_x_omega = dt_ * kineTestOri.angVel() + dt_ * dt_ / 2 * kineTestOri.angAcc();
+
+  oriBar.integrateRightSide(dt_x_omega);
+
+  Vector3 xIncrement = Vector3::Zero();
+
+  for(Index i = 0; i < 3; ++i)
+  {
+    xIncrement.setZero();
+    xIncrement[i] = worldCentroidStateVectorDx_[i];
+
+    Vector3 incremented_dt_x_omega = dt_x_omega + xIncrement;
+
+    oriBarIncremented.integrateRightSide(incremented_dt_x_omega);
+
+    oriBarDiff = oriBar.differentiate(oriBarIncremented);
+
+    oriBarDiff /= worldCentroidStateVectorDx_[i];
+
+    rotationJacobianDeltaFD.col(i) = oriBarDiff;
+    oriBarIncremented = kineTestOri.orientation;
+  }
+
+  Matrix rotationJacobianDeltaAnalytical =
+      2.0 / dt_x_omega.norm()
+      * (((dt_x_omega.norm() - 2.0 * sin(dt_x_omega.norm() / 2.0)) / (2.0 * dt_x_omega.squaredNorm()))
+             * kineTestOri.orientation.toMatrix3() * dt_x_omega * dt_x_omega.transpose()
+         + sin(dt_x_omega.norm() / 2.0) * kineTestOri.orientation.toMatrix3()
+               * kine::rotationVectorToRotationMatrix(dt_x_omega / 2.0));
+
+  for(int i = 0; i < rotationJacobianDeltaAnalytical.rows(); i++)
+  {
+    for(int j = 0; j < rotationJacobianDeltaAnalytical.cols(); j++)
+    {
+      if(abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j))
+                 / std::max(abs(rotationJacobianDeltaAnalytical(i, j)), abs(rotationJacobianDeltaFD(i, j))) * 100
+             > relativeErrorThreshold
+         && abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j)) != 0)
+      {
+        std::cout << std::endl
+                  << "\033[1;31m"
+                  << "error indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << rotationJacobianDeltaAnalytical(i, j)
+                  << "    FD : " << rotationJacobianDeltaFD(i, j) << "    Relative error : "
+                  << abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j))
+                         / std::max(abs(rotationJacobianDeltaAnalytical(i, j)), abs(rotationJacobianDeltaFD(i, j)))
+                         * 100
+                  << " % "
+                  << "\033[0m\n"
+                  << std::endl;
+      }
+    }
+  }
+}
+
+void KineticsObserver::testAccelerationsJacobians(int errcode, double relativeErrorThreshold,
+                                                  double threshold) // 1
+{
+  std::cout << std::endl << "Acc: " << std::endl;
+  /* Finite differences Jacobian */
+  Matrix accJacobianFD = Matrix::Zero(6, stateTangentSize_);
+
+  Vector accBar = Vector6::Zero();
+  Vector accBarIncremented = Vector6::Zero();
+  Vector accBarDiff = Vector6::Zero();
+
+  Vector x = ekf_.getCurrentEstimatedState();
+  Vector xIncrement = ekf_.getCurrentEstimatedState();
+
+  computeLocalAccelerations(x, accBar);
+
+  xIncrement.resize(stateTangentSize_);
+
+  for(Index i = 0; i < stateTangentSize_; ++i)
+  {
+    xIncrement.setZero();
+    xIncrement[i] = worldCentroidStateVectorDx_[i];
+
+    stateSum(x, xIncrement, x);
+
+    computeLocalAccelerations(x, accBarIncremented);
+
+    accBarDiff = accBarIncremented - accBar;
+
+    accBarDiff /= worldCentroidStateVectorDx_[i];
+
+    accJacobianFD.col(i) = accBarDiff;
+
+    x = ekf_.getCurrentEstimatedState();
+  }
+
+  /* Analytical jacobian */
+
+  LocalKinematics worldCentroidKinematics(x, flagsStateKine);
+  Matrix accJacobianAnalytical = Matrix::Zero(6, stateTangentSize_);
+  Matrix3 I_inv = I_().inverse();
+  // Jacobians of the linear acceleration
+  accJacobianAnalytical.block<3, sizeOriTangent>(0, oriIndexTangent()) =
+      -cst::gravityConstant
+      * (worldCentroidKinematics.orientation.toMatrix3().transpose() * kine::skewSymmetric(Vector3(0, 0, 1)));
+  accJacobianAnalytical.block<3, sizeForceTangent>(0, unmodeledForceIndexTangent()) =
+      Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent) / mass_;
+
+  // Jacobians of the angular acceleration
+  accJacobianAnalytical.block<3, sizeTorqueTangent>(3, unmodeledTorqueIndexTangent()) = I_inv;
+  accJacobianAnalytical.block<3, sizeAngVelTangent>(3, angVelIndexTangent()) =
+      I_inv
+      * (kine::skewSymmetric(I_() * worldCentroidKinematics.angVel()) - Id_()
+         - kine::skewSymmetric(worldCentroidKinematics.angVel()) * I_() + kine::skewSymmetric(sigma_()));
+
+  // Jacobians with respect to the contacts
+  for(KineticsObserver::VectorContactConstIterator i = contacts_.begin(); i != contacts_.end(); ++i)
+  {
+    if(i->isSet)
+    {
+      // Jacobian of the linar acceleration with respect to the contact force
+      accJacobianAnalytical.block<3, sizeForceTangent>(0, contactForceIndexTangent(i)) =
+          (1.0 / mass_) * i->centroidContactKine.orientation.toMatrix3();
+      // Jacobian of the angular acceleration with respect to the contact force
+      accJacobianAnalytical.block<3, sizeTorqueTangent>(3, contactForceIndexTangent(i)) =
+          (I_inv * kine::skewSymmetric(i->centroidContactKine.position()))
+          * (i->centroidContactKine.orientation).toMatrix3();
+      // Jacobian of the angular acceleration with respect to the contact torque
+      accJacobianAnalytical.block<3, sizeTorqueTangent>(3, contactTorqueIndexTangent(i)) =
+          I_inv * i->centroidContactKine.orientation.toMatrix3();
+    }
+  }
+
+  /* Comparison */
+
+  for(int i = 0; i < accJacobianAnalytical.rows(); i++)
+  {
+    for(int j = 0; j < accJacobianAnalytical.cols(); j++)
+    {
+      if(abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j))
+                 / std::max(abs(accJacobianAnalytical(i, j)), abs(accJacobianFD(i, j))) * 100
+             > relativeErrorThreshold
+         && abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j)) != 0
+         && (abs(accJacobianAnalytical(i, j)) > 1.0e-9 && abs(accJacobianFD(i, j)) > 1.0e-9))
+      {
+        std::cout << std::endl
+                  << "\033[1;31m"
+                  << "error indexes: " << std::endl
+                  << "(" << i << "," << j << "):  Analytic : " << accJacobianAnalytical(i, j)
+                  << "    FD : " << accJacobianFD(i, j) << "    Relative error : "
+                  << abs(accJacobianAnalytical(i, j) - accJacobianFD(i, j))
+                         / std::max(abs(accJacobianAnalytical(i, j)), abs(accJacobianFD(i, j))) * 100
+                  << " % "
+                  << "\033[0m\n"
+                  << std::endl;
+      }
+    }
+  }
+}
+
 const Vector & KineticsObserver::update()
 {
   if(k_est_ != k_data_)
@@ -375,6 +552,7 @@ const Vector & KineticsObserver::update()
     tempVec << 0, 0, 0;
     imu2.centroidImuKinematics.angAcc = tempVec;
 
+    setMass(38.0549);
     com_() << 0.0208054, 0.000453782, 0.780549;
     comd_() << -8.45645e-07, -2.50606e-08, -1.31682e-06;
     comdd_() << 1.73329e-06, 6.16717e-08, 3.34942e-06;
@@ -399,38 +577,11 @@ const Vector & KineticsObserver::update()
         192.886, -7.60783, 5.09597, 2.69835;
     setStateVector(stateTemp);
 
-    std::cout << std::endl << "x " << std::endl << ekf_.getCurrentEstimatedState() << std::endl;
-
-    std::cout << std::endl << "com " << std::endl << com_() << std::endl;
-    std::cout << std::endl << "comd " << std::endl << comd_() << std::endl;
-    std::cout << std::endl << "comdd " << std::endl << comdd_() << std::endl;
-    std::cout << std::endl << "sigma " << std::endl << sigma_() << std::endl;
-    std::cout << std::endl << "sigmad " << std::endl << sigmad_() << std::endl;
-    std::cout << std::endl << "I " << std::endl << I_() << std::endl;
-    std::cout << std::endl << "Id_ " << std::endl << Id_() << std::endl;
-    std::cout << std::endl << "mass " << std::endl << mass_ << std::endl;
-    std::cout << std::endl << "contact1 Kinematics world " << std::endl << contacts_.at(0).worldRefPose << std::endl;
-
-    std::cout << std::endl
-              << "contact1 centroid Kinematics " << std::endl
-              << contacts_.at(0).centroidContactKine << std::endl;
-    std::cout << std::endl
-              << "imu1 LocalKinematics " << std::endl
-              << imuSensors_.at(0).centroidImuKinematics << std::endl;
-    std::cout << std::endl << "contact2 Kinematics world " << std::endl << contacts_.at(1).worldRefPose << std::endl;
-    std::cout << std::endl
-              << "contact2 centroid Kinematics " << std::endl
-              << contacts_.at(1).centroidContactKine << std::endl;
-
-    std::cout << std::endl
-              << "imu2 LocalKinematics " << std::endl
-              << imuSensors_.at(1).centroidImuKinematics << std::endl;
-
     ekf_.updateStateAndMeasurementPrediction();
-    std::cout << std::endl << "xbar " << std::endl << ekf_.getLastPrediction() << std::endl;
     if(finiteDifferencesJacobians_)
     {
       ekf_.setA(ekf_.getAMatrixFD(worldCentroidStateVectorDx_));
+
       predictedWorldCentroidState_ = ekf_.getLastPrediction();
       ekf_.setC(ekf_.getCMatrixFD(worldCentroidStateVectorDx_));
 
@@ -441,7 +592,7 @@ const Vector & KineticsObserver::update()
         for(int j = 0; j < Aanalytical.cols(); j++)
         {
           if(abs(Aanalytical(i, j) - ekf_.getA()(i, j)) / std::max(abs(Aanalytical(i, j)), abs(ekf_.getA()(i, j))) * 100
-                 > 10.0
+                 > 0.2
              && abs(Aanalytical(i, j) - ekf_.getA()(i, j)) != 0
              && (abs(Aanalytical(i, j)) > 1.0e-9 && abs(ekf_.getA()(i, j)) > 1.0e-9))
           {
@@ -456,17 +607,32 @@ const Vector & KineticsObserver::update()
                       << "\033[0m\n"
                       << std::endl;
           }
-          else
-          {
-            /*
-            std::cout << std::endl
-                      << "good indexes: " << std::endl
-                      << "(" << i << "," << j << "):  Analytic : " << A_analytic(i, j) << "    FD : " << A_FD(i, j)
-                      << "    Relative error : " << abs(A_analytic(i, j) - A_FD(i, j)) / std::max(abs(A_analytic(i,
-            j)), abs(A_FD(i, j))) * 100
-                      << " % " << std::endl;
+        }
+      }
+      testAccelerationsJacobians(0, 0.1, 0.1);
+      testOrientationsJacobians(0, 0.1, 0.1);
 
-                      */
+      Matrix Canalytical = computeCMatrix();
+
+      for(int i = 0; i < Canalytical.rows(); i++)
+      {
+        for(int j = 0; j < Canalytical.cols(); j++)
+        {
+          if(abs(Canalytical(i, j) - ekf_.getC()(i, j)) / std::max(abs(Canalytical(i, j)), abs(ekf_.getC()(i, j))) * 100
+                 > 0.2
+             && abs(Canalytical(i, j) - ekf_.getC()(i, j)) != 0
+             && (abs(Canalytical(i, j)) > 1.0e-9 && abs(ekf_.getC()(i, j)) > 1.0e-9))
+          {
+            std::cout << std::endl
+                      << "\033[1;31m"
+                      << "error indexes: " << std::endl
+                      << "(" << i << "," << j << "):  Analytic : " << Canalytical(i, j)
+                      << "    FD : " << ekf_.getC()(i, j) << "    Relative error : "
+                      << abs(Canalytical(i, j) - ekf_.getC()(i, j))
+                             / std::max(abs(Canalytical(i, j)), abs(ekf_.getC()(i, j))) * 100
+                      << " % "
+                      << "\033[0m\n"
+                      << std::endl;
           }
         }
       }
@@ -525,7 +691,7 @@ const Vector & KineticsObserver::update()
     }
     updateGlobalKine_();
   }
-
+  std::exit(0);
   return worldCentroidStateVector_;
 }
 
@@ -1620,8 +1786,6 @@ Matrix KineticsObserver::computeAMatrix()
 {
   estimateAccelerations(); // update of worldCentroidStateKinematics_ with the accelerations
 
-  std::cout << std::endl << "worldCentroidStateKine 2" << std::endl << worldCentroidStateKinematics_ << std::endl;
-
   const Vector & statePrediction = ekf_.getLastPrediction();
   const Vector3 & predictedWorldCentroidStatePos = statePrediction.segment<sizePos>(posIndex());
   Orientation predictedWorldCentroidStateOri;
@@ -1677,6 +1841,7 @@ Matrix KineticsObserver::computeAMatrix()
   Matrix3 J_pl_ext_force = dt2_2 / mass_ * Matrix::Identity(sizePosTangent, sizeForceTangent);
   A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), unmodeledForceIndexTangent()) = J_pl_ext_force;
   Matrix3 J_pl_ext_torque = dt2_2_Sp * J_omegadot_ext_torque;
+
   A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), unmodeledTorqueIndexTangent()) = J_pl_ext_torque;
 
   // Jacobians of the orientation
@@ -2480,8 +2645,6 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   computeLocalAccelerations_(worldCentroidStateKinematics, initTotalCentroidForce_, initTotalCentroidTorque_, linacc,
                              angacc);
 
-  std::cout << std::endl << "worldCentroidStateKine 1" << std::endl << worldCentroidStateKinematics << std::endl;
-
   if(withRungeKutta_)
   {
     initialVEContactForces_ = Vector3::Zero();
@@ -2571,7 +2734,6 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   {
     processNoise_->getNoisy(x);
   }
-
   return x;
 }
 

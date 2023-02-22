@@ -1083,6 +1083,10 @@ public:
 
   bool getContactIsSetByNum(const int & num) const;
 
+  KineticsObserver::Contact & getContactRef(int num);
+
+  KineticsObserver::IMU & getIMURef(int num);
+
   const std::vector<Kinematics> getContactPoses() const;
 
   ///////////////////////////////////////////////////////////////

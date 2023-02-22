@@ -735,6 +735,65 @@ int main()
   ko_3_.setIMU(Vector3::Zero(), Vector3::Zero(), centroidIMUPose1_, 0);
   ko_3_.setIMU(Vector3::Zero(), Vector3::Zero(), centroidIMUPose2_, 1);
 
+  Kinematics & contact1WorldKine = ko_3_.getContactRef(0).worldRefPose;
+  tempVec << 0.0245188, 0.080997, 0.00077336;
+  contact1WorldKine.position() = tempVec;
+  ori << -0.000157517, 0.0100821, -0.00223641;
+  contact1WorldKine.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << -0.00259903, 0.0792194, -0.779776;
+  Kinematics & centroidContactKine1 = ko_3_.getContactRef(0).centroidContactKine;
+  centroidContactKine1.position() = tempVec;
+  ori << 0.000367755, 0.00842225, -0.0025534;
+  centroidContactKine1.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << 8.45645e-07, 2.50606e-08, 1.31682e-06;
+  centroidContactKine1.linVel = tempVec;
+  tempVec << 0, 0, 0;
+  centroidContactKine1.angVel = tempVec;
+
+  LocalKinematics & centroidImuKinematics1 = ko_3_.getIMURef(0).centroidImuKinematics;
+  tempVec << -0.0325, 0, 0.856687;
+  centroidImuKinematics1.position = tempVec;
+  ori << 0, 0, 0;
+  centroidImuKinematics1.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << 0, 0, 0;
+  centroidImuKinematics1.linVel = tempVec;
+  tempVec << 0, 0, 0;
+  centroidImuKinematics1.angVel = tempVec;
+  tempVec << 0, 0, 0;
+  centroidImuKinematics1.linAcc = tempVec;
+  tempVec << 0, 0, 0;
+  centroidImuKinematics1.angAcc = tempVec;
+
+  Kinematics & contact2WorldKine = ko_3_.getContactRef(1).worldRefPose;
+  tempVec << 0.0258562, -0.0784297, 0.000782872;
+  contact2WorldKine.position() = tempVec;
+  ori << -0.000996467, 0.00915504, 0.00232681;
+  contact2WorldKine.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+
+  Kinematics & centroidContactKine2 = ko_3_.getContactRef(1).centroidContactKine;
+  tempVec << -0.00120752, -0.0802216, -0.779767;
+  centroidContactKine2.position = tempVec;
+  ori << -0.000495544, 0.00749715, 0.00199812;
+  centroidContactKine2.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << 8.45645e-07, 2.50606e-08, 1.31682e-06;
+  centroidContactKine2.linVel = tempVec;
+  tempVec << 0, 0, 0;
+  centroidContactKine2.angVel = tempVec;
+
+  LocalKinematics & centroidImuKinematics2 = ko_3_.getIMURef(1).centroidImuKinematics;
+  tempVec << 0, 0, 0.747187;
+  centroidImuKinematics2.position = tempVec;
+  ori << 0, 0, 0;
+  centroidImuKinematics2.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+  tempVec << 0, 0, 0;
+  centroidImuKinematics2.linVel = tempVec;
+  tempVec << 0, 0, 0;
+  centroidImuKinematics2.angVel = tempVec;
+  tempVec << 0, 0, 0;
+  centroidImuKinematics2.linAcc = tempVec;
+  tempVec << 0, 0, 0;
+  centroidImuKinematics2.angAcc = tempVec;
+
   stateVector_.resize(ko_3_.sizePos + ko_3_.sizeOri + ko_3_.sizeLinVel + ko_3_.sizeAngVel + ko_3_.sizeGyroBias * 2
                       + ko_3_.sizeForce + ko_3_.sizeTorque // ext wrench
                       + (ko_3_.sizePos + ko_3_.sizeOri + ko_3_.sizeForce + ko_3_.sizeTorque) * 2); // contacts)

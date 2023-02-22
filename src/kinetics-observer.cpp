@@ -315,7 +315,83 @@ const Vector & KineticsObserver::update()
   if(k_est_ != k_data_)
   {
     updateMeasurements();
-    MODIFIER TOUS LES INPUT AUSSI AVEC LES MEMES VALEURS QUE LE TEST Vector stateTemp = ekf_.getCurrentEstimatedState();
+    Vector3 ori;
+    Vector3 tempVec;
+
+    Contact & contact1 = contacts_.at(0);
+    tempVec << 0.0245188, 0.080997, 0.00077336;
+    contact1.worldRefPose.position() = tempVec;
+    ori << -0.000157517, 0.0100821, -0.00223641;
+    contact1.worldRefPose.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+    tempVec << -0.00259903, 0.0792194, -0.779776;
+    contact1.centroidContactKine.position() = tempVec;
+    ori << 0.000367755, 0.00842225, -0.0025534;
+    contact1.centroidContactKine.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+    tempVec << 8.45645e-07, 2.50606e-08, 1.31682e-06;
+    contact1.centroidContactKine.linVel = tempVec;
+    tempVec << 0, 0, 0;
+    contact1.centroidContactKine.angVel = tempVec;
+
+    IMU & imu1 = imuSensors_.at(0);
+    tempVec << -0.0325, 0, 0.856687;
+    imu1.centroidImuKinematics.position = tempVec;
+    ori << 0, 0, 0;
+    imu1.centroidImuKinematics.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+    tempVec << 0, 0, 0;
+    imu1.centroidImuKinematics.linVel = tempVec;
+    tempVec << 0, 0, 0;
+    imu1.centroidImuKinematics.angVel = tempVec;
+    tempVec << 0, 0, 0;
+    imu1.centroidImuKinematics.linAcc = tempVec;
+    tempVec << 0, 0, 0;
+    imu1.centroidImuKinematics.angAcc = tempVec;
+
+    Contact & contact2 = contacts_.at(1);
+    tempVec << 0.0258562, -0.0784297, 0.000782872;
+    contact2.worldRefPose.position() = tempVec;
+    ori << -0.000996467, 0.00915504, 0.00232681;
+    contact2.worldRefPose.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+
+    tempVec << -0.00120752, -0.0802216, -0.779767;
+    contact2.centroidContactKine.position = tempVec;
+    ori << -0.000495544, 0.00749715, 0.00199812;
+    contact2.centroidContactKine.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+    tempVec << 8.45645e-07, 2.50606e-08, 1.31682e-06;
+    contact2.centroidContactKine.linVel = tempVec;
+    tempVec << 0, 0, 0;
+    contact2.centroidContactKine.angVel = tempVec;
+
+    IMU & imu2 = imuSensors_.at(1);
+    tempVec << 0, 0, 0.747187;
+    imu2.centroidImuKinematics.position = tempVec;
+    ori << 0, 0, 0;
+    imu2.centroidImuKinematics.orientation.fromVector4(kine::rotationVectorToQuaternion(ori).coeffs());
+    tempVec << 0, 0, 0;
+    imu2.centroidImuKinematics.linVel = tempVec;
+    tempVec << 0, 0, 0;
+    imu2.centroidImuKinematics.angVel = tempVec;
+    tempVec << 0, 0, 0;
+    imu2.centroidImuKinematics.linAcc = tempVec;
+    tempVec << 0, 0, 0;
+    imu2.centroidImuKinematics.angAcc = tempVec;
+
+    com_() << 0.0208054, 0.000453782, 0.780549;
+    comd_() << -8.45645e-07, -2.50606e-08, -1.31682e-06;
+    comdd_() << 1.73329e-06, 6.16717e-08, 3.34942e-06;
+
+    sigma_() << 1.24961e-06, 1.08498e-05, 5.28098e-07;
+    sigmad_() << -2.86686e-06, -2.52373e-05, -1.20837e-06;
+
+    I_().row(0) << 28.91, -0.000423273, -0.492491;
+    I_().row(1) << -0.000423273, 28.6053, -0.00993046;
+    I_().row(2) << -0.492491, -0.00993046, 0.46347;
+
+    Id_().row(0) << -7.87275e-05, 3.46417e-08, 2.62965e-05;
+    Id_().row(1) << 3.46417e-08, -8.00725e-05, 7.71861e-07;
+    Id_().row(2) << 2.62965e-05, 7.71861e-07, -1.3468e-06;
+
+    Vector stateTemp = ekf_.getCurrentEstimatedState();
+
     stateTemp << 0.0322053, 0.00287065, 0.769771, 0.000188336, -0.00256324, 1.63073e-05, 0.999997, 0.0388738, 0.0134236,
         -0.0470932, 0.00607427, 0.0210703, -0.00290669, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0245188, 0.080997,
         0.00077336, -7.87579e-05, 0.00504102, -0.0011182, 0.999987, 1.92111, -42.3394, 178.001, -7.64832, 5.0657,
@@ -2058,7 +2134,6 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
                                                      Vector3 & force,
                                                      Vector3 & torque)
 {
-  std::cout << std::endl << "worldCentroidStateVector : " << std::endl << worldCentroidStateVector << std::endl;
   force += worldCentroidStateVector.segment<sizeForce>(unmodeledWrenchIndex());
 
   torque += worldCentroidStateVector.segment<sizeTorque>(unmodeledTorqueIndex());
@@ -2077,9 +2152,6 @@ void KineticsObserver::addUnmodeledAndContactWrench_(const Vector & worldCentroi
                 + centroidContactKinei.position().cross(centroidContactForcei);
     }
   }
-  std::cout << std::endl << "force : " << std::endl << force << std::endl;
-  std::cout << std::endl << "torque : " << std::endl << torque << std::endl;
-  std::exit(0);
 }
 
 void KineticsObserver::addUnmodeledWrench_(const Vector & worldCentroidStateVector, Vector3 & force, Vector3 & torque)
@@ -2680,6 +2752,16 @@ bool KineticsObserver::getContactIsSetByNum(const int & num) const
   {
     return contacts_[num].isSet;
   }
+}
+
+KineticsObserver::Contact & KineticsObserver::getContactRef(int num)
+{
+  return contacts_.at(num);
+}
+
+KineticsObserver::IMU & KineticsObserver::getIMURef(int num)
+{
+  return imuSensors_.at(num);
 }
 
 const std::vector<KineticsObserver::Kinematics> KineticsObserver::getContactPoses() const

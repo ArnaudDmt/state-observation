@@ -3599,7 +3599,7 @@ inline LocalKinematics LocalKinematics::setToProductNoAlias(const LocalKinematic
       if(multiplier2.linAcc.isSet() && multiplier1.linAcc.isSet() && multiplier1.angAcc.isSet())
       {
         linAcc.set(true);
-        linAcc().noalias() = R2t * multiplier1.linAcc();
+        linAcc.getRefUnchecked().noalias() = R2t * multiplier1.linAcc();
         linAcc().noalias() += (R2t * multiplier1.angAcc()).cross(multiplier2.position());
         linAcc().noalias() += R2tw1.cross(R2tw1p2_p2d + multiplier2.linVel());
         linAcc() += multiplier2.linAcc();
@@ -3639,7 +3639,7 @@ inline LocalKinematics LocalKinematics::setToProductNoAlias(const LocalKinematic
       if(multiplier2.angAcc.isSet() && multiplier1.angAcc.isSet())
       {
         angAcc.set(true);
-        angAcc().noalias() = R2t * multiplier1.angAcc();
+        angAcc.getRefUnchecked().noalias() = R2t * multiplier1.angAcc();
         angAcc().noalias() += R2tw1.cross(multiplier2.angVel());
         angAcc() += multiplier2.angAcc();
       }
@@ -3712,7 +3712,7 @@ inline LocalKinematics LocalKinematics::setToDiffNoAlias(const LocalKinematics &
       if(multiplier1.linAcc.isSet() && multiplier2.linAcc.isSet() && multiplier1.angAcc.isSet() && multiplier2.angAcc.isSet())
       {
         linAcc.set(true);
-        linAcc().noalias() = R2t * multiplier1.linAcc();
+        linAcc.getRefUnchecked().noalias() = R2t * multiplier1.linAcc();
         linAcc().noalias() += (R2t * multiplier1.angAcc()).cross(inv_pos2);
         linAcc().noalias() += R2tw1.cross(R2tw1p2_p2d + inv_linVel2);
 
@@ -3757,7 +3757,7 @@ inline LocalKinematics LocalKinematics::setToDiffNoAlias(const LocalKinematics &
       if(multiplier2.angAcc.isSet() && multiplier1.angAcc.isSet())
       {
         angAcc.set(true);
-        angAcc().noalias() = R2t * multiplier1.angAcc();
+        angAcc.getRefUnchecked().noalias() = R2t * multiplier1.angAcc();
         angAcc().noalias() -= R2tw1.cross(multiplier2.orientation * multiplier2.angVel()); // multiplier2.orientation * multiplier2.angVel() is the inverse of the angular velocity of multiplier 2
         angAcc().noalias() -= multiplier2.orientation * multiplier2.angAcc(); // multiplier2.orientation * multiplier2.angAcc() is the inverse of the angular acceleration of multiplier 2
       }

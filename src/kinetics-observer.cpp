@@ -1499,7 +1499,14 @@ Matrix KineticsObserver::computeAMatrix()
   Matrix3 J_al_R =
       -cst::gravityConstant
       * (worldCentroidStateKinematics_.orientation.toMatrix3().transpose() * kine::skewSymmetric(Vector3(0, 0, 1)));
-  Matrix3 J_al_ext_force = Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent) / mass_;
+
+  // creation of the variables linked to the unmodeled wrench. Initialized after if required.
+  Matrix3 J_al_ext_force;
+  Matrix3 J_pl_ext_force;
+  Matrix3 J_pl_ext_torque;
+  Matrix3 J_R_ext_torque;
+  Matrix3 J_vl_ext_force;
+  Matrix3 J_omega_ext_torque;
 
   // Jacobians of the centroid's position
   Matrix3 J_pl_pl = Matrix::Identity(sizePosTangent, sizePosTangent)
@@ -1524,10 +1531,6 @@ Matrix KineticsObserver::computeAMatrix()
                                 - kine::skewSymmetric(worldCentroidStateKinematics_.angVel())
                                       * kine::skewSymmetric(worldCentroidStateKinematics_.position()));
   A.block<sizePosTangent, sizeAngVelTangent>(posIndexTangent(), angVelIndexTangent()) = J_pl_omega;
-  Matrix3 J_pl_ext_force = dt2_2 / mass_ * Matrix::Identity(sizePosTangent, sizeForceTangent);
-  A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), unmodeledForceIndexTangent()) = J_pl_ext_force;
-  Matrix3 J_pl_ext_torque = dt2_2_Sp * J_omegadot_ext_torque;
-  A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), unmodeledTorqueIndexTangent()) = J_pl_ext_torque;
 
   // Jacobians of the orientation
   Vector delta = dt_ * worldCentroidStateKinematics_.angVel() + dt2_2 * worldCentroidStateKinematics_.angAcc();
@@ -1559,8 +1562,6 @@ Matrix KineticsObserver::computeAMatrix()
   Matrix3 J_R_omega =
       J_R_delta * (dt_ * Matrix::Identity(sizeAngVelTangent, sizeAngVelTangent) + dt2_2 * J_omegadot_omega);
   A.block<sizeOriTangent, sizeAngVelTangent>(oriIndexTangent(), angVelIndexTangent()) = J_R_omega;
-  Matrix3 J_R_ext_torque = J_R_omegadot * J_omegadot_ext_torque;
-  A.block<sizeOriTangent, sizeTorqueTangent>(oriIndexTangent(), unmodeledTorqueIndexTangent()) = J_R_ext_torque;
 
   // Jacobians of the linear velocity
   Matrix3 J_vl_R = dt_ * J_al_R;
@@ -1570,15 +1571,10 @@ Matrix KineticsObserver::computeAMatrix()
   A.block<sizeLinVelTangent, sizeLinVelTangent>(linVelIndexTangent(), linVelIndexTangent()) = J_vl_vl;
   Matrix3 J_vl_omega = dt_ * kine::skewSymmetric(worldCentroidStateKinematics_.linVel());
   A.block<sizeLinVelTangent, sizeAngVelTangent>(linVelIndexTangent(), angVelIndexTangent()) = J_vl_omega;
-  Matrix3 J_vl_ext_force = dt_ * J_al_ext_force;
-  A.block<sizeLinVelTangent, sizeAngVelTangent>(linVelIndexTangent(), unmodeledForceIndexTangent()) = J_vl_ext_force;
 
   // Jacobians of the angular velocity
   Matrix3 J_omega_omega = Matrix3::Identity() + dt_ * J_omegadot_omega;
   A.block<sizeAngVelTangent, sizeAngVelTangent>(angVelIndexTangent(), angVelIndexTangent()) = J_omega_omega;
-  Matrix3 J_omega_ext_torque = dt_ * J_omegadot_ext_torque;
-  A.block<sizeAngVelTangent, sizeTorqueTangent>(angVelIndexTangent(), unmodeledTorqueIndexTangent()) =
-      J_omega_ext_torque;
 
   // Jacobians of the gyrometer bias
   if(withGyroBias_)
@@ -1599,10 +1595,26 @@ Matrix KineticsObserver::computeAMatrix()
     A.block<sizeForceTangent, sizeForceTangent>(unmodeledForceIndexTangent(), unmodeledForceIndexTangent()) =
         J_ext_force_ext_force;
 
+    // Jacobians with respect to the unmodeled external force
+    J_al_ext_force = Matrix::Identity(sizeLinAccTangent, sizeTorqueTangent) / mass_;
+    J_pl_ext_force = dt2_2 / mass_ * Matrix::Identity(sizePosTangent, sizeForceTangent);
+    A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), unmodeledForceIndexTangent()) = J_pl_ext_force;
+    J_vl_ext_force = dt_ * J_al_ext_force;
+    A.block<sizeLinVelTangent, sizeAngVelTangent>(linVelIndexTangent(), unmodeledForceIndexTangent()) = J_vl_ext_force;
+
     // Jacobians of the unmodeled external torque
     Matrix3 J_ext_torque_ext_torque = Matrix::Identity(sizeTorqueTangent, sizeTorqueTangent);
     A.block<sizeTorqueTangent, sizeTorqueTangent>(unmodeledTorqueIndexTangent(), unmodeledTorqueIndexTangent()) =
         J_ext_torque_ext_torque;
+
+    // Jacobians with respect to the unmodeled external torque
+    J_pl_ext_torque = dt2_2_Sp * J_omegadot_ext_torque;
+    A.block<sizePosTangent, sizeForceTangent>(posIndexTangent(), unmodeledTorqueIndexTangent()) = J_pl_ext_torque;
+    J_R_ext_torque = J_R_omegadot * J_omegadot_ext_torque;
+    A.block<sizeOriTangent, sizeTorqueTangent>(oriIndexTangent(), unmodeledTorqueIndexTangent()) = J_R_ext_torque;
+    J_omega_ext_torque = dt_ * J_omegadot_ext_torque;
+    A.block<sizeAngVelTangent, sizeTorqueTangent>(angVelIndexTangent(), unmodeledTorqueIndexTangent()) =
+        J_omega_ext_torque;
   }
 
   // Jacobians with respect to contacts
@@ -1694,11 +1706,6 @@ Matrix KineticsObserver::computeAMatrix()
       A.block<sizeForceTangent, sizeAngVelTangent>(contactForceIndexTangent(i), angVelIndexTangent()) =
           J_contactForce_pl_at_same_time * J_pl_omega + J_contactForce_R_at_same_time * J_R_omega
           + J_contactForce_vl_at_same_time * J_vl_omega + J_contactForce_omega_at_same_time * J_omega_omega;
-      A.block<sizeForceTangent, sizeForceTangent>(contactForceIndexTangent(i), unmodeledForceIndexTangent()) =
-          J_contactForce_pl_at_same_time * J_pl_ext_force + J_contactForce_vl_at_same_time * J_vl_ext_force;
-      A.block<sizeForceTangent, sizeTorqueTangent>(contactForceIndexTangent(i), unmodeledTorqueIndexTangent()) =
-          J_contactForce_pl_at_same_time * J_pl_ext_torque + J_contactForce_R_at_same_time * J_R_ext_torque
-          + J_contactForce_omega_at_same_time * J_omega_ext_torque;
       A.block<sizeForceTangent, sizePosTangent>(contactForceIndexTangent(i), contactPosIndexTangent(i)) =
           J_contactForce_contactPosition_at_same_time;
       A.block<sizeForceTangent, sizeForceTangent>(contactForceIndexTangent(i), contactForceIndexTangent(i)) =
@@ -1756,8 +1763,6 @@ Matrix KineticsObserver::computeAMatrix()
           J_contactTorque_R_at_same_time;
       A.block<sizeTorqueTangent, sizeAngVelTangent>(contactTorqueIndexTangent(i), angVelIndexTangent()) =
           J_contactTorque_R_at_same_time * J_R_omega + J_contactTorque_omega_at_same_time * J_omega_omega;
-      A.block<sizeTorqueTangent, sizeTorqueTangent>(contactTorqueIndexTangent(i), unmodeledTorqueIndexTangent()) =
-          J_contactTorque_R_at_same_time * J_R_ext_torque + J_contactTorque_omega_at_same_time * J_omega_ext_torque;
       A.block<sizeTorqueTangent, sizeForceTangent>(contactTorqueIndexTangent(i), contactOriIndexTangent(i)) =
           J_contactTorque_contactOri_at_same_time;
       A.block<sizeTorqueTangent, sizeForceTangent>(contactTorqueIndexTangent(i), contactForceIndexTangent(i)) =
@@ -1765,6 +1770,17 @@ Matrix KineticsObserver::computeAMatrix()
       A.block<sizeTorqueTangent, sizeTorqueTangent>(contactTorqueIndexTangent(i), contactTorqueIndexTangent(i)) =
           J_contactTorque_R_at_same_time * J_R_contactTorque
           + J_contactTorque_omega_at_same_time * J_omega_contactTorque;
+
+      if(withUnmodeledWrench_)
+      {
+        A.block<sizeForceTangent, sizeForceTangent>(contactForceIndexTangent(i), unmodeledForceIndexTangent()) =
+            J_contactForce_pl_at_same_time * J_pl_ext_force + J_contactForce_vl_at_same_time * J_vl_ext_force;
+        A.block<sizeForceTangent, sizeTorqueTangent>(contactForceIndexTangent(i), unmodeledTorqueIndexTangent()) =
+            J_contactForce_pl_at_same_time * J_pl_ext_torque + J_contactForce_R_at_same_time * J_R_ext_torque
+            + J_contactForce_omega_at_same_time * J_omega_ext_torque;
+        A.block<sizeTorqueTangent, sizeTorqueTangent>(contactTorqueIndexTangent(i), unmodeledTorqueIndexTangent()) =
+            J_contactTorque_R_at_same_time * J_R_ext_torque + J_contactTorque_omega_at_same_time * J_omega_ext_torque;
+      }
     }
   }
   return A;
@@ -1854,11 +1870,11 @@ Matrix KineticsObserver::computeCMatrix()
       }
 
       /// gyrometer
+      C.block<sizeGyroSignal, sizeAngVelTangent>(imu.measIndex + sizeAcceleroSignal, angVelIndexTangent()) =
+          oriCentroidToImu;
+
       if(withGyroBias_)
       {
-        C.block<sizeGyroSignal, sizeAngVelTangent>(imu.measIndex + sizeAcceleroSignal, angVelIndexTangent()) =
-            oriCentroidToImu;
-
         C.block<sizeGyroSignal, sizeAngVelTangent>(imu.measIndex + sizeAcceleroSignal, gyroBiasIndexTangent(imu.num)) =
             Matrix3::Identity();
       }
@@ -2480,8 +2496,15 @@ Vector KineticsObserver::measureDynamics(const Vector & x_bar, const Vector & /*
       // std::endl;
 
       /// gyrometer
-      y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() =
-          worldImuKinematics.angVel() + x_bar.segment<sizeGyroBias>(gyroBiasIndex(imu.num));
+      if(withGyroBias_)
+      {
+        y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() =
+            worldImuKinematics.angVel() + x_bar.segment<sizeGyroBias>(gyroBiasIndex(imu.num));
+      }
+      else
+      {
+        y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() = worldImuKinematics.angVel();
+      }
     }
   }
   // std::cout << std::endl << "y2_: " << std::endl << y << std::endl;

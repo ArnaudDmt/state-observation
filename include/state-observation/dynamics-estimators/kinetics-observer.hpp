@@ -1278,6 +1278,11 @@ protected:
 
   inline Kinematics convertUserToCentroidFrame_(const Kinematics & userKine, TimeIndex k_data);
 
+  void convertWrenchFromUserToCentroid(const Vector3 & forceUserFrame,
+                                       const Vector3 & momentUserFrame,
+                                       Vector3 & forceCentroidFrame,
+                                       Vector3 & momentCentroidFrame);
+
   /// Getters for the indexes of the state Vector using private types
   inline unsigned contactIndex(VectorContactConstIterator i) const;
   inline unsigned contactKineIndex(VectorContactConstIterator i) const;

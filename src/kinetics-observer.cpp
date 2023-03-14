@@ -571,8 +571,13 @@ void KineticsObserver::setAdditionalWrench(const Vector3 & forceUserFrame, const
   convertWrenchFromUserToCentroid(forceUserFrame, momentUserFrame, additionalForce_, additionalTorque_);
 }
 
-  additionalForce_ = force;
-  additionalTorque_ = moment;
+void KineticsObserver::convertWrenchFromUserToCentroid(const Vector3 & forceUserFrame,
+                                                       const Vector3 & momentUserFrame,
+                                                       Vector3 & forceCentroidFrame,
+                                                       Vector3 & momentCentroidFrame)
+{
+  forceCentroidFrame = forceUserFrame;
+  momentCentroidFrame = momentUserFrame - com_().cross(forceUserFrame);
 }
 
 void KineticsObserver::setWithUnmodeledWrench(bool b)
@@ -1438,6 +1443,8 @@ void KineticsObserver::startNewIteration_()
         i->withRealSensor = false;
       }
     }
+    additionalForce_.setZero();
+    additionalTorque_.setZero();
   }
 }
 

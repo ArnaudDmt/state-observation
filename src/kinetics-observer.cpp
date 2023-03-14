@@ -2264,6 +2264,7 @@ void KineticsObserver::stateDifference(const Vector & worldCentroidStateVector1,
   Orientation & o1 = opt_.ori1;
   Orientation & o2 = opt_.ori2;
   difference.resize(stateTangentSize_);
+  difference.setZero();
   difference.segment<sizePos>(posIndexTangent()).noalias() =
       worldCentroidStateVector1.segment<sizePos>(posIndex()) - worldCentroidStateVector2.segment<sizePos>(posIndex());
   o1.fromVector4(worldCentroidStateVector1.segment<sizeOri>(oriIndex()));

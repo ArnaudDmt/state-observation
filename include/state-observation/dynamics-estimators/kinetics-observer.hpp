@@ -1350,7 +1350,7 @@ public: ///////////SIZE OF VECTORS
 
   static const Kinematics::Flags::Byte flagsIMUKine = Kinematics::Flags::position | Kinematics::Flags::orientation
                                                       | Kinematics::Flags::linVel | Kinematics::Flags::angVel
-                                                      | Kinematics::Flags::linAcc;
+                                                      | Kinematics::Flags::linAcc | Kinematics::Flags::angAcc;
 
   ////////////DEFAULT VALUES //////
   static const double defaultMass;

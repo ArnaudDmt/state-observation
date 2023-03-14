@@ -172,7 +172,7 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
   accJacobianAnalytical.block<3, ko_.sizeTorqueTangent>(3, ko_.unmodeledTorqueIndexTangent()) = I_inv;
   accJacobianAnalytical.block<3, ko_.sizeAngVelTangent>(3, ko_.angVelIndexTangent()) =
       I_inv
-      * (kine::skewSymmetric(ko_.getInertiaMatrix()() * worldCentroidKinematics.angVel()) - ko_.getInertiaMatrix_d()()
+      * (kine::skewSymmetric(ko_.getInertiaMatrix()() * worldCentroidKinematics.angVel()) - ko_.getInertiaMatrixDot()()
          - kine::skewSymmetric(worldCentroidKinematics.angVel()) * ko_.getInertiaMatrix()()
          + kine::skewSymmetric(ko_.getAngularMomentum()()));
 
@@ -473,7 +473,7 @@ int main()
   ko_1_.useRungeKutta(false);
   ko_1_.setWithGyroBias(true);
 
-  ko_1_.setAngularMomentum(angularMomentum_, angularMomentum_d_);
+  ko_1_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_1_.setInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
   ko_1_.addContact(worldContactPose1_, 0, K1_, K2_, K3_, K4_);
@@ -614,7 +614,7 @@ int main()
   ko_2_.useRungeKutta(false);
   ko_2_.setWithGyroBias(true);
 
-  ko_2_.setAngularMomentum(angularMomentum_, angularMomentum_d_);
+  ko_2_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
 
   ko_2_.setInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 

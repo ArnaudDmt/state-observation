@@ -931,7 +931,6 @@ protected:
   {
     Sensor(int signalSize) : measIndex(-1), measIndexTangent(-1), size(signalSize), time(0) {}
     virtual ~Sensor() {}
-    int num;
     int measIndex;
     int measIndexTangent;
     int size;
@@ -947,6 +946,7 @@ protected:
   {
     virtual ~IMU() {}
     IMU() : Sensor(sizeIMUSignal) {}
+    int num;
     Kinematics userImuKinematics; // the kinematics of the IMU in the user's frame
     LocalKinematics centroidImuKinematics; // the kinematics of the IMU in the IMU's frame
     Vector6 acceleroGyro;
@@ -974,7 +974,7 @@ protected:
                                    // centroid's frame. This is a temporary variable used for convenience. It must be
                                    // called with care as it is called in several functions in the code.
     };
-
+    int num;
     Temp temp;
 
     Kinematics worldRefPose; // the reference pose of the contact in the world frame

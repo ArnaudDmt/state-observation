@@ -634,7 +634,7 @@ int KineticsObserver::setIMU(const Vector3 & accelero,
   if(imuSensors_[num].time == 0) /// this is the first value for the IMU
   {
     imu.userImuKinematics = userImuKinematics;
-    imu.centroidImuKinematics = LocalKinematics(imu.userImuKinematics);
+    imu.centroidImuKinematics = LocalKinematics(convertUserToCentroidFrame_(imu.userImuKinematics, k_data_));
 
     imu.covMatrixAccelero = acceleroCovMatDefault_;
     imu.covMatrixGyro = gyroCovMatDefault_;
@@ -653,11 +653,15 @@ int KineticsObserver::setIMU(const Vector3 & accelero,
     {
       imu.centroidImuKinematics.linAcc.set().setZero();
     }
+    if(!imu.centroidImuKinematics.angAcc.isSet())
+    {
+      imu.centroidImuKinematics.angAcc.set().setZero();
+    }
   }
   else
   {
-    imu.userImuKinematics.update(userImuKinematics, dt_ * (k_data_ - k_data_), flagsIMUKine);
-    imu.centroidImuKinematics = LocalKinematics(imu.userImuKinematics);
+    imu.userImuKinematics.update(userImuKinematics, dt_ * (k_data_ - imu.time), flagsIMUKine);
+    imu.centroidImuKinematics = LocalKinematics(convertUserToCentroidFrame_(imu.userImuKinematics, k_data_));
   }
 
   imu.time = k_data_;
@@ -700,7 +704,7 @@ int KineticsObserver::setIMU(const Vector3 & accelero,
   if(imuSensors_[num].time == 0) /// this is the first value for the IMU
   {
     imu.userImuKinematics = userImuKinematics;
-    imu.centroidImuKinematics = LocalKinematics(imu.userImuKinematics);
+    imu.centroidImuKinematics = LocalKinematics(convertUserToCentroidFrame_(imu.userImuKinematics, k_data_));
     BOOST_ASSERT(imu.centroidImuKinematics.position.isSet() && imu.centroidImuKinematics.orientation.isSet()
                  && "The kinematics of the IMU is incorrectly initialized");
     if(!imu.centroidImuKinematics.linVel.isSet())
@@ -715,11 +719,15 @@ int KineticsObserver::setIMU(const Vector3 & accelero,
     {
       imu.centroidImuKinematics.linAcc.set().setZero();
     }
+    if(!imu.centroidImuKinematics.angAcc.isSet())
+    {
+      imu.centroidImuKinematics.angAcc.set().setZero();
+    }
   }
   else
   {
-    imu.userImuKinematics.update(userImuKinematics, dt_ * (k_data_ - k_data_), flagsIMUKine);
-    imu.centroidImuKinematics = LocalKinematics(imu.userImuKinematics);
+    imu.userImuKinematics.update(userImuKinematics, dt_ * (k_data_ - imu.time), flagsIMUKine);
+    imu.centroidImuKinematics = LocalKinematics(convertUserToCentroidFrame_(imu.userImuKinematics, k_data_));
   }
 
   imu.time = k_data_;

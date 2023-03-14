@@ -119,11 +119,19 @@ public:
 
   const IndexedMatrix3 & getInertiaMatrix() const;
 
-  const IndexedMatrix3 & getInertiaMatrix_d() const;
+  const IndexedMatrix3 & getInertiaMatrixDot() const;
 
   const IndexedVector3 & getAngularMomentum() const;
 
-  const IndexedVector3 & getAngularMomentum_d() const;
+  const IndexedVector3 & getAngularMomentumDot() const;
+
+  const IndexedVector3 & getCenterOfMass() const;
+
+  const IndexedVector3 & getCenterOfMassDot() const;
+
+  const IndexedVector3 & getCenterOfMassDotDot() const;
+
+  const Vector6 getAdditionalWrench() const;
 
   /// @}
 
@@ -395,17 +403,17 @@ public:
   /// diagonal values concatenated
   void setInertiaMatrix(const Vector6 & I);
 
-  /// @brief Set the Angular Momentum and its derviative expressed in the local frame
+  /// @brief Set the Angular Momentum around the CoM and its derviative expressed in the local frame
   ///
   /// @param sigma The angular momentum
   /// @param sigma_dot The angular momentum derivative
-  void setAngularMomentum(const Vector3 & sigma, const Vector3 & sigma_dot);
+  void setCoMAngularMomentum(const Vector3 & sigma, const Vector3 & sigma_dot);
 
-  /// @brief Set the Angular Momentum expressed in the local frame
+  /// @brief Set the Angular Momentum around the CoM  expressed in the local frame
   /// @details The derivative will be computed using finite differences
   ///
   /// @param sigma The angular momentum
-  void setAngularMomentum(const Vector3 & sigma);
+  void setCoMAngularMomentum(const Vector3 & sigma);
 
   /// @brief Set any Additional resultant known wrench (e.g. measured external forces and moments but no contact ones)
   /// expressed in the local estimated frame.

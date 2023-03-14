@@ -565,8 +565,11 @@ void KineticsObserver::setStateVector(const Vector & v, bool resetCovariance)
   }
 }
 
-void KineticsObserver::setAdditionalWrench(const Vector3 & force, const Vector3 & moment)
+void KineticsObserver::setAdditionalWrench(const Vector3 & forceUserFrame, const Vector3 & momentUserFrame)
 {
+  startNewIteration_();
+  convertWrenchFromUserToCentroid(forceUserFrame, momentUserFrame, additionalForce_, additionalTorque_);
+}
 
   additionalForce_ = force;
   additionalTorque_ = moment;
@@ -968,14 +971,14 @@ void KineticsObserver::setCenterOfMass(const Vector3 & com)
   com_.set(com, k_data_);
 }
 
-void KineticsObserver::setAngularMomentum(const Vector3 & sigma, const Vector3 & sigma_dot)
+void KineticsObserver::setCoMAngularMomentum(const Vector3 & sigma, const Vector3 & sigma_dot)
 {
   startNewIteration_();
   sigma_.set(sigma, k_data_);
   sigmad_.set(sigma_dot, k_data_);
 }
 
-void KineticsObserver::setAngularMomentum(const Vector3 & sigma)
+void KineticsObserver::setCoMAngularMomentum(const Vector3 & sigma)
 {
   startNewIteration_();
   if(sigma_.getTime() < k_data_)
@@ -2663,7 +2666,7 @@ const IndexedMatrix3 & KineticsObserver::getInertiaMatrix() const
   return I_;
 }
 
-const IndexedMatrix3 & KineticsObserver::getInertiaMatrix_d() const
+const IndexedMatrix3 & KineticsObserver::getInertiaMatrixDot() const
 {
   return Id_;
 }
@@ -2673,9 +2676,32 @@ const IndexedVector3 & KineticsObserver::getAngularMomentum() const
   return sigma_;
 }
 
-const IndexedVector3 & KineticsObserver::getAngularMomentum_d() const
+const IndexedVector3 & KineticsObserver::getAngularMomentumDot() const
 {
   return sigmad_;
+}
+
+const IndexedVector3 & KineticsObserver::getCenterOfMass() const
+{
+  return com_;
+}
+
+const IndexedVector3 & KineticsObserver::getCenterOfMassDot() const
+{
+  return comd_;
+}
+
+const IndexedVector3 & KineticsObserver::getCenterOfMassDotDot() const
+{
+  return comdd_;
+}
+
+const Vector6 KineticsObserver::getAdditionalWrench() const
+{
+  Vector6 additionalWrench;
+  additionalWrench.segment<sizeForce>(0) = additionalForce_;
+  additionalWrench.segment<sizeTorque>(sizeForce) = additionalTorque_;
+  return additionalWrench;
 }
 
 } // namespace stateObservation

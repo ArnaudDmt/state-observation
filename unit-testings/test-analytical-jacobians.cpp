@@ -474,7 +474,7 @@ int main()
   ko_1_.setWithGyroBias(true);
 
   ko_1_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
-  ko_1_.setInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
+  ko_1_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
   ko_1_.addContact(worldContactPose1_, 0, K1_, K2_, K3_, K4_);
   ko_1_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);
@@ -616,7 +616,7 @@ int main()
 
   ko_2_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
 
-  ko_2_.setInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
+  ko_2_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
   ko_2_.addContact(worldContactPose1_, 0, K1_, K2_, K3_, K4_);
   ko_2_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);

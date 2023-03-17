@@ -378,30 +378,30 @@ public:
 
   /// @brief Set the 3x3 inertia matrix and its derivative expressed in the local frame
   ///
-  /// @param I Inertia matrix
+  /// @param I Set the inertia matrix at the CoM
   /// @param I_dot Derivative of inertia matrix
-  void setInertiaMatrix(const Matrix3 & I, const Matrix3 & I_dot);
+  void setCoMInertiaMatrix(const Matrix3 & I, const Matrix3 & I_dot);
 
   /// @brief Set the 3x3 inertia matrix expressed in the local frame
   /// @details The derivative will be computed using finite differences
   ///
   /// @param I Inertia matrix
   /// @param I_dot Derivative of inertia matrix
-  void setInertiaMatrix(const Matrix3 & I);
+  void setCoMInertiaMatrix(const Matrix3 & I);
 
   /// @brief Set the inertia matrix and its derivative as a Vector6 expressed in the local frame
   ///
   /// @param I Inertia matrix as a vector containing the diagonal and the three non
   /// diagonal values concatenated
   /// @param I_dot Derivative of inertia matrix expressed in the same way
-  void setInertiaMatrix(const Vector6 & I, const Vector6 & I_dot);
+  void setCoMInertiaMatrix(const Vector6 & I, const Vector6 & I_dot);
 
   /// @brief Set the inertia matrix as a Vector6 expressed in the local frame
   /// @details The derivative will be computed using finite differences
   ///
   /// @param I Inertia matrix as a vector containing the diagonal and the three non
   /// diagonal values concatenated
-  void setInertiaMatrix(const Vector6 & I);
+  void setCoMInertiaMatrix(const Vector6 & I);
 
   /// @brief Set the Angular Momentum around the CoM and its derviative expressed in the local frame
   ///
@@ -446,19 +446,19 @@ public:
   /// predictions
 
   /// @return const Kinematics& The predicted kinematics
-  Vector getPredictedGlobalCentroidState() const;
+  const Vector getPredictedGlobalCentroidState() const;
 
   /// @brief Returns the predicted gravitational component of the accelerometers measurement
 
   /// @return const Kinematics& The predicted kinematics
-  std::vector<Vector> getPredictedAccelerometersGravityComponent() const;
+  const std::vector<Vector> getPredictedAccelerometersGravityComponent() const;
 
   /// @brief Returns the predicted linear acceleration component of the accelerometers measurement
 
   /// @return const Kinematics& The predicted kinematics
-  std::vector<Vector> getPredictedAccelerometersLinAccComponent() const;
+  const std::vector<Vector> getPredictedAccelerometersLinAccComponent() const;
 
-  std::vector<Vector> getPredictedAccelerometers() const;
+  const std::vector<Vector> getPredictedAccelerometers() const;
 
   /// @brief Get the Kinematics of the observed local frame
   /// @details the kinemactics are the main output of this observer. It includes the linear and angular position and
@@ -705,7 +705,7 @@ public:
   /// This is for advanced use but may be used to check how many states have been estimated up to now
   ///
   /// @return TimeIndex
-  TimeIndex getStateVectorTimeIndex() const;
+  const TimeIndex getStateVectorTimeIndex() const;
 
   /// @brief Set a value of the state x_k provided from another source
   /// @details can be used for initialization of the estimator
@@ -978,6 +978,7 @@ protected:
     Temp temp;
 
     Kinematics worldRefPose; // the reference pose of the contact in the world frame
+    Kinematics worldRefPose_DEBUG; // the reference pose of the contact in the world frame
 
     Vector6 wrenchMeasurement; /// Describes the measured wrench (forces + torques) at the contact in the sensor's frame
     CheckedMatrix6 sensorCovMatrix;
@@ -1078,18 +1079,27 @@ protected:
 
 public:
   /// @{
+  const Vector6 getWorldContactWrench(const int & numContact) const;
+
+  const Vector6 getCentroidContactWrench(const int & numContact) const;
+
+  const Kinematics getCentroidContactInputPose(const int & numContact) const;
+
+  const Kinematics getWorldContactInputRefPose(const int & numContact) const;
+
+  const Kinematics getWorldContactPose(const int & numContact) const;
+
+  const Kinematics getUserContactInputPose(const int & numContact) const;
 
   /// @brief Get the measurement index of the required IMU : allows to access its corresponding measurements in the
   /// measurement vector for example
   ///
   /// @return const int &
-  int getIMUMeasIndexByNum(const int & num) const;
+  const int getIMUMeasIndexByNum(const int & num) const;
 
-  int getContactMeasIndexByNum(const int & num) const;
+  const int getContactMeasIndexByNum(const int & num) const;
 
-  bool getContactIsSetByNum(const int & num) const;
-
-  const std::vector<Kinematics> getContactPoses() const;
+  const bool getContactIsSetByNum(const int & num) const;
 
   ///////////////////////////////////////////////////////////////
   /// @name State vector representation arithmetics and derivation (advanced use)

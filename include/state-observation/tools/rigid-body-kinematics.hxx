@@ -871,6 +871,7 @@ inline const Orientation & Orientation::setToProductNoAlias(const Orientation & 
   {
     if(R1.isMatrixSet() && R2.isMatrixSet())
     {
+      m_.set(true); /// we set the matrix as initialized before giving the value
       m_.set().noalias() = R1.m_() * R2.m_();
     }
     else
@@ -884,15 +885,15 @@ inline const Orientation & Orientation::setToProductNoAlias(const Orientation & 
     m_.set(true); /// we set the matrix as initialized before giving the value
     if(!R1.isMatrixSet())
     {
-      m_().noalias() = R1.quaternionToMatrix_() * R2.m_();
+      m_.getRefUnchecked().noalias() = R1.quaternionToMatrix_() * R2.m_();
     }
     else if(!R2.isMatrixSet())
     {
-      m_().noalias() = R1.m_() * R2.quaternionToMatrix_();
+      m_.getRefUnchecked().noalias() = R1.m_() * R2.quaternionToMatrix_();
     }
     else
     {
-      m_().noalias() = R1.m_() * R2.m_();
+      m_.getRefUnchecked().noalias() = R1.m_() * R2.m_();
     }
     q_.reset();
   }
@@ -1829,7 +1830,7 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
       if(multiplier2.linAcc.isSet() && multiplier1.linAcc.isSet() && multiplier1.angAcc.isSet())
       {
         linAcc.set(true);
-        linAcc().noalias() = multiplier1.orientation * multiplier2.linAcc();
+        linAcc.getRefUnchecked().noalias() = multiplier1.orientation * multiplier2.linAcc();
         linAcc().noalias() += multiplier1.angAcc().cross(R1p2);
         linAcc().noalias() += multiplier1.angVel().cross(w1xR1p2_R1p2d + R1p2d);
         linAcc() += multiplier1.linAcc();
@@ -1863,13 +1864,13 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
     if(multiplier2.angVel.isSet() && multiplier1.angVel.isSet())
     {
       angVel.set(true);
-      Vector3 & R1w2 = angVel(); /// reference
+      Vector3 & R1w2 = angVel.getRefUnchecked(); /// reference
       R1w2.noalias() = multiplier1.orientation * multiplier2.angVel();
 
       if(multiplier2.angAcc.isSet() && multiplier1.angAcc.isSet())
       {
         angAcc.set(true);
-        angAcc().noalias() = multiplier1.orientation * multiplier2.angAcc();
+        angAcc.getRefUnchecked().noalias() = multiplier1.orientation * multiplier2.angAcc();
         angAcc().noalias() += multiplier1.angVel().cross(R1w2);
         angAcc() += multiplier1.angAcc();
       }

@@ -275,10 +275,15 @@ public:
   /// @brief remove all the contacts
   void clearContacts();
 
+  /// @brief Get the Number Of Contacts
+  ///
+  /// @return Index The number of contacts
+  Index getNumberOfContacts() const;
+
   /// @brief Get the Current Number Of Contacts
   ///
   /// @return Index The current number of contacts
-  Index getNumberOfContacts() const;
+  Index getNumberOfSetContacts() const;
 
   /// @brief Get the List Of Contact ids
   ///

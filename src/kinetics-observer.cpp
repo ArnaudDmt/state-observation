@@ -1133,6 +1133,20 @@ Index KineticsObserver::getNumberOfContacts() const
   return contacts_.size();
 }
 
+Index KineticsObserver::getNumberOfSetContacts() const
+{
+  std::vector<int> v;
+
+  for(unsigned i = 0; i < contacts_.size(); ++i)
+  {
+    if(contacts_[i].isSet)
+    {
+      v.push_back(i);
+    }
+  }
+  return v.size();
+}
+
 std::vector<int> KineticsObserver::getListOfContacts() const
 {
   std::vector<int> v;

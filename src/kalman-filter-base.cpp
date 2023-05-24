@@ -5,7 +5,7 @@
 //#define VERBOUS_KALMANFILTER
 #endif
 
-#ifdef VERBOUS_KALMANFILTER
+#ifndef VERBOUS_KALMANFILTER
 #  include <iomanip> // std::setprecision
 #  include <iostream>
 #endif // VERBOUS_KALMANFILTER
@@ -119,8 +119,8 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   BOOST_ASSERT(checkPmatrix(pr_) && "ERROR: The Matrix P is not initialized");
 
   // prediction
-  updateStateAndMeasurementPrediction(); // runs also updatePrediction_();
   oc_.pbar.noalias() = q_ + a_ * (pr_ * a_.transpose());
+  updateStateAndMeasurementPrediction(); // runs also updatePrediction_();
 
   // innovation Measurements
   arithm_->measurementDifference(this->y_[k + 1], ybar_(), oc_.inoMeas);
@@ -143,6 +143,8 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   // update
 
   arithm_->stateSum(xbar_(), innovation_, oc_.xhat);
+  Eigen::IOFormat CleanFmt(2, 0, " ", "\n", "", "");
+  std::cout << "K" << std::endl << oc_.kGain.format(CleanFmt) << std::endl;
 
 #ifdef VERBOUS_KALMANFILTER
   Eigen::IOFormat CleanFmt(2, 0, " ", "\n", "", "");
@@ -178,6 +180,11 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
 KalmanFilterBase::Pmatrix KalmanFilterBase::getStateCovariance() const
 {
   return pr_;
+}
+
+Matrix KalmanFilterBase::getPredictionCovariance() const
+{
+  return oc_.pbar;
 }
 
 void KalmanFilterBase::reset()

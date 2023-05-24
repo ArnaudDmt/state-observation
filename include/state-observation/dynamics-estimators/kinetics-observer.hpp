@@ -15,6 +15,7 @@
 #include <map>
 #include <set>
 
+#include <boost/math/distributions/inverse_chi_squared.hpp>
 #include <boost/utility.hpp>
 
 #include <state-observation/api.h>
@@ -430,15 +431,23 @@ public:
 
   /// @}
 
-  // ///////////////////////////////////////////////////////////
-  /// @name Running and getting the estimations
-  /// /////////////////////////////////////////////////////////
   /// @{
+  /// @brief Outlier measurements test.
+  /// @details Test that the measurement is not an outlier
+  void outlierTest(const Vector & measPrediction, const int & measIndex);
+
+  /// @{
+  /// @brief Outlier measurements test.
+  /// @details Test that the measurement is not an outlier
+  void outlierTestQuaternion(const Vector & measPrediction, const int & measIndex);
 
   /// @brief Updates the measurements.
   /// @details Updates the measurement sensors and the associated vectors and covariance matrices
   void updateMeasurements();
 
+  // ///////////////////////////////////////////////////////////
+  /// @name Running and getting the estimations
+  /// /////////////////////////////////////////////////////////
   /// @brief Runs the estimation.
   /// @details This is the function that allows to
   /// 1- compute the estimation
@@ -1083,6 +1092,10 @@ protected:
   virtual Index getInputSize() const;
 
 public:
+  void convertWrenchFromUserToCentroid(const Vector3 & forceUserFrame,
+                                       const Vector3 & momentUserFrame,
+                                       Vector3 & forceCentroidFrame,
+                                       Vector3 & momentCentroidFrame);
   /// @{
   const Vector6 getWorldContactWrench(const int & numContact) const;
 
@@ -1292,11 +1305,6 @@ protected:
   /// Kinematics, defined by the user in its frame.
 
   inline Kinematics convertUserToCentroidFrame_(const Kinematics & userKine, TimeIndex k_data);
-
-  void convertWrenchFromUserToCentroid(const Vector3 & forceUserFrame,
-                                       const Vector3 & momentUserFrame,
-                                       Vector3 & forceCentroidFrame,
-                                       Vector3 & momentCentroidFrame);
 
   /// Getters for the indexes of the state Vector using private types
   inline unsigned contactIndex(VectorContactConstIterator i) const;

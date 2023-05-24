@@ -316,7 +316,8 @@ const Vector & KineticsObserver::update()
   {
     updateMeasurements();
 
-    ekf_.updateStateAndMeasurementPrediction();
+    // ekf_.updateStateAndMeasurementPrediction();
+    ekf_.updateStatePrediction();
 
     if(finiteDifferencesJacobians_)
     {
@@ -330,6 +331,9 @@ const Vector & KineticsObserver::update()
       predictedWorldCentroidState_ = ekf_.getLastPrediction();
       ekf_.setC(computeCMatrix());
     }
+
+    ekf_.updateStateAndMeasurementPrediction();
+
     // std::cout << std::endl << "d_kine/d_kine : " << std::endl << ekf_.getA().block<12, 12>(posIndexTangent(),
     // posIndexTangent()) << std::endl;
 
@@ -2466,6 +2470,72 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const Vector & /*u
   return x;
 }
 
+void KineticsObserver::outlierTestQuaternion(const Vector & measPrediction, const int & measIndex)
+{
+  /*
+      To prevent an outlier measurement from correcting the state, we just need to set the corresponding parts on R and
+      C matrices to zero so the corresponding part on the Kalman Gain is also zero
+   */
+  const int measSize = 4;
+
+  Matrix CMatrixMeas = ekf_.getC().block(measIndex, 0, measSize, ekf_.getC().cols());
+  const double D2 = (measPrediction - measurementVector_.segment<measSize>(measIndex)).transpose()
+                    * (CMatrixMeas * ekf_.getPredictionCovariance() * CMatrixMeas.transpose()).inverse()
+                    * (measPrediction - measurementVector_.segment<measSize>(measIndex));
+
+  const double D = sqrt(D2);
+  if(D < quantile(boost::math::inverse_chi_squared(3), 0.95))
+  {
+    Matrix matrixC = ekf_.getC();
+    Matrix matrixR = ekf_.getR();
+
+    matrixC.block(measIndex, 0, measSize, matrixC.cols()).setZero();
+    matrixR.block(measIndex, measIndex, measSize, measSize).setZero();
+
+    ekf_.setC(matrixC);
+    ekf_.setR(matrixR);
+
+    std::cout << std::endl << "Outlier ! : " << measIndex << " Time: " << ekf_.getCurrentTime() << std::endl;
+  }
+}
+
+void KineticsObserver::outlierTest(const Vector & measPrediction, const int & measIndex)
+{
+  /*
+      To prevent an outlier measurement from correcting the state, we just need to set the corresponding parts on R and
+      C matrices to zero so the corresponding part on the Kalman Gain is also zero
+   */
+  const int measSize = 3;
+
+  Matrix CMatrixMeas = ekf_.getC().block(measIndex, 0, measSize, ekf_.getC().cols());
+  const double D2 = (measPrediction - measurementVector_.segment<measSize>(measIndex)).transpose()
+                    * (CMatrixMeas * ekf_.getPredictionCovariance() * CMatrixMeas.transpose()).inverse()
+                    * (measPrediction - measurementVector_.segment<measSize>(measIndex));
+
+  const double D = sqrt(D2);
+  if(D < quantile(boost::math::inverse_chi_squared(3), 0.95))
+  {
+    Matrix matrixC = ekf_.getC();
+    Matrix matrixR = ekf_.getR();
+
+    matrixC.block(measIndex, 0, measSize, matrixC.cols()).setZero();
+    matrixR.block(measIndex, measIndex, measSize, measSize).setZero();
+
+    ekf_.setC(matrixC);
+    ekf_.setR(matrixR);
+
+    std::cout << std::endl
+              << "Outlier ! : "
+              << "Index: " << measIndex << " Time: " << ekf_.getCurrentTime() << "Pred: " << measPrediction
+              << "Meas: " << measurementVector_.segment<measSize>(measIndex) << std::endl;
+
+    Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+
+    std::cout << std::endl << "C: " << ekf_.getC().format(CleanFmt) << std::endl;
+    std::cout << std::endl << "R: " << ekf_.getR().format(CleanFmt) << std::endl;
+  }
+}
+
 Vector KineticsObserver::measureDynamics(const Vector & x_bar, const Vector & /*unused*/, TimeIndex k)
 {
   Vector y(getMeasurementSize());
@@ -2513,8 +2583,10 @@ Vector KineticsObserver::measureDynamics(const Vector & x_bar, const Vector & /*
       const Matrix3 & worldImuOri = worldImuKinematics.orientation.toMatrix3();
 
       /// accelerometer
-      y.segment<sizeAcceleroSignal>(imu.measIndex).noalias() =
-          worldImuKinematics.linAcc() + worldImuOri.transpose() * cst::gravity;
+      Vector3 acceleroMeasurement = worldImuKinematics.linAcc() + worldImuOri.transpose() * cst::gravity;
+      y.segment<sizeAcceleroSignal>(imu.measIndex).noalias() = acceleroMeasurement;
+
+      outlierTest(acceleroMeasurement, imu.measIndex);
 
       predictedWorldIMUsLinAcc_.push_back(worldImuKinematics.linAcc());
       predictedAccelerometersGravityComponent_.push_back(worldImuOri.transpose() * cst::gravity);
@@ -2523,15 +2595,18 @@ Vector KineticsObserver::measureDynamics(const Vector & x_bar, const Vector & /*
       // std::endl;
 
       /// gyrometer
+      Vector3 gyroMeasurement;
       if(withGyroBias_)
       {
-        y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() =
-            worldImuKinematics.angVel() + x_bar.segment<sizeGyroBias>(gyroBiasIndex(imu.num));
+        gyroMeasurement = worldImuKinematics.angVel() + x_bar.segment<sizeGyroBias>(gyroBiasIndex(imu.num));
       }
       else
       {
-        y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() = worldImuKinematics.angVel();
+        gyroMeasurement = worldImuKinematics.angVel();
       }
+
+      y.segment<sizeGyroSignal>(imu.measIndex + sizeAcceleroSignal).noalias() = gyroMeasurement;
+      outlierTest(gyroMeasurement, imu.measIndex + sizeAcceleroSignal);
     }
   }
   // std::cout << std::endl << "y2_: " << std::endl << y << std::endl;
@@ -2540,16 +2615,26 @@ Vector KineticsObserver::measureDynamics(const Vector & x_bar, const Vector & /*
   {
     if(i->isSet && i->time == k_data_ && i->withRealSensor)
     {
-      y.segment<sizeWrench>(i->measIndex) = x_bar.segment<sizeWrench>(contactWrenchIndex(i));
+      Vector6 wrenchMeasurement = x_bar.segment<sizeWrench>(contactWrenchIndex(i));
+      y.segment<sizeWrench>(i->measIndex) = wrenchMeasurement;
+
+      outlierTest(wrenchMeasurement.segment<sizeForce>(0), i->measIndex);
+      outlierTest(wrenchMeasurement.segment<sizeTorque>(sizeForce), i->measIndex + sizeForce);
     }
   }
   // std::cout << std::endl << "y3_: " << std::endl << y << std::endl;
 
   if(absPoseSensor_.time == k)
   {
-    y.segment<sizePos>(absPoseSensor_.measIndex) =
+    Vector3 posMeasurement =
         worldCentroidStateKinematics.orientation.toMatrix3() * worldCentroidStateKinematics.toVector(flagsPosKine);
-    y.segment<sizeOri>(absPoseSensor_.measIndex + sizePos) = worldCentroidStateKinematics.orientation.toVector4();
+    Vector4 oriMeasurement = worldCentroidStateKinematics.orientation.toVector4();
+
+    y.segment<sizePos>(absPoseSensor_.measIndex) = posMeasurement;
+    y.segment<sizeOri>(absPoseSensor_.measIndex + sizePos) = oriMeasurement;
+
+    outlierTest(posMeasurement, absPoseSensor_.measIndex);
+    outlierTestQuaternion(oriMeasurement, absPoseSensor_.measIndex + sizePos);
   }
 
   if(measurementNoise_ != 0x0)

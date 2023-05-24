@@ -306,6 +306,9 @@ public:
   /// get the last predicted state
   StateVector getLastPrediction() const;
 
+  // Get the covariance matrix of the current time state estimation
+  Matrix getPredictionCovariance() const;
+
   /// get the last predicted measurement
   MeasureVector getLastPredictedMeasurement() const;
 

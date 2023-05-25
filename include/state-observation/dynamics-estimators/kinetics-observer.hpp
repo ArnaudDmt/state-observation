@@ -465,8 +465,16 @@ public:
 
   const std::vector<Vector> getPredictedAccelerometers() const;
 
+  /// @brief Converts a given wrench from the user to the centroid frame
+  /// @details Performs the conversion of a wrench {force, torque} from the user frame to the centroid frame.
+  ///
+  void convertWrenchFromUserToCentroid(const Vector3 & forceUserFrame,
+                                       const Vector3 & momentUserFrame,
+                                       Vector3 & forceCentroidFrame,
+                                       Vector3 & momentCentroidFrame);
+
   /// @brief Get the Kinematics of the observed local frame
-  /// @details the kinemactics are the main output of this observer. It includes the linear and angular position and
+  /// @details the kinematics are the main output of this observer. It includes the linear and angular position and
   /// velocity but not the accelerations by default. To get the acceleration call estimateAccelerations(). This
   /// method does NOT update the estimation, for this use update().
   ///
@@ -1292,11 +1300,6 @@ protected:
   /// Kinematics, defined by the user in its frame.
 
   inline Kinematics convertUserToCentroidFrame_(const Kinematics & userKine, TimeIndex k_data);
-
-  void convertWrenchFromUserToCentroid(const Vector3 & forceUserFrame,
-                                       const Vector3 & momentUserFrame,
-                                       Vector3 & forceCentroidFrame,
-                                       Vector3 & momentCentroidFrame);
 
   /// Getters for the indexes of the state Vector using private types
   inline unsigned contactIndex(VectorContactConstIterator i) const;

@@ -295,7 +295,7 @@ public:
   /// for the estimation call getEstimateState method
   /// it is only an execution of the state synamics with the current state
   /// estimation and the current input value
-  inline StateVector updateStatePrediction();
+  inline const StateVector & updateStatePrediction();
 
   /// update the predicted state, enables to precompute the predicted measurementŔ
   /// triggers also Vector updateStatePrediction()
@@ -309,12 +309,16 @@ public:
   /// get the last predicted measurement
   MeasureVector getLastPredictedMeasurement() const;
 
+  MeasureVector getLastMeasurement() const;
+
   /// get the last Kalman gain matrix
   Matrix getLastGain() const;
 
   /// set update functions for sum and difference for the state vector
   /// (used for the case of multiplicative Kalman filter)
   void setStateArithmetics(StateVectorArithmetics * arith);
+
+  virtual void resetPrediction();
 
 protected:
   /// the size of tangent space of the state space
@@ -381,7 +385,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-/*inline*/ Vector KalmanFilterBase::updateStatePrediction()
+/*inline*/ const Vector & KalmanFilterBase::updateStatePrediction()
 {
   prediction_(this->x_.getTime() + 1);
   return xbar_();

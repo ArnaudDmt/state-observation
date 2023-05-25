@@ -135,7 +135,9 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   oc_.inoMeasCovLLT.matrixL().transpose().solveInPlace(oc_.inoMeasCovInverse);
 
   // innovation
+
   oc_.kGain.noalias() = oc_.pbar * (c_.transpose() * oc_.inoMeasCovInverse);
+
   innovation_.noalias() = oc_.kGain * oc_.inoMeas;
 
   // update
@@ -147,8 +149,10 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   std::cout << "A" << std::endl << a_.format(CleanFmt) << std::endl;
   std::cout << "C" << std::endl << c_.format(CleanFmt) << std::endl;
   std::cout << "P" << std::endl << pr_.format(CleanFmt) << std::endl;
+  std::cout << "Q" << std::endl << q_.format(CleanFmt) << std::endl;
+  std::cout << "R" << std::endl << r_.format(CleanFmt) << std::endl;
   std::cout << "K" << std::endl << oc_.kGain.format(CleanFmt) << std::endl;
-  std::cout << "Xbar" << std::endl << xbar().transpose().format(CleanFmt) << std::endl;
+  std::cout << "Xbar" << std::endl << xbar_().transpose().format(CleanFmt) << std::endl;
   std::cout << "inoMeasCov" << std::endl << oc_.inoMeasCov.format(CleanFmt) << std::endl;
   std::cout << "oc_.pbar" << std::endl << (oc_.pbar).format(CleanFmt) << std::endl;
   std::cout << "c_ * (oc_.pbar * c_.transpose())" << std::endl
@@ -156,7 +160,7 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
   std::cout << "inoMeasCovInverse" << std::endl << oc_.inoMeasCovInverse.format(CleanFmt) << std::endl;
   std::cout << "predictedMeasurement " << std::endl << ybar_().transpose().format(CleanFmt) << std::endl;
   std::cout << "inoMeas" << std::endl << oc_.inoMeas.transpose().format(CleanFmt) << std::endl;
-  std::cout << "inovation_" << std::endl << inovation_.transpose().format(CleanFmt) << std::endl;
+  std::cout << "inovation_" << std::endl << innovation_.transpose().format(CleanFmt) << std::endl;
   std::cout << "Xhat" << std::endl << oc_.xhat.transpose().format(CleanFmt) << std::endl;
 #endif // VERBOUS_KALMANFILTER
 
@@ -399,6 +403,11 @@ Vector KalmanFilterBase::getLastPredictedMeasurement() const
   return ybar_();
 }
 
+Vector KalmanFilterBase::getLastMeasurement() const
+{
+  return y_.back();
+}
+
 Matrix KalmanFilterBase::getLastGain() const
 {
   return oc_.kGain;
@@ -412,6 +421,11 @@ Vector KalmanFilterBase::predictSensor_(TimeIndex k)
 void KalmanFilterBase::setStateArithmetics(StateVectorArithmetics * a)
 {
   arithm_ = a;
+}
+
+void KalmanFilterBase::resetPrediction()
+{
+  xbar_.set(false);
 }
 
 } // namespace stateObservation

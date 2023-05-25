@@ -314,14 +314,6 @@ void IMUElasticLocalFrameDynamicalSystem::computeElastContactForcesAndMoments(
         -Kfv_ * op_.Rcit * op_.Rt
         * (kine::skewSymmetric(angVel) * op_.RciContactPos + linVelocity + orientation * op_.contactVel);
 
-    // std::cout << "RciContactPos " << op_.RciContactPos.transpose() <<std::endl;
-    // std::cout << "linVelocity " << linVelocity.transpose() <<std::endl;
-    // std::cout << "kine::skewSymmetric(angVel)*op_.RciContactPos +linVelocity + orientation*op_.contactVel " <<
-    // (kine::skewSymmetric(angVel)*op_.RciContactPos
-    //                          +linVelocity + orientation*op_.contactVel).transpose() <<std::endl;
-
-    // std::cout << "forcei " << op_.forcei.transpose() <<std::endl;
-
     fc.segment<3>(3 * i) = op_.forcei;
 
     op_.momenti.noalias() = -Kte_ * op_.Rcit * op_.Rt * oriVector;
@@ -369,12 +361,6 @@ void IMUElasticLocalFrameDynamicalSystem::computeElastPendulumForcesAndMoments(c
 
     if(printed_ == false)
     {
-      //            std::cout << "globalContactPos=" << globalContactPos.transpose() << std::endl;
-      //            std::cout << "ropeLength=" << ropeLength << std::endl;
-      //            std::cout << "rope deformation=" << modifiedRopeLength-ropeLength << std::endl;
-      //            std::cout << "contactOriUnitVector=" << contactOriUnitVector.transpose() << std::endl;
-      //            std::cout << "forcei=" << forcei.transpose() << std::endl;
-      //            std::cout << "momenti=" << momenti.transpose() << std::endl;
       printed_ = true;
     }
   }
@@ -877,9 +863,6 @@ Vector IMUElasticLocalFrameDynamicalSystem::stateDynamics(const Vector & x, cons
 
   for(unsigned i = 0; i < hrp2::contact::nbModeledMax; ++i)
   {
-    // std::cout << "Contact " << i << std::endl
-    //          << fc_.segment<3>(3*i).transpose() << std::endl
-    //          << tc_.segment<3>(3*i).transpose()<< std::endl;
     op_.efforts[i].block<3, 1>(0, 0) = fc_.segment<3>(3 * i);
     op_.efforts[i].block<3, 1>(3, 0) = tc_.segment<3>(3 * i);
   }
@@ -1133,9 +1116,6 @@ stateObservation::Matrix IMUElasticLocalFrameDynamicalSystem::measureDynamicsJac
     }
   }
 
-  // std::cout << "JACOBIAN: "<<std::endl;
-  // std::cout << op_.Jy<<std::endl;
-
   xk_fory_ = op_.xk_fory; // last thing to do before returning to make the prediction correct
 
   yk_ = op_.yk;
@@ -1228,9 +1208,6 @@ stateObservation::Matrix IMUElasticLocalFrameDynamicalSystem::stateDynamicsJacob
       op_.xdx[i] = op_.xk[i];
     }
   }
-
-  // std::cout << "JACOBIAN: "<<std::endl;
-  // std::cout << op_.Jx <<std::endl;
 
   xk_ = op_.xk; // last thing to do before returning
   xk1_ = op_.xk1;

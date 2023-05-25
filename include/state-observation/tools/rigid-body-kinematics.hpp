@@ -15,6 +15,8 @@
 
 #include <Eigen/SVD>
 
+#include <iostream>
+
 #include <state-observation/api.h>
 #include <state-observation/tools/definitions.hpp>
 #include <state-observation/tools/miscellaneous-algorithms.hpp>
@@ -82,22 +84,22 @@ inline void integrateKinematics(Vector3 & position,
 /// gets close to 2pi
 inline Vector regulateRotationVector(const Vector3 & v);
 
-/// Transform the rotation vector into angle axis
+/// Transforms the rotation vector into angle axis
 inline AngleAxis rotationVectorToAngleAxis(const Vector3 & v);
 
-/// Tranbsform the rotation vector into rotation matrix
+/// Transforms the rotation vector into rotation matrix
 inline Matrix3 rotationVectorToRotationMatrix(const Vector3 & v);
 
-/// Tranbsform the rotation vector into quaternion
+/// Transforms the rotation vector into quaternion
 inline Quaternion rotationVectorToQuaternion(const Vector3 & v);
 
-/// Tranbsform the rotation matrix into rotation vector
+/// Transforms the rotation matrix into rotation vector
 inline Vector3 rotationMatrixToRotationVector(const Matrix3 & R);
 
 /// Tranbsform a quaternion into rotation vector
 inline Vector3 quaternionToRotationVector(const Quaternion & q);
 
-/// Tranbsform a quaternion into rotation vector
+/// Transforms a quaternion into rotation vector
 inline Vector3 quaternionToRotationVector(const Vector4 & v);
 
 /// scalar component of a quaternion
@@ -106,7 +108,7 @@ inline double scalarComponent(const Quaternion & q);
 /// vector part of the quaternion
 inline Vector3 vectorComponent(const Quaternion & q);
 
-/// Transform the rotation matrix into roll pitch yaw
+/// Transforms the rotation matrix into roll pitch yaw
 ///(decompose R into Ry*Rp*Rr)
 inline Vector3 rotationMatrixToRollPitchYaw(const Matrix3 & R, Vector3 & v);
 
@@ -416,13 +418,24 @@ public:
 
   inline Orientation inverse() const;
 
-  /// use the vector dt_x_omega as the increment of rotation expressed in the
-  /// world frame. Which gives R_{k+1}=\exp(S(dtxomega))R_k
+  /// uses the vector dt_x_omega as the increment of rotation expressed in the
+  /// world frame. Which gives R_{k+1}=\exp(S(dtxomega))R_k.
+  /// This function is also used to sum two Orientations expressed in the same frame at the same time k, even for the
+  /// LocalKinematics (the integration of the orientation is different but not the sum)
   inline const Orientation & integrate(Vector3 dt_x_omega);
 
+  /// use the vector dt_x_omega as the increment of rotation expressed in the
+  /// local frame. Which gives R_{k+1}=R_k*exp(S(dtxomega))
+  inline const Orientation & integrateRightSide(Vector3 dt_x_omega);
+
   /// gives the log (rotation vector) of the difference of orientation
-  /// gives log of (*this).inverse()*R_k1
+  /// gives log of R_k1*(*this).inverse().
+  /// This function is also used to differentiate two Orientations expressed in the same frame at the same time k, even
+  /// for the LocalKinematics (the integration of the orientation is different and therefore the associated
+  /// differentiation also is, but the difference remains the same)
   inline Vector3 differentiate(Orientation R_k1) const;
+
+  inline Vector3 differentiateRightSide(Orientation R_k1) const;
 
   /// Rotate a vector
   inline Vector3 operator*(const Vector3 & v) const;
@@ -440,8 +453,8 @@ public:
 
   /// no checks are performed for these functions, use with caution
 
-  inline CheckedMatrix3 & getMatrixRefUnsafe();
-  inline CheckedQuaternion & getQuaternionRefUnsafe();
+  inline CheckedMatrix3 & getMatrixRefUnsafe() const;
+  inline CheckedQuaternion & getQuaternionRefUnsafe() const;
 
   /// synchronizes the representations (quaternion and rotation matrix)
   inline void synchronize();
@@ -464,6 +477,7 @@ protected:
   mutable CheckedMatrix3 m_;
 };
 
+struct LocalKinematics;
 struct Kinematics
 {
   struct Flags
@@ -480,6 +494,11 @@ struct Kinematics
     static const Byte all = position | orientation | linVel | angVel | linAcc | angAcc;
   };
 
+  struct RecursiveAccelerationFunctorBase
+  {
+    virtual void computeRecursiveGlobalAccelerations_(Kinematics & kine) = 0;
+  };
+
   Kinematics() {}
 
   /// Constructor from a vector
@@ -489,7 +508,18 @@ struct Kinematics
   /// use the flags to define the structure of the vector
   Kinematics(const Vector & v, Flags::Byte = Flags::all);
 
+  Kinematics(const CheckedVector3 & position,
+             const CheckedVector3 & linVel,
+             const CheckedVector3 & linAcc,
+             const Orientation & orientation,
+             const CheckedVector3 & angVel,
+             const CheckedVector3 & angAcc);
+
   Kinematics(const Kinematics & multiplier1, const Kinematics & multiplier2);
+
+  explicit inline Kinematics(const LocalKinematics & locK);
+
+  inline Kinematics & operator=(const LocalKinematics & locK);
 
   /// Fills from vector
   /// the flags show which parts of the kinematics to be loaded from the vector
@@ -506,6 +536,8 @@ struct Kinematics
 
   Kinematics & setZero(Flags::Byte = Flags::all);
 
+  inline const Kinematics & integrateRungeKutta4(double dt, RecursiveAccelerationFunctorBase & accelerationFunctor);
+
   inline const Kinematics & integrate(double dt);
 
   inline const Kinematics & update(const Kinematics & newValue, double dt, Flags::Byte = Flags::all);
@@ -520,9 +552,13 @@ struct Kinematics
   inline Vector toVector() const;
 
   /// composition of transformation
-  inline Kinematics operator*(const Kinematics &) const;
+  inline Kinematics operator*(const Kinematics &)const;
 
   inline Kinematics setToProductNoAlias(const Kinematics & operand1, const Kinematics & operand2);
+
+  /// Allows to compute the difference between two Kinematics objects. Has the same effect that calling
+  /// setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
+  inline Kinematics setToDiffNoAlias(const Kinematics & multiplier1, const Kinematics & multiplier2);
 
   inline void reset();
 
@@ -543,10 +579,131 @@ protected:
   Vector3 tempVec_;
 };
 
+struct LocalKinematics
+{
+  /*
+  This structure is similar to the Kinematics one, but all the state variables are expressed in the local frame.
+  (They correspond to the kinematics of the local frame in the global frame, but expressed in this local frame)
+  */
+  struct Flags
+  {
+    typedef unsigned char Byte;
+
+    static const Byte position = BOOST_BINARY(000001);
+    static const Byte orientation = BOOST_BINARY(000010);
+    static const Byte linVel = BOOST_BINARY(000100);
+    static const Byte angVel = BOOST_BINARY(001000);
+    static const Byte linAcc = BOOST_BINARY(010000);
+    static const Byte angAcc = BOOST_BINARY(100000);
+
+    static const Byte all = position | orientation | linVel | angVel | linAcc | angAcc;
+  };
+
+  struct Derivative
+  {
+    Vector3 positionDot;
+    Vector3 angVel; // the rotation remains the same from local to global so the variable doesn't need to be renamed
+
+    Vector3 linVelDot;
+    Vector3 angAcc;
+
+    inline Derivative & operator=(const LocalKinematics & locKine);
+  };
+
+  struct RecursiveAccelerationFunctorBase
+  {
+    virtual void computeRecursiveLocalAccelerations_(LocalKinematics & locKine) = 0;
+  };
+
+  LocalKinematics() {}
+
+  /// Constructor from a vector
+  /// the flags show which parts of the kinematics to be loaded from the vector
+  /// the order of the vector is
+  /// position orientation (quaternion) linevel angvel linAcc angAcc
+  /// use the flags to define the structure of the vector
+  inline LocalKinematics(const Vector & v, LocalKinematics::Flags::Byte flags);
+
+  inline LocalKinematics(const LocalKinematics & multiplier1, const LocalKinematics & multiplier2);
+
+  explicit inline LocalKinematics(const Kinematics & kin);
+
+  inline LocalKinematics & operator=(const Kinematics & kine);
+
+  /// Fills from vector
+  /// the flags show which parts of the kinematics to be loaded from the vector
+  /// the order of the vector is
+  /// position orientation (quaternion) linevel angvel linAcc angAcc
+  /// use the flags to define the structure of the vector
+  LocalKinematics & fromVector(const Vector & v, Flags::Byte = Flags::all);
+
+  /// initializes at zero all the flagged fields
+  /// the typename allows to set if the prefered type for rotation
+  /// is a Matrix3 or a Quaternion (Quaternion by default)
+  template<typename t>
+  LocalKinematics & setZero(Flags::Byte = Flags::all);
+
+  LocalKinematics & setZero(Flags::Byte = Flags::all);
+
+  inline const LocalKinematics & integrate(double dt);
+
+  inline const LocalKinematics & integrateRungeKutta4(double dt,
+                                                      RecursiveAccelerationFunctorBase & accelerationFunctor);
+
+  /// updates the LocalKinematics given its new values
+  inline const LocalKinematics & update(const LocalKinematics & newValue, double dt, Flags::Byte = Flags::all);
+
+  inline LocalKinematics getInverse() const;
+
+  /// converts the object to a vector
+  /// the order of the vector is
+  /// position orientation (quaternion) linevel angvel linAcc angAcc
+  /// use the flags to define the structure of the vector
+  inline Vector toVector(Flags::Byte) const;
+  inline Vector toVector() const;
+
+  /// composition of transformation
+  inline LocalKinematics operator*(const LocalKinematics &)const;
+
+  inline LocalKinematics setToProductNoAlias(const LocalKinematics & operand1, const LocalKinematics & operand2);
+
+  /// Allows to compute the difference between two LocalKinematics objects. Has the same effect that calling
+  /// setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
+  inline LocalKinematics setToDiffNoAlias(const LocalKinematics & multiplier1, const LocalKinematics & multiplier2);
+  inline void reset();
+
+  CheckedVector3 position; // position of the frame in the destination frame of the Kinematic object, expressed in the
+                           // original frame
+  Orientation orientation;
+
+  CheckedVector3 linVel;
+  CheckedVector3 angVel;
+
+  CheckedVector3 linAcc;
+  CheckedVector3 angAcc;
+
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+protected:
+  inline const LocalKinematics & update_deprecated(const LocalKinematics & newValue,
+                                                   double dt,
+                                                   Flags::Byte = Flags::all);
+
+  Vector3 tempVec_;
+  Vector3 tempVec_2;
+  Vector3 tempVec_3;
+  Vector3 tempVec_4;
+  Vector3 tempVec_5;
+};
+
 } // namespace kine
 } // namespace stateObservation
 
 inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::Kinematics & k);
+
+inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalKinematics & k);
+
+inline std::ostream & operator<<(std::ostream & os, const stateObservation::kine::LocalKinematics::Derivative & d);
 
 #include <state-observation/tools/rigid-body-kinematics.hxx>
 

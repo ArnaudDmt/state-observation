@@ -2505,7 +2505,13 @@ void KineticsObserver::outlierTest(const Vector & measPrediction, const int & me
       To prevent an outlier measurement from correcting the state, we just need to set the corresponding parts on R and
       C matrices to zero so the corresponding part on the Kalman Gain is also zero
    */
-  const int measSize = 3;
+
+  We should not use the Mahalanobis distance with the prediction because due to the visco
+          - elastic model we count on the fact the measurements
+      and the predictions are different to allow the drifts correction,
+      this criteria will therefore never be matched
+
+      const int measSize = 3;
 
   Matrix CMatrixMeas = ekf_.getC().block(measIndex, 0, measSize, ekf_.getC().cols());
   const double D2 = (measPrediction - measurementVector_.segment<measSize>(measIndex)).transpose()

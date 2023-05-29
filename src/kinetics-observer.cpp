@@ -1775,10 +1775,8 @@ Matrix KineticsObserver::computeAMatrix()
 Matrix KineticsObserver::computeCMatrix()
 {
   const Vector & statePrediction = ekf_.updateStatePrediction();
-  const Vector3 & predictedWorldCentroidStatePos = statePrediction.segment<sizePos>(posIndex());
   Orientation predictedWorldCentroidStateOri;
   predictedWorldCentroidStateOri.fromVector4(statePrediction.segment<sizeOri>(oriIndex())).toMatrix3();
-  const Vector3 & predictedWorldCentroidStateLinVel = statePrediction.segment<sizeLinVel>(linVelIndex());
   const Vector3 & predictedWorldCentroidStateAngVel = statePrediction.segment<sizeAngVel>(angVelIndex());
 
   Vector3 forceCentroid = additionalForce_;

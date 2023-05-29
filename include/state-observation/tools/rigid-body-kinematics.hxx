@@ -1126,6 +1126,7 @@ inline Kinematics & Kinematics::operator=(const LocalKinematics & locK)
   {
     angAcc = orientation * locK.angAcc();
   }
+  return *this;
 }
 
 inline Kinematics & Kinematics::fromVector(const Vector & v, Kinematics::Flags::Byte flags)
@@ -1475,7 +1476,7 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
             {
               BOOST_ASSERT(thisAcc.isSet() && "The linear accleration cannot be updated without initial value");
             }
-          }bool flagOri = flags & Flags::orientation;
+          }
         }
       }
     }
@@ -2417,6 +2418,7 @@ inline LocalKinematics & LocalKinematics::operator=(const Kinematics & kin)
   {
     angAcc = orientation_T * kin.angAcc();
   }
+  return *this;
 }
 
 inline LocalKinematics & LocalKinematics::fromVector(const Vector & v, LocalKinematics::Flags::Byte flags)

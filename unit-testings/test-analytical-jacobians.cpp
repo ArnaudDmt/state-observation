@@ -327,8 +327,6 @@ int testAnalyticalAJacobianVsFD(KineticsObserver & ko_,
 
   Matrix A_FD = ko_.getEKF().getAMatrixFD(dx_);
 
-  bool stopIT = false;
-
   for(int i = 0; i < A_analytic.rows(); i++)
   {
     for(int j = 0; j < A_analytic.cols(); j++)
@@ -346,7 +344,6 @@ int testAnalyticalAJacobianVsFD(KineticsObserver & ko_,
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
-        stopIT = true;
       }
       else
       {
@@ -382,8 +379,6 @@ int testAnalyticalCJacobianVsFD(KineticsObserver & ko_,
 
   Matrix C_FD = ko_.getEKF().getCMatrixFD(dx_);
 
-  bool stopIT = false;
-
   for(int i = 0; i < C_analytic.rows(); i++)
   {
     for(int j = 0; j < C_analytic.cols(); j++)
@@ -401,7 +396,6 @@ int testAnalyticalCJacobianVsFD(KineticsObserver & ko_,
                   << " % "
                   << "\033[0m\n"
                   << std::endl;
-        stopIT = true;
       }
       else
       {

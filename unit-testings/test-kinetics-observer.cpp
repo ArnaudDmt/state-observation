@@ -45,8 +45,6 @@ int testKineticsObserverCodeAccessor(int errorcode)
   contactKine.position.set() << 0, 0.1, 0;
   contactKine.orientation.setZeroRotation();
 
-  Vector6 initContactWrench = Vector6::Zero();
-
   o.addContact(contactKine, 0);
 
   Matrix3 linStiffness, angStiffness, linDamping, angDamping;

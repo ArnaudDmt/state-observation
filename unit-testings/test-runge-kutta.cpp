@@ -34,7 +34,7 @@ struct FunctorConstAccLocKine : kine::LocalKinematics::RecursiveAccelerationFunc
   }
   Vector3 linAcc;
   Vector3 angAcc;
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 struct FunctorVarAccLocKine : kine::LocalKinematics::RecursiveAccelerationFunctorBase
@@ -61,7 +61,7 @@ struct FunctorConstAccKine : kine::Kinematics::RecursiveAccelerationFunctorBase
   }
   Vector3 linAcc;
   Vector3 angAcc;
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 struct FunctorVarAccKine : kine::Kinematics::RecursiveAccelerationFunctorBase
@@ -86,7 +86,7 @@ struct FunctorConstAccKineSameAsLocKine : kine::Kinematics::RecursiveAcceleratio
   }
   Vector3 linAcc;
   Vector3 angAcc;
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 int testRungeKuttaLocalKinematicsConstantAcceleration(int errcode) // 1

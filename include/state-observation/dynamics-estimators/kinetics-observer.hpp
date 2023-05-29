@@ -977,7 +977,7 @@ protected:
   {
     Contact() : Sensor(sizeWrench), isSet(false), withRealSensor(false), stateIndex(-1), stateIndexTangent(-1)
     {
-      worldRefPose.angVel = worldRefPose.linVel = Vector3::Zero();
+      worldRestPose.angVel = worldRestPose.linVel = Vector3::Zero();
     }
     virtual ~Contact() {}
 
@@ -990,8 +990,8 @@ protected:
     int num;
     Temp temp;
 
-    Kinematics worldRefPose; // the reference pose of the contact in the world frame
-    Kinematics worldRefPose_DEBUG; // the reference pose of the contact in the world frame
+    Kinematics worldRestPose; // the rest pose of the contact in the world frame
+    Kinematics worldRefPose_DEBUG; // the input rest pose of the contact in the world frame
 
     Vector6 wrenchMeasurement; /// Describes the measured wrench (forces + torques) at the contact in the sensor's frame
     CheckedMatrix6 sensorCovMatrix;
@@ -1064,7 +1064,7 @@ protected:
   /// the kinematics is not const to allow more optimized non const operators to work
   void computeContactForce_(VectorContactIterator i,
                             LocalKinematics & worldCentroidStateKinematics,
-                            Kinematics & worldReferenceContactPose,
+                            Kinematics & worldRestContactPose,
                             Vector3 & contactForce,
                             Vector3 & contactTorque);
 

@@ -143,7 +143,7 @@ public:
 
   /// @{
 
-  /// @brief Set the measurements of an IMU and give the Kinematic of the IMU
+  /// @brief Set the measurements of an IMU and give the Kinematic of the IMU in the user frame.
   ///
   /// @details The overload that does not have the covariance matrices as an
   /// inputs uses default ones.
@@ -449,21 +449,6 @@ public:
 
   /// @brief Returns the predicted Kinematics object of the centroid in the world frame at the time of the measurement
   /// predictions
-
-  /// @return const Kinematics& The predicted kinematics
-  const Vector getPredictedGlobalCentroidState() const;
-
-  /// @brief Returns the predicted gravitational component of the accelerometers measurement
-
-  /// @return const Kinematics& The predicted kinematics
-  const std::vector<Vector> getPredictedAccelerometersGravityComponent() const;
-
-  /// @brief Returns the predicted linear acceleration component of the accelerometers measurement
-
-  /// @return const Kinematics& The predicted kinematics
-  const std::vector<Vector> getPredictedAccelerometersLinAccComponent() const;
-
-  const std::vector<Vector> getPredictedAccelerometers() const;
 
   /// @brief Converts a given wrench from the user to the centroid frame
   /// @details Performs the conversion of a wrench {force, torque} from the user frame to the centroid frame.
@@ -1029,12 +1014,32 @@ protected:
 
 protected:
   ///////////// DYNAMICAL SYSTEM IMPLEMENTATION
+  /// @brief Applies the state-transition model to the given state vector using the given input to predict the future
+  /// state.
+  /// @param x The current state vector
+  /// @param u The current input vector
+  /// @param k The current time index
+  /// @return Vector&
   virtual Vector stateDynamics(const Vector & x, const Vector & u, TimeIndex k);
 
+  /// @brief Applies the measurement model to the given state vector using the given input to predict the sensor
+  /// measurements.
+  /// @param x The current state vector
+  /// @param u The current input vector
+  /// @param k The current time index
+  /// @return Vector&
   virtual Vector measureDynamics(const Vector & x, const Vector & u, TimeIndex k);
 
+  /// @brief Adds the unmodeled and contact wrenches from the state to the given wrench.
+  /// @param centroidStateVector The current state vector
+  /// @param force The force we want to add the forces to. Must be expressed in the centroid frame.
+  /// @param torque The torque we want to add the torques to. Must be expressed in the centroid frame.
   void addUnmodeledAndContactWrench_(const Vector & centroidStateVector, Vector3 & force, Vector3 & torque);
 
+  /// @brief Adds the unmodeled wrench from the state to the given wrench.
+  /// @param centroidStateVector The current state vector
+  /// @param force The force we want to add the unmodeled force to. Must be expressed in the centroid frame.
+  /// @param torque The torque we want to add the unmodeled torque to. Must be expressed in the centroid frame.
   void addUnmodeledWrench_(const Vector & centroidStateVector, Vector3 & force, Vector3 & torque);
 
   /// @brief adds the contribution of a contact wrench at the centroid to the total wrench
@@ -1051,23 +1056,54 @@ protected:
                          Vector3 & totalCentroidForce,
                          Vector3 & totalCentroidTorque);
 
+  /// @brief Computes the local accelerations of the centroid frame in the world frame and adds them to its local
+  /// kinematics.
+  ///
+  /// @param localStateKine The local kinematics of the centroid frame in the world frame that still don't contain the
+  /// accelerations.
+  /// @param centroidContactForce The contact force at the centroid to add to the total force
+  /// @param totalForceLocal Total force exerted on the centroid.
+  /// @param totalMomentLocal Total torque exerted on the centroid.
+  /// @param linAcc The empty vector of the linear acceleration we want to compute.
+  /// @param angAcc The empty vector of the angular acceleration we want to compute.
+
   void computeLocalAccelerations_(LocalKinematics & localStateKine,
                                   const Vector3 & totalForceLocal,
                                   const Vector3 & totalMomentLocal,
                                   Vector3 & linAcc,
                                   Vector3 & angAcc);
 
+  /// @brief Computes the accelerations of the centroid in the world frame after a small increment of the kinematics.
+  /// @details Uses the predicted kinematics in the visco-elastic model to obtain an estimate of the contact
+  /// forces.These forces replace the contact forces of the previously know state to compute the accelerations. Used to
+  /// compute the acceleration of the centroid in the world frame over the steps of the Runge-Kutta intergation.
+  /// @param predictedWorldCentroidKinematics Newly predicted kinematics of the centroid in the world frame.
   virtual void computeRecursiveGlobalAccelerations_(Kinematics & predictedWorldCentroidKinematics);
 
+  /// @brief @copybrief computeLocalAccelerations_(LocalKinematics & localStateKine, const Vector3 & totalForceLocal,
+  /// const Vector3 & totalMomentLocal, Vector3 & linAcc, Vector3 & angAcc). Version adapted to local kinematics.
+  /// @details @copydetails computeLocalAccelerations_(LocalKinematics & localStateKine, const Vector3 &
+  /// totalForceLocal, const Vector3 & totalMomentLocal, Vector3 & linAcc, Vector3 & angAcc)
   virtual void computeRecursiveLocalAccelerations_(LocalKinematics & predictedWorldCentroidKinematics);
 
-  /// the kinematics is not const to allow more optimized non const operators to work
+  /// @brief Computes the force exerted at a contact using the visco-elastic model on the given state vector.
+  /// @param i Contact to estimate
+  /// @param worldCentroidStateKinematics State vector used in the visco-elastic model
+  /// @param worldRestContactPose Rest pose of the contact
+  /// @param contactForce Empty vector of the contact force to estimate
+  /// @param contactTorque Empty vector of the contact force to estimate
   void computeContactForce_(VectorContactIterator i,
                             LocalKinematics & worldCentroidStateKinematics,
                             Kinematics & worldRestContactPose,
                             Vector3 & contactForce,
                             Vector3 & contactTorque);
 
+  /// @brief @copybrief computeContactForce_(VectorContactIterator i, LocalKinematics & worldCentroidStateKinematics,
+  /// Kinematics & worldRestContactPose, Vector3 & contactForce, Vector3 & contactTorque). Compute the resulting wrench
+  /// for all currently set contacts.
+  /// @param worldCentroidStateKinematics State vector used in the visco-elastic model
+  /// @param contactForce Empty vector of the contact force to estimate
+  /// @param contactTorque Empty vector of the contact force to estimate
   void computeContactForces_(LocalKinematics & worldCentroidStateKinematics,
                              Vector3 & contactForce,
                              Vector3 & contactTorque);
@@ -1233,13 +1269,6 @@ protected:
 
   LocalKinematics worldCentroidStateKinematics_;
   Kinematics worldCentroidKinematics_;
-
-  Vector predictedWorldCentroidState_;
-  std::vector<Vector>
-      predictedAccelerometersGravityComponent_; // the gravity component of the measurement for each accelerometer
-  std::vector<Vector>
-      predictedWorldIMUsLinAcc_; // the linear acceleration component of the measurement for each accelerometer
-  std::vector<Vector> predictedAccelerometers_;
 
   Vector3 additionalForce_;
   Vector3 additionalTorque_;

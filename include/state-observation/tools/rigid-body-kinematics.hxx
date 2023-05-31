@@ -1426,6 +1426,7 @@ inline const Kinematics & Kinematics::update(const Kinematics & newValue, double
 
     if(flagLinVel)
     {
+
       if(newVel.isSet())
       {
         velMethod = useVelocity;
@@ -1896,6 +1897,13 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
   }
 
   return *this;
+}
+
+inline Kinematics Kinematics::zeroKinematics(Flags::Byte flags)
+{
+  Kinematics kine;
+  kine.setZero(flags);
+  return kine;
 }
 
 inline Kinematics Kinematics::setToDiffNoAlias(const Kinematics & multiplier1, const Kinematics & multiplier2)

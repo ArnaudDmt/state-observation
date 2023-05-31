@@ -15,8 +15,6 @@
 
 #include <Eigen/SVD>
 
-#include <iostream>
-
 #include <state-observation/api.h>
 #include <state-observation/tools/definitions.hpp>
 #include <state-observation/tools/miscellaneous-algorithms.hpp>
@@ -491,6 +489,9 @@ struct Kinematics
     static const Byte linAcc = BOOST_BINARY(010000);
     static const Byte angAcc = BOOST_BINARY(100000);
 
+    static const Byte pose = position | orientation;
+    static const Byte vels = linVel | angVel;
+    static const Byte accs = linAcc | angAcc;
     static const Byte all = position | orientation | linVel | angVel | linAcc | angAcc;
   };
 
@@ -559,6 +560,8 @@ struct Kinematics
   /// Allows to compute the difference between two Kinematics objects. Has the same effect that calling
   /// setToProductNoAlias(operand1, operand2.getInverse()) but is computationally faster
   inline Kinematics setToDiffNoAlias(const Kinematics & multiplier1, const Kinematics & multiplier2);
+
+  static inline Kinematics zeroKinematics(Flags::Byte = Flags::all);
 
   inline void reset();
 

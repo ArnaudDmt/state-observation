@@ -3941,9 +3941,9 @@ inline void LocalKinematics::reset()
 inline LocalKinematics::Derivative & LocalKinematics::Derivative::operator=(const LocalKinematics & locKine)
 {
   positionDot = locKine.linVel() - locKine.angVel().cross(locKine.position());
-  angVel = locKine.angVel;
+  angVel = locKine.angVel();
   linVelDot = locKine.linAcc() - locKine.angVel().cross(locKine.linVel());
-  angAcc = locKine.angAcc;  
+  angAcc = locKine.angAcc();  
 
   return *this;
 }

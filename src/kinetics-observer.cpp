@@ -334,7 +334,7 @@ const Vector & KineticsObserver::update()
     if(worldCentroidStateVector_.hasNaN())
     {
 #ifndef NDEBUG
-      std::cout << "Kinetics observer: NaN value detected" << std::endl;
+      //std::cout << "Kinetics observer: NaN value detected" << std::endl;
 #endif
       worldCentroidStateVector_ = stateNaNCorrection_();
     }

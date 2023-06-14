@@ -2,7 +2,7 @@
 #include <state-observation/tools/probability-law-simulation.hpp>
 
 #ifndef NDEBUG
-//#define VERBOUS_KALMANFILTER
+// #define VERBOUS_KALMANFILTER
 #endif
 
 #ifdef VERBOUS_KALMANFILTER

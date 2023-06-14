@@ -1811,7 +1811,7 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
   BOOST_ASSERT((multiplier2.position.isSet() || multiplier2.orientation.isSet())
                && "The multiplier 2 kinematics is not initialized, the multiplication is not possible.");
 
-  if(multiplier2.position.isSet() && multiplier1.position.isSet())
+  if(multiplier2.position.isSet())
   {
     position.set(true);
     Vector3 & R1p2 = position.getRefUnchecked(); /// reference ( Vector3&  )
@@ -1849,8 +1849,14 @@ inline Kinematics Kinematics::setToProductNoAlias(const Kinematics & multiplier1
       linVel.reset();
       linAcc.reset();
     }
-
-    position() += multiplier1.position();
+    if (multiplier1.position.isSet())
+    {
+      position() += multiplier1.position();
+    }
+    else
+    {
+      position.reset();
+    }
   }
   else
   {

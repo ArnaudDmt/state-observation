@@ -377,6 +377,7 @@ protected:
     LLTPMatrix inoMeasCovLLT;
     Matrix kGain;
     Matrix t;
+    Matrix mKc;
   } oc_;
 
   StateVectorArithmetics * arithm_;

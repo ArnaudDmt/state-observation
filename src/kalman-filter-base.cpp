@@ -120,15 +120,21 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
 
   // prediction
   updateStateAndMeasurementPrediction(); // runs also updatePrediction_();
-  oc_.pbar.noalias() = q_ + a_ * (pr_ * a_.transpose());
+
+  oc_.pbar.resize(nt_, nt_);
+  oc_.pbar.triangularView<Eigen::Upper>() = q_;
+  oc_.pbar.triangularView<Eigen::Upper>() += a_ * pr_.selfadjointView<Eigen::Upper>() * a_.transpose();
 
   // innovation Measurements
   arithm_->measurementDifference(this->y_[k + 1], ybar_(), oc_.inoMeas);
-  oc_.inoMeasCov.noalias() = r_ + c_ * (oc_.pbar * c_.transpose());
+
+  oc_.inoMeasCov.resize(mt_, mt_);
+  oc_.inoMeasCov.triangularView<Eigen::Upper>() = r_;
+  oc_.inoMeasCov.triangularView<Eigen::Upper>() += c_ * oc_.pbar.selfadjointView<Eigen::Upper>() * c_.transpose();
 
   Index & measurementTangentSize = mt_;
   // inversing innovation measurement covariance matrix
-  oc_.inoMeasCovLLT.compute(oc_.inoMeasCov);
+  oc_.inoMeasCovLLT.compute(oc_.inoMeasCov.selfadjointView<Eigen::Upper>());
   oc_.inoMeasCovInverse.resize(measurementTangentSize, measurementTangentSize);
   oc_.inoMeasCovInverse.setIdentity();
   oc_.inoMeasCovLLT.matrixL().solveInPlace(oc_.inoMeasCovInverse);
@@ -136,7 +142,7 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
 
   // innovation
 
-  oc_.kGain.noalias() = oc_.pbar * (c_.transpose() * oc_.inoMeasCovInverse);
+  oc_.kGain.noalias() = oc_.pbar.selfadjointView<Eigen::Upper>() * (c_.transpose() * oc_.inoMeasCovInverse);
 
   innovation_.noalias() = oc_.kGain * oc_.inoMeas;
 
@@ -165,19 +171,19 @@ ObserverBase::StateVector KalmanFilterBase::oneStepEstimation_()
 #endif // VERBOUS_KALMANFILTER
 
   this->x_.set(oc_.xhat, k + 1);
-  pr_.noalias() = -oc_.kGain * c_;
-  pr_.diagonal().array() += 1;
-  pr_ *= oc_.pbar;
 
-  // simmetrize the pr_ matrix
-  pr_ = (pr_ + pr_.transpose()) * 0.5;
+  oc_.mKc.noalias() = -oc_.kGain * c_;
+  oc_.mKc.diagonal().array() += 1;
+
+  pr_.resize(nt_, nt_);
+  pr_.triangularView<Eigen::Upper>() = (oc_.mKc * oc_.pbar.selfadjointView<Eigen::Upper>()).eval();
 
   return oc_.xhat;
 }
 
 KalmanFilterBase::Pmatrix KalmanFilterBase::getStateCovariance() const
 {
-  return pr_;
+  return pr_.selfadjointView<Eigen::Upper>();
 }
 
 void KalmanFilterBase::reset()

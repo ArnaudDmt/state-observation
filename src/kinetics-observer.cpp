@@ -334,9 +334,9 @@ const Vector & KineticsObserver::update()
     if(worldCentroidStateVector_.hasNaN())
     {
 #ifndef NDEBUG
-      //std::cout << "Kinetics observer: NaN value detected" << std::endl;
+      // std::cout << "Kinetics observer: NaN value detected" << std::endl;
 #endif
-      worldCentroidStateVector_ = stateNaNCorrection_();
+      stateNaNCorrection_();
     }
     else
     {
@@ -439,14 +439,15 @@ kine::LocalKinematics KineticsObserver::estimateAccelerations()
   return worldCentroidStateKinematics_;
 }
 
-void KineticsObserver::setWorldCentroidStateKinematics(const LocalKinematics & kine,
+void KineticsObserver::setWorldCentroidStateKinematics(const LocalKinematics & localKine,
                                                        bool resetForces,
                                                        bool resetCovariance)
 {
-  BOOST_ASSERT(kine.position.isSet() && kine.orientation.isSet() && kine.linVel.isSet() && kine.angVel.isSet()
+  BOOST_ASSERT(localKine.position.isSet() && localKine.orientation.isSet() && localKine.linVel.isSet()
+               && localKine.angVel.isSet()
                && "The Kinematics is not correctly initialized, should be the position, orientation, and linear and "
                   "angular verlocities");
-  worldCentroidStateKinematics_ = kine;
+  worldCentroidStateKinematics_ = localKine;
   worldCentroidStateVector_.segment<sizeStateKine>(kineIndex()) =
       worldCentroidStateKinematics_.toVector(flagsStateKine);
 
@@ -478,6 +479,27 @@ void KineticsObserver::setWorldCentroidStateKinematics(const LocalKinematics & k
         }
       }
     }
+    ekf_.setStateCovariance(stateCovariance);
+  }
+}
+
+void KineticsObserver::setWorldCentroidStateKinematics(const Kinematics & kine, bool resetCovariance)
+{
+  LocalKinematics localKine = LocalKinematics(kine);
+  BOOST_ASSERT(kine.position.isSet() && kine.orientation.isSet() && kine.linVel.isSet() && kine.angVel.isSet()
+               && "The Kinematics is not correctly initialized, should be the position, orientation, and linear and "
+                  "angular verlocities");
+  worldCentroidStateKinematics_ = localKine;
+  worldCentroidStateVector_.segment<sizeStateKine>(kineIndex()) =
+      worldCentroidStateKinematics_.toVector(flagsStateKine);
+
+  ekf_.setState(worldCentroidStateVector_, k_est_);
+
+  if(resetCovariance)
+  {
+    Matrix stateCovariance = ekf_.getStateCovariance();
+    setBlockStateCovariance<sizeStateKineTangent>(stateCovariance, stateKinematicsInitCovMat_, kineIndex());
+
     ekf_.setStateCovariance(stateCovariance);
   }
 }
@@ -521,6 +543,7 @@ void KineticsObserver::setStateVector(const Vector & v, bool resetCovariance)
   {
     resetStateCovarianceMat();
   }
+  oldWorldCentroidStateVector_ = worldCentroidStateVector_;
 }
 
 void KineticsObserver::setAdditionalWrench(const Vector3 & forceUserFrame, const Vector3 & momentUserFrame)
@@ -1397,11 +1420,36 @@ void KineticsObserver::useFiniteDifferencesJacobians(bool b)
   finiteDifferencesJacobians_ = b;
 }
 
-Vector KineticsObserver::stateNaNCorrection_()
+void KineticsObserver::setStateContact(const int & index,
+                                       Kinematics worldContactRestKine,
+                                       const Vector6 & wrench,
+                                       bool resetCovariance)
 {
+  Contact contact = contacts_[index];
+
+  BOOST_ASSERT(contact.isSet && "The contact is currently not set");
+  worldCentroidStateVector_.segment<sizePose>(contactPosIndex(index)) =
+      worldContactRestKine.toVector().segment<sizePose>(0);
+
+  worldCentroidStateVector_.segment<sizeWrench>(contactWrenchIndex(index)) = wrench;
+
+  contact.worldRestPose.fromVector(worldCentroidStateVector_.segment<sizePose>(contactPosIndex(index)),
+                                   flagsContactKine);
+
+  if(resetCovariance)
+  {
+    resetStateContactCovMat(index);
+  }
+
+  ekf_.setState(worldCentroidStateVector_, k_est_);
+}
+
+void KineticsObserver::stateNaNCorrection_()
+{
+  nanDetected_ = true;
+
   /// TODO implement this function
   assert(false && "NaN Correction not yet implemented. Please Contact mehdi.benallegue@gmail.com");
-  return oldWorldCentroidStateVector_;
 }
 
 void KineticsObserver::startNewIteration_()
@@ -2439,7 +2487,6 @@ void KineticsObserver::setInitWorldCentroidStateVector(const Vector & initStateV
 {
   worldCentroidStateVector_.setZero();
   setStateVector(initStateVector, false);
-  oldWorldCentroidStateVector_ = worldCentroidStateVector_;
 }
 
 void KineticsObserver::setAllCovariances(const Matrix3 & statePositionInitCovariance,
@@ -2540,6 +2587,11 @@ const kine::Kinematics KineticsObserver::getWorldContactPose(const int & numCont
   worldContactPose.setToProductNoAlias(Kinematics(worldCentroidStateKinematics_),
                                        contacts_.at(numContact).centroidContactKine);
   return worldContactPose;
+}
+
+const kine::Kinematics & KineticsObserver::getContactStateRestKinematics(const int & numContact) const
+{
+  return contacts_.at(numContact).worldRestPose;
 }
 
 const kine::Kinematics KineticsObserver::getUserContactInputPose(const int & numContact) const

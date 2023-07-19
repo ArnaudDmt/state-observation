@@ -12,7 +12,6 @@
 #ifndef KINETICSOBSERVER_HPP
 #define KINETICSOBSERVER_HPP
 
-#include <map>
 #include <set>
 
 #include <boost/utility.hpp>
@@ -526,12 +525,26 @@ public:
   /// @brief Set the State Kinematics
   /// @details Sets a value for the kinematics part of the state
   ///
-  /// @param kine is the new kinematics of the state
+  /// @param localKine are the new local kinematics of the state
   /// @param resetContactWrenches set if the contact wrenches should be reset
   /// @param resetCovariance set if the covariance of the state should be reset
-  void setWorldCentroidStateKinematics(const LocalKinematics & kine,
+  void setWorldCentroidStateKinematics(const LocalKinematics & localKine,
                                        bool resetContactWrenches = true,
                                        bool resetCovariance = true);
+
+  /// @{
+  /// @brief Set the State Kinematics
+  /// @details Sets a value for the kinematics part of the state
+  ///
+  /// @param localKine are the new kinematics of the state
+  /// @param resetContactWrenches set if the contact wrenches should be reset
+  /// @param resetCovariance set if the covariance of the state should be reset
+  void setWorldCentroidStateKinematics(const Kinematics & kine, bool resetCovariance = true);
+
+  void setStateContact(const int & index,
+                       Kinematics worldContactRestKine,
+                       const Vector6 & wrench,
+                       bool resetCovariance = true);
 
   // TODO
   // void setVelocityGuess(const Kinematics)
@@ -1138,6 +1151,8 @@ public:
 
   const Kinematics getWorldContactPose(const int & numContact) const;
 
+  const Kinematics & getContactStateRestKinematics(const int & numContact) const;
+
   const Kinematics getUserContactInputPose(const int & numContact) const;
 
   /// @brief Get the measurement index of the required IMU : allows to access its corresponding measurements in the
@@ -1241,7 +1256,7 @@ public:
   /// @}
 
 protected:
-  Vector stateNaNCorrection_();
+  void stateNaNCorrection_();
 
   /// @brief update of the state kinematics worldCentroidStateKinematics_ and of the contacts pose with the newly
   /// estimated state
@@ -1435,6 +1450,8 @@ public: ///////////SIZE OF VECTORS
   static const double angularDampingDefault;
 
   ////////////
+
+  bool nanDetected_ = false;
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:

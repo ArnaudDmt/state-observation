@@ -8,25 +8,25 @@ inline unsigned KineticsObserver::posIndex() const
 }
 inline unsigned KineticsObserver::oriIndex() const
 {
-  return posIndex()+sizePos;
+  return posIndex() + sizePos;
 }
 inline unsigned KineticsObserver::linVelIndex() const
 {
-  return oriIndex()+sizeOri;
+  return oriIndex() + sizeOri;
 }
 inline unsigned KineticsObserver::angVelIndex() const
 {
-  return linVelIndex()+sizeLinVel;
+  return linVelIndex() + sizeLinVel;
 }
-inline unsigned KineticsObserver::gyroBiasIndex( unsigned numberOfIMU) const
+inline unsigned KineticsObserver::gyroBiasIndex(unsigned numberOfIMU) const
 {
-  BOOST_ASSERT( (numberOfIMU < maxImuNumber_ || numberOfIMU == 0) && \
-                  "The requested IMU number is higher than the maximum");
-  return angVelIndex() + sizeAngVel+ sizeGyroBias * numberOfIMU;
+  BOOST_ASSERT((numberOfIMU < maxImuNumber_ || numberOfIMU == 0)
+               && "The requested IMU number is higher than the maximum");
+  return angVelIndex() + sizeAngVel + sizeGyroBias * numberOfIMU;
 }
 inline unsigned KineticsObserver::unmodeledWrenchIndex() const
 {
-  return gyroBiasIndex(0)+ sizeGyroBias*maxImuNumber_;
+  return gyroBiasIndex(0) + sizeGyroBias * maxImuNumber_;
 }
 inline unsigned KineticsObserver::unmodeledForceIndex() const
 {
@@ -42,10 +42,8 @@ inline unsigned KineticsObserver::contactsIndex() const
 }
 inline unsigned KineticsObserver::contactIndex(unsigned contactNbr) const
 {
-  BOOST_ASSERT(contactNbr < maxContacts_ && \
-                  "The requested contact number is higher than the maximum");
-  BOOST_ASSERT(contacts_[contactNbr].isSet && \
-                  "The requested contact is not set yet, please add it before");
+  BOOST_ASSERT(contactNbr < maxContacts_ && "The requested contact number is higher than the maximum");
+  BOOST_ASSERT(contacts_[contactNbr].isSet && "The requested contact is not set yet, please add it before");
   return unsigned(contacts_[contactNbr].stateIndex);
 }
 inline unsigned KineticsObserver::contactKineIndex(unsigned contactNbr) const
@@ -58,11 +56,11 @@ inline unsigned KineticsObserver::contactPosIndex(unsigned contactNbr) const
 }
 inline unsigned KineticsObserver::contactOriIndex(unsigned contactNbr) const
 {
-  return contactPosIndex(contactNbr)+sizePos;
+  return contactPosIndex(contactNbr) + sizePos;
 }
 inline unsigned KineticsObserver::contactWrenchIndex(unsigned contactNbr) const
 {
-  return contactKineIndex(contactNbr)+sizeContactKine;
+  return contactKineIndex(contactNbr) + sizeContactKine;
 }
 inline unsigned KineticsObserver::contactForceIndex(unsigned contactNbr) const
 {
@@ -70,13 +68,12 @@ inline unsigned KineticsObserver::contactForceIndex(unsigned contactNbr) const
 }
 inline unsigned KineticsObserver::contactTorqueIndex(unsigned contactNbr) const
 {
-  return contactForceIndex(contactNbr)+sizeForce;
+  return contactForceIndex(contactNbr) + sizeForce;
 }
 
 inline unsigned KineticsObserver::contactIndex(VectorContactConstIterator i) const
 {
-  BOOST_ASSERT(i->stateIndex > 0 && \
-                  "The requested contact is not set yet. The iteratot may be wrong");
+  BOOST_ASSERT(i->stateIndex > 0 && "The requested contact is not set yet. The iteratot may be wrong");
 
   return unsigned(i->stateIndex);
 }
@@ -90,11 +87,11 @@ inline unsigned KineticsObserver::contactPosIndex(VectorContactConstIterator i) 
 }
 inline unsigned KineticsObserver::contactOriIndex(VectorContactConstIterator i) const
 {
-  return contactPosIndex(i)+sizePos;
+  return contactPosIndex(i) + sizePos;
 }
 inline unsigned KineticsObserver::contactWrenchIndex(VectorContactConstIterator i) const
 {
-  return contactKineIndex(i)+sizeContactKine;
+  return contactKineIndex(i) + sizeContactKine;
 }
 inline unsigned KineticsObserver::contactForceIndex(VectorContactConstIterator i) const
 {
@@ -102,9 +99,8 @@ inline unsigned KineticsObserver::contactForceIndex(VectorContactConstIterator i
 }
 inline unsigned KineticsObserver::contactTorqueIndex(VectorContactConstIterator i) const
 {
-  return contactForceIndex(i)+sizeForce;
+  return contactForceIndex(i) + sizeForce;
 }
-
 
 inline unsigned KineticsObserver::kineIndexTangent() const
 {
@@ -116,25 +112,24 @@ inline unsigned KineticsObserver::posIndexTangent() const
 }
 inline unsigned KineticsObserver::oriIndexTangent() const
 {
-  return posIndexTangent()+sizePos;
+  return posIndexTangent() + sizePos;
 }
 inline unsigned KineticsObserver::linVelIndexTangent() const
 {
-  return oriIndexTangent()+sizeOriTangent;
+  return oriIndexTangent() + sizeOriTangent;
 }
 inline unsigned KineticsObserver::angVelIndexTangent() const
 {
-  return linVelIndexTangent()+sizeLinVel;
+  return linVelIndexTangent() + sizeLinVel;
 }
-inline unsigned KineticsObserver::gyroBiasIndexTangent( unsigned numberOfIMU) const
+inline unsigned KineticsObserver::gyroBiasIndexTangent(unsigned numberOfIMU) const
 {
-  BOOST_ASSERT( numberOfIMU <= maxImuNumber_ && \
-                  "The requested IMU number is higher than the maximum");
-  return angVelIndexTangent() + sizeAngVel+ sizeGyroBias * numberOfIMU;
+  BOOST_ASSERT(numberOfIMU <= maxImuNumber_ && "The requested IMU number is higher than the maximum");
+  return angVelIndexTangent() + sizeAngVel + sizeGyroBias * numberOfIMU;
 }
 inline unsigned KineticsObserver::unmodeledWrenchIndexTangent() const
 {
-  return gyroBiasIndexTangent(0)+sizeGyroBias*maxImuNumber_;
+  return gyroBiasIndexTangent(0) + sizeGyroBias * maxImuNumber_;
 }
 inline unsigned KineticsObserver::unmodeledForceIndexTangent() const
 {
@@ -142,18 +137,16 @@ inline unsigned KineticsObserver::unmodeledForceIndexTangent() const
 }
 inline unsigned KineticsObserver::contactsIndexTangent() const
 {
-  return unmodeledWrenchIndexTangent()+sizeWrench;
+  return unmodeledWrenchIndexTangent() + sizeWrench;
 }
 inline unsigned KineticsObserver::unmodeledTorqueIndexTangent() const
 {
-  return unmodeledForceIndexTangent()+sizeForce;
+  return unmodeledForceIndexTangent() + sizeForce;
 }
 inline unsigned KineticsObserver::contactIndexTangent(unsigned contactNbr) const
 {
-  BOOST_ASSERT(contactNbr < maxContacts_ && \
-                  "The requested contact number is higher than the maximum");
-  BOOST_ASSERT(contacts_[contactNbr].isSet && \
-                  "The requested contact is not set yet, please add it before");
+  BOOST_ASSERT(contactNbr < maxContacts_ && "The requested contact number is higher than the maximum");
+  BOOST_ASSERT(contacts_[contactNbr].isSet && "The requested contact is not set yet, please add it before");
   return contacts_[contactNbr].stateIndexTangent;
 }
 inline unsigned KineticsObserver::contactKineIndexTangent(unsigned contactNbr) const
@@ -166,11 +159,11 @@ inline unsigned KineticsObserver::contactPosIndexTangent(unsigned contactNbr) co
 }
 inline unsigned KineticsObserver::contactOriIndexTangent(unsigned contactNbr) const
 {
-  return contactPosIndexTangent(contactNbr)+sizePos;
+  return contactPosIndexTangent(contactNbr) + sizePos;
 }
 inline unsigned KineticsObserver::contactWrenchIndexTangent(unsigned contactNbr) const
 {
-  return contactKineIndexTangent(contactNbr)+sizeContactKineTangent;
+  return contactKineIndexTangent(contactNbr) + sizeContactKineTangent;
 }
 inline unsigned KineticsObserver::contactForceIndexTangent(unsigned contactNbr) const
 {
@@ -178,13 +171,12 @@ inline unsigned KineticsObserver::contactForceIndexTangent(unsigned contactNbr) 
 }
 inline unsigned KineticsObserver::contactTorqueIndexTangent(unsigned contactNbr) const
 {
-  return contactForceIndexTangent(contactNbr)+sizeForce;
+  return contactForceIndexTangent(contactNbr) + sizeForce;
 }
 
 inline unsigned KineticsObserver::contactIndexTangent(VectorContactConstIterator i) const
 {
-    BOOST_ASSERT(i->stateIndexTangent > 0 && \
-                  "The requested contact is not set yet. The iteratot may be wrong");
+  BOOST_ASSERT(i->stateIndexTangent > 0 && "The requested contact is not set yet. The iteratot may be wrong");
   return i->stateIndexTangent;
 }
 inline unsigned KineticsObserver::contactKineIndexTangent(VectorContactConstIterator i) const
@@ -197,11 +189,11 @@ inline unsigned KineticsObserver::contactPosIndexTangent(VectorContactConstItera
 }
 inline unsigned KineticsObserver::contactOriIndexTangent(VectorContactConstIterator i) const
 {
-  return contactPosIndexTangent(i)+sizePos;
+  return contactPosIndexTangent(i) + sizePos;
 }
 inline unsigned KineticsObserver::contactWrenchIndexTangent(VectorContactConstIterator i) const
 {
-  return contactKineIndexTangent(i)+sizeContactKineTangent;
+  return contactKineIndexTangent(i) + sizeContactKineTangent;
 }
 inline unsigned KineticsObserver::contactForceIndexTangent(VectorContactConstIterator i) const
 {
@@ -209,19 +201,19 @@ inline unsigned KineticsObserver::contactForceIndexTangent(VectorContactConstIte
 }
 inline unsigned KineticsObserver::contactTorqueIndexTangent(VectorContactConstIterator i) const
 {
-  return contactForceIndexTangent(i)+sizeForce;
+  return contactForceIndexTangent(i) + sizeForce;
 }
 
-inline Vector KineticsObserver::stateSum(const Vector& stateVector, const Vector & tangentVector)
+inline Vector KineticsObserver::stateSum(const Vector & stateVector, const Vector & tangentVector)
 {
-    Vector sum;
-    stateSum(stateVector, tangentVector, sum);
-    return sum;
+  Vector sum;
+  stateSum(stateVector, tangentVector, sum);
+  return sum;
 }
 
-inline Vector KineticsObserver::stateDifference(const Vector& stateVector1, const Vector& stateVector2)
+inline Vector KineticsObserver::stateDifference(const Vector & stateVector1, const Vector & stateVector2)
 {
-    Vector diff;
-    stateDifference(stateVector1, stateVector2, diff);
-    return diff;
+  Vector diff;
+  stateDifference(stateVector1, stateVector2, diff);
+  return diff;
 }

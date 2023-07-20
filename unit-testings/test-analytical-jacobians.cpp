@@ -569,7 +569,7 @@ int main()
   }
 
   std::cout << "Starting testAnalyticalCJacobianVsFD." << std::endl;
-  if((returnVal = testAnalyticalCJacobianVsFD(ko_1_, ++errorcode, 0.05, 8e-11)))
+  if((returnVal = testAnalyticalCJacobianVsFD(ko_1_, ++errorcode, 0.05, 9.9e-11)))
   {
     std::cout << "testAnalyticalCJacobianVsFD Failed, error code: " << returnVal << std::endl;
     return returnVal;

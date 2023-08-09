@@ -1,6 +1,7 @@
 macro(ADD_SO_TEST name)
   add_executable(${name} ${name}.cpp)
-  target_link_libraries(${name} PUBLIC state-observation ${ARGN})
+
+  target_link_libraries(${name} PUBLIC state-observation benchmark ${ARGN})
 
   add_test(
     NAME ${name}
@@ -24,7 +25,7 @@ add_so_test(test-dcm-bias-estimation)
 add_so_test(test-kinematics)
 add_so_test(test-local-kinematics)
 add_so_test(test-runge-kutta)
-#add_so_test(test-analytical-jacobians)
+add_so_test(test-analytical-jacobians)
 
 add_custom_command(
   TARGET test_model-base-ekf-flex-estimator-imu

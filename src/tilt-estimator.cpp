@@ -5,9 +5,19 @@ namespace stateObservation
 
 TiltEstimator::TiltEstimator(double alpha, double beta, double gamma)
 : ZeroDelayObserver(9, 6), alpha_(alpha), beta_(beta), gamma_(gamma), dt_(0.005), p_S_C_(Vector3::Zero()),
-  R_S_C_(Matrix3::Identity()), v_S_C_(Vector3::Zero()), w_S_C_(Vector3::Zero()), v_C_(Vector3::Zero()),
-  withExplicitX1_(false)
+  R_S_C_(Matrix3::Identity()), v_S_C_(Vector3::Zero()), w_S_C_(Vector3::Zero()), v_C_(Vector3::Zero())
 {
+}
+
+void TiltEstimator::initEstimator(Vector3 x1, Vector3 x2_, Vector3 x2)
+{
+  Eigen::VectorXd initStateVector = Eigen::VectorXd::Zero(getStateSize());
+
+  initStateVector.segment<3>(0) = x1;
+  initStateVector.segment<3>(3) = x2_;
+  initStateVector.segment<3>(6) = x2;
+
+  setState(initStateVector, 0);
 }
 
 void TiltEstimator::setMeasurement(const Vector3 ya_k, const Vector3 yg_k, TimeIndex k)

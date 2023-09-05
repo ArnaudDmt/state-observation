@@ -73,6 +73,7 @@ install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/include/state-observation/config.h"
 
 add_subdirectory(src)
 
+
 if(BUILD_TESTING)
   add_subdirectory(unit-testings)
 endif()

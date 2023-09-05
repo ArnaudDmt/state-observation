@@ -1,3 +1,4 @@
+#include <bitset>
 #include <iostream>
 
 #include <state-observation/tools/probability-law-simulation.hpp>
@@ -11,23 +12,240 @@ using namespace kine;
 /// @param errorCode
 /// @return int
 
-int testSetToDiffNoAliasKinematics(int errcode)
+int testPositionByIntegration(int errcode)
 {
 
-  std::cout << "testSetToDiffNoAliasKinematics test started" << std::endl;
-  typedef kine::Kinematics::Flags Flags;
+  double dt = 0.001;
+  int numbIterations = 10000;
 
-  kine::Kinematics k0;
-  kine::Kinematics k1;
+  double err_pvwwd = 0;
+  double err_pwwd = 0;
+  double err_pw = 0;
+  double err_pwd = 0;
+  double err_pvw = 0;
+  double err_pvwd = 0;
+  double err_pavw = 0;
+  double err_pavwd = 0;
+  double err_pawwd = 0;
+  double err_paw = 0;
+  double err_pav = 0;
+  double err_pa = 0;
+  double err_pv = 0;
+
+  double err2_pvwwd = 0;
+  double err2_pwwd = 0;
+  double err2_pw = 0;
+  double err2_pwd = 0;
+  double err2_pvw = 0;
+  double err2_pvwd = 0;
+  double err2_pavw = 0;
+  double err2_pavwd = 0;
+  double err2_pawwd = 0;
+  double err2_paw = 0;
+  double err2_pav = 0;
+  double err2_pa = 0;
+  double err2_pv = 0;
+
+  for(int i = 0; i < numbIterations; i++)
+  {
+    LocalKinematics k;
+    Vector3 pos = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    kine::Orientation ori = kine::Orientation::randomRotation();
+    Vector3 linvel = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+    Vector3 linacc = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+    Vector3 angacc = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+
+    k.position = pos;
+    k.orientation = ori;
+    k.linVel = linvel;
+    k.angVel = angvel;
+    k.linAcc = linacc;
+    k.angAcc = angacc;
+
+    Vector3 p1_pavwwd =
+        k.position() - k.angVel().cross(dt * (k.position() + dt * (0.5 * k.angVel().cross(k.position() - k.linVel()))))
+        + dt * (k.linVel() + 0.5 * dt * (k.linAcc() - k.angAcc().cross(k.position())));
+
+    Vector3 p1_pvwwd =
+        k.position() - k.angVel().cross(dt * (k.position() + dt * (0.5 * k.angVel().cross(k.position() - k.linVel()))))
+        + dt * (k.linVel() + 0.5 * dt * (-k.angAcc().cross(k.position())));
+    Vector3 p1_pwwd = k.position() - k.angVel().cross(dt * (k.position() + dt * (0.5 * k.angVel().cross(k.position()))))
+                      + dt * (0.5 * dt * (-k.angAcc().cross(k.position())));
+    Vector3 p1_pw = k.position() - k.angVel().cross(dt * (k.position() + dt * (0.5 * k.angVel().cross(k.position()))));
+    Vector3 p1_pwd = k.position() + dt * (0.5 * dt * (-k.angAcc().cross(k.position())));
+    Vector3 p1_pvw = k.position()
+                     - k.angVel().cross(dt * (k.position() + dt * (0.5 * k.angVel().cross(k.position() - k.linVel()))))
+                     + dt * (k.linVel());
+    Vector3 p1_pvwd = k.position() + dt * (k.linVel() + 0.5 * dt * (-k.angAcc().cross(k.position())));
+    Vector3 p1_pavw = k.position()
+                      - k.angVel().cross(dt * (k.position() + dt * (0.5 * k.angVel().cross(k.position() - k.linVel()))))
+                      + dt * (k.linVel() + 0.5 * dt * (k.linAcc()));
+    Vector3 p1_pavwd = k.position() + dt * (k.linVel() + 0.5 * dt * (k.linAcc() - k.angAcc().cross(k.position())));
+    Vector3 p1_pawwd = k.position()
+                       - k.angVel().cross(dt * (k.position() + dt * (0.5 * k.angVel().cross(k.position()))))
+                       + dt * (0.5 * dt * (k.linAcc() - k.angAcc().cross(k.position())));
+    Vector3 p1_paw = k.position() - k.angVel().cross(dt * (k.position() + dt * (0.5 * k.angVel().cross(k.position()))))
+                     + dt * (0.5 * dt * (k.linAcc()));
+    Vector3 p1_pav = k.position() + dt * (k.linVel() + 0.5 * dt * (k.linAcc()));
+    Vector3 p1_pa = k.position() + dt * (0.5 * dt * (k.linAcc()));
+    Vector3 p1_pv = k.position() + dt * (k.linVel());
+
+    err_pvwwd += (p1_pavwwd - p1_pvwwd).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pwwd += (p1_pavwwd - p1_pwwd).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pw += (p1_pavwwd - p1_pw).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pwd += (p1_pavwwd - p1_pwd).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pvw += (p1_pavwwd - p1_pvw).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pvwd += (p1_pavwwd - p1_pvwd).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pavw += (p1_pavwwd - p1_pavw).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pavwd += (p1_pavwwd - p1_pavwd).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pawwd += (p1_pavwwd - p1_pawwd).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_paw += (p1_pavwwd - p1_paw).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pav += (p1_pavwwd - p1_pav).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pa += (p1_pavwwd - p1_pa).squaredNorm() / p1_pavwwd.squaredNorm();
+    err_pv += (p1_pavwwd - p1_pv).squaredNorm() / p1_pavwwd.squaredNorm();
+
+    err2_pvwwd += (p1_pavwwd - p1_pvwwd)(0);
+    err2_pwwd += (p1_pavwwd - p1_pwwd)(0);
+    err2_pw += (p1_pavwwd - p1_pw)(0);
+    err2_pwd += (p1_pavwwd - p1_pwd)(0);
+    err2_pvw += (p1_pavwwd - p1_pvw)(0);
+    err2_pvwd += (p1_pavwwd - p1_pvwd)(0);
+    err2_pavw += (p1_pavwwd - p1_pavw)(0);
+    err2_pavwd += (p1_pavwwd - p1_pavwd)(0);
+    err2_pawwd += (p1_pavwwd - p1_pawwd)(0);
+    err2_paw += (p1_pavwwd - p1_paw)(0);
+    err2_pav += (p1_pavwwd - p1_pav)(0);
+    err2_pa += (p1_pavwwd - p1_pa)(0);
+    err2_pv += (p1_pavwwd - p1_pv)(0);
+  }
+
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pvwwd"
+            << " with the full integration expression: " << err_pvwwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pwwd"
+            << " with the full integration expression: " << err_pwwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pw"
+            << " with the full integration expression: " << err_pw / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pwd"
+            << " with the full integration expression: " << err_pwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pvw"
+            << " with the full integration expression: " << err_pvw / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pvwd"
+            << " with the full integration expression: " << err_pvwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pavw"
+            << " with the full integration expression: " << err_pavw / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pavwd"
+            << " with the full integration expression: " << err_pavwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pawwd"
+            << " with the full integration expression: " << err_pawwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "paw"
+            << " with the full integration expression: " << err_paw / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pav"
+            << " with the full integration expression: " << err_pav / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pa"
+            << " with the full integration expression: " << err_pa / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average relative squared difference with the parameters "
+            << "pv"
+            << " with the full integration expression: " << err_pv / numbIterations << std::endl;
+
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pvwwd"
+            << " with the full integration expression: " << err2_pvwwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pwwd"
+            << " with the full integration expression: " << err2_pwwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pw"
+            << " with the full integration expression: " << err2_pw / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pwd"
+            << " with the full integration expression: " << err2_pwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pvw"
+            << " with the full integration expression: " << err2_pvw / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pvwd"
+            << " with the full integration expression: " << err2_pvwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pavw"
+            << " with the full integration expression: " << err2_pavw / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pavwd"
+            << " with the full integration expression: " << err2_pavwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pawwd"
+            << " with the full integration expression: " << err2_pawwd / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "paw"
+            << " with the full integration expression: " << err2_paw / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pav"
+            << " with the full integration expression: " << err2_pav / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pa"
+            << " with the full integration expression: " << err2_pa / numbIterations << std::endl;
+  std::cout << std::endl
+            << "Average difference on the x direction with the parameters "
+            << "pv"
+            << " with the full integration expression: " << err2_pv / numbIterations << std::endl;
+
+  return 0;
+}
+
+int testSetToDiffNoAliasLocalKinematics(int errcode)
+{
+
+  std::cout << "testSetToDiffNoAliasLocalKinematics test started" << std::endl;
+  typedef kine::LocalKinematics::Flags Flags;
+
+  kine::LocalKinematics k0;
+  kine::LocalKinematics k1;
 
   Flags::Byte flag0 = BOOST_BINARY(000000);
   Flags::Byte flag1 = BOOST_BINARY(000000);
 
-  kine::Kinematics k, l, k2;
+  kine::LocalKinematics k, l, k2;
 
   int count = int(pow(2, 6) * pow(2, 6));
   double err = 0;
-  double threshold = 1e-28 * count;
+  double threshold = 1e-30 * count;
 
   for(int i = 0; i < count; i++)
   {
@@ -37,6 +255,7 @@ int testSetToDiffNoAliasKinematics(int errcode)
               << std::endl << "-----------------------------------------" << std::endl;
     std::cout << "err: " << err << std::endl;
     */
+
     Vector3 pos0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
     kine::Orientation ori0 = kine::Orientation::randomRotation();
     Vector3 linvel0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
@@ -112,8 +331,8 @@ int testSetToDiffNoAliasKinematics(int errcode)
     {
       k2.orientation.setZeroRotation();
     }
-    Kinematics k3;
-    Kinematics k4;
+    LocalKinematics k3;
+    LocalKinematics k4;
 
     k3.setToDiffNoAlias(k2, k0);
 
@@ -155,6 +374,68 @@ int testSetToDiffNoAliasKinematics(int errcode)
   if(err > threshold)
   {
     std::cout << "Error too large : " << err << std::endl;
+    return errcode;
+  }
+  return 0;
+}
+
+int testLocalVsGlobalIntegrates(int errcode)
+{
+  double threshold = 1e-4;
+  double err = 0;
+
+  double dt = 0.001;
+
+  Kinematics k;
+  Vector3 pos = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+  kine::Orientation ori = kine::Orientation::randomRotation();
+  Vector3 linvel = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+  Vector3 angvel = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+  Vector3 linacc = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+  Vector3 angacc = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+
+  k.position = pos;
+  k.orientation = ori;
+  k.linVel = linvel;
+  k.angVel = angvel;
+  k.linAcc = linacc;
+  k.angAcc = angacc;
+
+  LocalKinematics lk1(k);
+  k.integrate(dt);
+  lk1.integrate(dt);
+  Kinematics k1 = Kinematics(lk1);
+
+  std::cout << std::endl << "k1 : " << std::endl << k1 << std::endl;
+  std::cout << std::endl << "k : " << std::endl << k << std::endl;
+
+  Kinematics diff = k1 * k.getInverse();
+
+  std::cout << std::endl << "diff : " << std::endl << diff << std::endl;
+
+  std::cout << std::endl << "diff : " << std::endl << diff << std::endl;
+
+  if(diff.position.isSet())
+  {
+    err += diff.position().squaredNorm();
+  }
+  if(diff.orientation.isSet())
+  {
+    err += diff.orientation.toRotationVector().squaredNorm();
+  }
+  if(diff.linVel.isSet())
+  {
+    err += diff.linVel().squaredNorm();
+  }
+  if(diff.angVel.isSet())
+  {
+    err += diff.angVel().squaredNorm();
+  }
+
+  std::cout << "Error between integrations with local and global frames: " << err << std::endl;
+
+  if(err > threshold)
+  {
     return errcode;
   }
   return 0;
@@ -764,9 +1045,9 @@ int testOrientation(int errcode)
     Vector3 v1 = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() * 0.1;
     kine::Orientation ori1(M);
     kine::Orientation ori2(ori1);
-    ori2.integrate(v1);
+    ori2.integrateRightSide(v1);
 
-    Vector3 v2 = ori1.differentiate(ori2);
+    Vector3 v2 = ori1.differentiateRightSide(ori2);
 
     err += (v1 - v2).norm();
     std::cout << "Integration/differentiation test 1 done. Current error " << err << std::endl;
@@ -780,10 +1061,10 @@ int testOrientation(int errcode)
     ori1.setRandom();
     ori2.setRandom();
 
-    v1 = ori2.differentiate(ori1);
-    kine::Orientation oris = ori2.integrate(v1);
+    v1 = ori2.differentiateRightSide(ori1);
+    kine::Orientation oris = ori2.integrateRightSide(v1);
 
-    err += oris.differentiate(ori1).norm();
+    err += oris.differentiateRightSide(ori1).norm();
     std::cout << "Integration/differentiation test 2 done. Current error " << err << std::endl;
   }
 
@@ -797,16 +1078,16 @@ int testOrientation(int errcode)
 int testKinematics(int errcode)
 {
 
-  std::cout << "Kinematics test started" << std::endl;
-  typedef kine::Kinematics::Flags Flags;
+  std::cout << "LocalKinematics test started" << std::endl;
+  typedef kine::LocalKinematics::Flags Flags;
 
-  kine::Kinematics k0;
-  kine::Kinematics k1;
+  kine::LocalKinematics k0;
+  kine::LocalKinematics k1;
 
   Flags::Byte flag0 = BOOST_BINARY(000000);
   Flags::Byte flag1 = BOOST_BINARY(000000);
 
-  kine::Kinematics k, l, k2;
+  kine::LocalKinematics k, l, k2;
 
   int count = int(pow(2, 6) * pow(2, 6));
   double err = 0;
@@ -918,7 +1199,7 @@ int testKinematics(int errcode)
     }
   }
 
-  std::cout << "Error 1 " << err << std::endl;
+  std::cout << "Error 1 : " << err << std::endl;
 
   if(err > threshold)
   {
@@ -929,6 +1210,7 @@ int testKinematics(int errcode)
   err = 0;
 
   threshold = 1e-19 * count;
+  // threshold = 1e-9;
 
   flag0 = BOOST_BINARY(000000);
   flag1 = BOOST_BINARY(000000);
@@ -1020,17 +1302,24 @@ int testKinematics(int errcode)
     if((flag0 = (flag0 + 1) & Flags::all) == 0) /// update the flags to span all the possibilties
       flag1 = (flag1 + 1) & Flags::all;
 
-    kine::Kinematics::Flags::Byte flag = BOOST_BINARY(000000);
+    kine::LocalKinematics::Flags::Byte flag = BOOST_BINARY(000000);
 
-    if(k1.position.isSet() || (k0.position.isSet() && k0.linVel.isSet() && k0.linAcc.isSet()))
+    if(k1.position.isSet()
+       || (k0.position.isSet() && k0.linVel.isSet() && k0.linAcc.isSet() && k0.angVel.isSet() && k0.angAcc.isSet()))
     {
       flag = flag | kine::Kinematics::Flags::position;
     }
-    if(k1.orientation.isSet() || (k0.orientation.isSet() && k0.angVel.isSet() && k0.angAcc.isSet()))
+    if(true) // the orientation has to be computed
     {
-      flag = flag | kine::Kinematics::Flags::orientation;
+      if(!k1.orientation.isSet() || !(k0.orientation.isSet() && k0.angVel.isSet() && k0.angAcc.isSet()))
+      {
+        continue; // if the the orientation can't be computed, the update function has to prompt an error, so we musn't
+                  // test this combination
+      }
+      flag = flag | kine::LocalKinematics::Flags::orientation;
     }
-    if(k1.linVel.isSet() || (k0.position.isSet() && k1.position.isSet()) || (k0.linAcc.isSet() && k0.linVel.isSet()))
+    if(k1.linVel.isSet() || (k0.position.isSet() && k1.position.isSet() && k1.angVel.isSet())
+       || (k0.linAcc.isSet() && k0.linVel.isSet() && k0.angVel.isSet()))
     {
       flag = flag | kine::Kinematics::Flags::linVel;
     }
@@ -1039,8 +1328,8 @@ int testKinematics(int errcode)
     {
       flag = flag | kine::Kinematics::Flags::angVel;
     }
-    if(k1.linAcc.isSet() || (k0.linVel.isSet() && k1.linVel.isSet())
-       || (k0.linVel.isSet() && k0.position.isSet() && k1.position.isSet()))
+    if(k1.linAcc.isSet() || (k0.linVel.isSet() && k1.linVel.isSet() && k1.angVel.isSet())
+       || (k0.linVel.isSet() && k0.position.isSet() && k1.position.isSet() && k1.angAcc.isSet() && k1.angVel.isSet()))
     {
       flag = flag | kine::Kinematics::Flags::linAcc;
     }
@@ -1050,29 +1339,50 @@ int testKinematics(int errcode)
       flag = flag | kine::Kinematics::Flags::angAcc;
     }
 
-    //  << std::endl << "k0 before update: " << std::endl << k0 << std::endl;
+    // std::cout << std::endl << "k0 before update: " << std::endl << k0 << std::endl;
     // std::cout << std::endl << "k1 before update: " << std::endl << k1 << std::endl;
     k0.update(k1, dt, flag);
     // std::cout << std::endl << "k0 after update: " << std::endl << k0 << std::endl;
 
+    // std::cout << "Error before all : " << err << std::endl;
     if(k0.position.isSet())
     {
-      err += (k.position() - k0.position()).squaredNorm();
+      if((k.position() - k0.position()).squaredNorm() < 1e-13)
+      {
+        err += (k.position() - k0.position()).squaredNorm();
+      }
+      else
+      {
+        err += (l.position()
+                - l.angVel().cross(dt * (l.position() + dt * (l.linVel() - 0.5 * l.angVel().cross(l.position()))))
+                + dt * (l.linVel() + 0.5 * dt * (l.linAcc() - l.angAcc().cross(l.position()))) - k0.position())
+                   .squaredNorm();
+      }
+      // std::cout << "Error after pos : " << err << std::endl;
     }
     if(k0.orientation.isSet())
     {
-      err += (k.orientation.differentiate(k0.orientation)).squaredNorm();
+      err += (k0.orientation.differentiateRightSide(k.orientation)).squaredNorm();
+      // std::cout << "Error after ori : " << err << std::endl;
     }
     if(k0.linVel.isSet())
     {
+
       if((k.linVel() - k0.linVel()).squaredNorm() < 1e-10)
       {
         err += (k.linVel() - k0.linVel()).squaredNorm();
       }
+      else if(((k.position() - l.position()) / dt + k.angVel().cross(k.position()) - k0.linVel()).squaredNorm() < 1e-10)
+      {
+        err += ((k.position() - l.position()) / dt + k.angVel().cross(k.position()) - k0.linVel()).squaredNorm();
+      }
       else
       {
-        err += ((k.position() - l.position()) / dt - k0.linVel()).squaredNorm();
+        Vector3 tempAngVel = (l.orientation.differentiateRightSide(k.orientation) / dt);
+        err += ((k.position() - l.position()) / dt + tempAngVel.cross(k.position()) - k0.linVel()).squaredNorm();
       }
+
+      // std::cout << "Error after linVel : " << err << std::endl;
     }
     if(k0.angVel.isSet())
     {
@@ -1082,19 +1392,32 @@ int testKinematics(int errcode)
       }
       else
       {
-        err += (l.orientation.differentiate(k.orientation) / dt - k0.angVel()).squaredNorm();
+        err += (l.orientation.differentiateRightSide(k.orientation) / dt - k0.angVel()).squaredNorm();
       }
+      // std::cout << "Error after angVel : " << err << std::endl;
     }
     if(k0.linAcc.isSet())
     {
+
       if((k.linAcc() - k0.linAcc()).squaredNorm() < 1e-10)
       {
         err += (k.linAcc() - k0.linAcc()).squaredNorm();
       }
-      else
+      else if((k.linAcc() - 2 * k0.linAcc()).squaredNorm() < 1e-10)
       {
         err += (k.linAcc() - 2 * k0.linAcc()).squaredNorm();
       }
+      else if((k.angVel().cross(k.linVel()) + (k.linVel() - l.linVel()) / dt - k0.linAcc()).squaredNorm() < 1e-10)
+      {
+        err += (k.angVel().cross(k.linVel()) + (k.linVel() - l.linVel()) / dt - k0.linAcc()).squaredNorm();
+      }
+      else
+      {
+        Vector3 tempLinVel = (k.position() - l.position()) / dt + k.angVel().cross(k.position());
+        err += (k.angVel().cross(tempLinVel) + (tempLinVel - l.linVel()) / dt - k0.linAcc()).squaredNorm();
+      }
+
+      // std::cout << "Error after linAcc : " << err << std::endl;
     }
     if(k0.angAcc.isSet())
     {
@@ -1106,17 +1429,18 @@ int testKinematics(int errcode)
       {
         err += (k.angAcc() - 2 * k0.angAcc()).squaredNorm();
       }
+
+      // std::cout << "Error after angAcc : " << err << std::endl;
     }
 
     //        std::cout<< i<<" "<<err << std::endl;
-
     if(err > threshold)
     {
       break;
     }
   }
 
-  std::cout << "Error 2 " << err << std::endl;
+  std::cout << "Error 2 : " << err << std::endl;
 
   if(err > threshold)
   {
@@ -1132,7 +1456,17 @@ int main()
   int returnVal;
   int errorcode = 0;
 
-  if((returnVal = testSetToDiffNoAliasKinematics(++errorcode)))
+  if((returnVal = testPositionByIntegration(++errorcode)))
+  {
+    std::cout << "testPositionByIntegration Failed, error code: " << returnVal << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "testPositionByIntegration succeeded" << std::endl;
+  }
+
+  if((returnVal = testSetToDiffNoAliasLocalKinematics(++errorcode)))
   {
     std::cout << "testSetToDiffNoAliasLocalKinematics Failed, error code: " << returnVal << std::endl;
     return returnVal;
@@ -1140,6 +1474,16 @@ int main()
   else
   {
     std::cout << "testSetToDiffNoAliasLocalKinematics succeeded" << std::endl;
+  }
+
+  if((returnVal = testLocalVsGlobalIntegrates(++errorcode)))
+  {
+    std::cout << "testLocalVsGlobalIntegrates Failed, error code: " << returnVal << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "testLocalVsGlobalIntegrates succeeded" << std::endl;
   }
 
   if((returnVal = testRotationOperations(++errorcode)))
@@ -1164,14 +1508,14 @@ int main()
 
   if((returnVal = testKinematics(++errorcode))) /// it is not an equality check
   {
-    std::cout << "Kinematics test failed, code : 2" << std::endl;
+    std::cout << "LocalKinematics test failed, code : 2" << std::endl;
     return returnVal;
   }
   else
   {
-    std::cout << "Kinematics test succeeded" << std::endl;
+    std::cout << "LocalKinematics test succeeded" << std::endl;
   }
 
-  std::cout << "Every tests succeeded" << std::endl;
+  std::cout << "test succeeded" << std::endl;
   return 0;
 }

@@ -9,12 +9,29 @@ TiltEstimator::TiltEstimator(double alpha, double beta, double gamma)
 {
 }
 
+void TiltEstimator::initEstimator(Vector3 x1, Vector3 x2_, Vector3 x2)
+{
+  Eigen::VectorXd initStateVector = Eigen::VectorXd::Zero(getStateSize());
+
+  initStateVector.segment<3>(0) = x1;
+  initStateVector.segment<3>(3) = x2_;
+  initStateVector.segment<3>(6) = x2;
+
+  setState(initStateVector, 0);
+}
+
 void TiltEstimator::setMeasurement(const Vector3 ya_k, const Vector3 yg_k, TimeIndex k)
 {
   ObserverBase::MeasureVector y_k(6);
   y_k << ya_k, yg_k;
 
   ZeroDelayObserver::setMeasurement(y_k, k);
+}
+
+void TiltEstimator::setExplicitX1(const Vector3 & x1)
+{
+  withExplicitX1_ = true;
+  x1_ = x1;
 }
 
 ObserverBase::StateVector TiltEstimator::oneStepEstimation_()
@@ -26,9 +43,16 @@ ObserverBase::StateVector TiltEstimator::oneStepEstimation_()
   Vector3 ya = getMeasurement(k + 1).head<3>();
   Vector3 yg = getMeasurement(k + 1).tail<3>();
 
-  x1_ = R_S_C_.transpose() * (v_C_ + v_S_C_) + (yg - R_S_C_.transpose() * w_S_C_).cross(R_S_C_.transpose() * p_S_C_);
+  if(!withExplicitX1_)
+  {
+    x1_ = R_S_C_.transpose() * (v_C_ + v_S_C_) + (yg - R_S_C_.transpose() * w_S_C_).cross(R_S_C_.transpose() * p_S_C_);
+  }
+  else
+  {
+    withExplicitX1_ = false;
+  }
 
-  ObserverBase::StateVector x_hat = getEstimatedState(k);
+  ObserverBase::StateVector x_hat = getCurrentEstimatedState();
   x1_hat_ = x_hat.segment<3>(0);
   x2_hat_prime_ = x_hat.segment<3>(3);
   x2_hat_ = x_hat.segment<3>(6);

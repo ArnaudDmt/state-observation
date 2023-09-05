@@ -38,6 +38,8 @@ public:
   ///  \li gamma : parameter related to the orthogonality
   TiltEstimator(double alpha, double beta, double gamma);
 
+  void initEstimator(Vector3 x1 = Vector3::Zero(), Vector3 x2_ = Vector3::Zero(), Vector3 x2 = Vector3::Zero());
+
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)
   {
@@ -98,11 +100,17 @@ public:
     return R_S_C_;
   }
 
+  Vector3 getVirtualLocalVelocityMeasurement()
+  {
+    return x1_;
+  }
+
   /// sets teh linear velocity of the IMU sensor in the control frame
   void setSensorLinearVelocityInC(const Vector3 & v)
   {
     v_S_C_ = v;
   }
+
   Vector3 getSensorLinearVelocityInC()
   {
     return v_S_C_;
@@ -128,6 +136,8 @@ public:
   {
     return v_C_;
   }
+
+  void setExplicitX1(const Vector3 & x1);
 
 /// prevent c++ overloaded virtual function warning
 #if defined(__clang__)
@@ -181,6 +191,8 @@ protected:
   Vector3 x2_hat_prime_;
   Vector3 x2_hat_;
   Vector3 dx1_hat;
+
+  bool withExplicitX1_;
 
   /// The tilt estimator loop
   StateVector oneStepEstimation_();

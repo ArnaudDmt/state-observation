@@ -1,3 +1,4 @@
+#include <iostream>
 #include <state-observation/observer/extended-kalman-filter.hpp>
 
 namespace stateObservation
@@ -151,7 +152,6 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
 
   opt.x_ = this->x_();
   opt.dx_.resize(nt_);
-
   if(p_ > 0)
   {
     if(directInputStateProcessFeedthrough_)
@@ -159,10 +159,8 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
     else
       opt.u_ = inputVectorZero();
   }
-
   for(Index i = 0; i < nt_; ++i)
   {
-
     opt.dx_.setZero();
     opt.dx_[i] = dx[i];
 
@@ -200,7 +198,6 @@ KalmanFilterBase::Cmatrix ExtendedKalmanFilter::getCMatrixFD(const Vector & dx)
     arithm_->stateSum(xbar_(), opt.dx_, opt.xp_);
 
     opt.yp_ = simulateSensor_(opt.xp_, k + 1);
-
     opt.yp_ -= ybar_();
     opt.yp_ /= dx[i];
 

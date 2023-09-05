@@ -20,7 +20,8 @@ inline unsigned KineticsObserver::angVelIndex() const
 }
 inline unsigned KineticsObserver::gyroBiasIndex(unsigned numberOfIMU) const
 {
-  BOOST_ASSERT(numberOfIMU < maxImuNumber_ && "The requested IMU number is higher than the maximum");
+  BOOST_ASSERT((numberOfIMU < maxImuNumber_ || numberOfIMU == 0)
+               && "The requested IMU number is higher than the maximum");
   return angVelIndex() + sizeAngVel + sizeGyroBias * numberOfIMU;
 }
 inline unsigned KineticsObserver::unmodeledWrenchIndex() const
@@ -123,7 +124,7 @@ inline unsigned KineticsObserver::angVelIndexTangent() const
 }
 inline unsigned KineticsObserver::gyroBiasIndexTangent(unsigned numberOfIMU) const
 {
-  BOOST_ASSERT(numberOfIMU < maxImuNumber_ && "The requested IMU number is higher than the maximum");
+  BOOST_ASSERT(numberOfIMU <= maxImuNumber_ && "The requested IMU number is higher than the maximum");
   return angVelIndexTangent() + sizeAngVel + sizeGyroBias * numberOfIMU;
 }
 inline unsigned KineticsObserver::unmodeledWrenchIndexTangent() const

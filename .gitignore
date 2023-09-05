@@ -1,5 +1,12 @@
 build/
+build-dbg/
+build-debug/
+build-none/
+build-release/
+build-rls
+build-relWithDebInfo/
 .vs
 CMakeSettings.json
 build
 compile_commands.json
+.vscode/tasks.json

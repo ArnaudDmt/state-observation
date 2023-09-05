@@ -162,15 +162,15 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
   Matrix3 I_inv = ko_.getInertiaMatrix()().inverse();
 
   // Jacobians of the linear acceleration
-  accJacobianAnalytical.block<3, ko_.sizeOriTangent>(0, ko_.oriIndexTangent()) =
+  accJacobianAnalytical.block<3, int(ko_.sizeOriTangent)>(0, ko_.oriIndexTangent()) =
       -cst::gravityConstant
       * (worldCentroidKinematics.orientation.toMatrix3().transpose() * kine::skewSymmetric(Vector3(0, 0, 1)));
-  accJacobianAnalytical.block<3, ko_.sizeForceTangent>(0, ko_.unmodeledForceIndexTangent()) =
+  accJacobianAnalytical.block<3, int(ko_.sizeForceTangent)>(0, ko_.unmodeledForceIndexTangent()) =
       Matrix::Identity(ko_.sizeLinAccTangent, ko_.sizeTorqueTangent) / ko_.getMass();
 
   // Jacobians of the angular acceleration
-  accJacobianAnalytical.block<3, ko_.sizeTorqueTangent>(3, ko_.unmodeledTorqueIndexTangent()) = I_inv;
-  accJacobianAnalytical.block<3, ko_.sizeAngVelTangent>(3, ko_.angVelIndexTangent()) =
+  accJacobianAnalytical.block<3, int(ko_.sizeTorqueTangent)>(3, ko_.unmodeledTorqueIndexTangent()) = I_inv;
+  accJacobianAnalytical.block<3, int(ko_.sizeAngVelTangent)>(3, ko_.angVelIndexTangent()) =
       I_inv
       * (kine::skewSymmetric(ko_.getInertiaMatrix()() * worldCentroidKinematics.angVel()) - ko_.getInertiaMatrixDot()()
          - kine::skewSymmetric(worldCentroidKinematics.angVel()) * ko_.getInertiaMatrix()()
@@ -182,14 +182,14 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
     if(i->isSet)
     {
       // Jacobian of the linar acceleration with respect to the contact force
-      accJacobianAnalytical.block<3, ko_.sizeForceTangent>(0, ko_.contactForceIndexTangent(i)) =
+      accJacobianAnalytical.block<3, int(ko_.sizeForceTangent)>(0, ko_.contactForceIndexTangent(i)) =
           (1.0 / ko_.getMass()) * i->centroidContactKine.orientation.toMatrix3();
       // Jacobian of the angular acceleration with respect to the contact force
-      accJacobianAnalytical.block<3, ko_.sizeTorqueTangent>(3, ko_.contactForceIndexTangent(i)) =
+      accJacobianAnalytical.block<3, int(ko_.sizeTorqueTangent)>(3, ko_.contactForceIndexTangent(i)) =
           (I_inv * kine::skewSymmetric(i->centroidContactKine.position()))
           * (i->centroidContactKine.orientation).toMatrix3();
       // Jacobian of the angular acceleration with respect to the contact torque
-      accJacobianAnalytical.block<3, ko_.sizeTorqueTangent>(3, ko_.contactTorqueIndexTangent(i)) =
+      accJacobianAnalytical.block<3, int(ko_.sizeTorqueTangent)>(3, ko_.contactTorqueIndexTangent(i)) =
           I_inv * i->centroidContactKine.orientation.toMatrix3();
     }
   }

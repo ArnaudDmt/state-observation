@@ -373,7 +373,7 @@ int testSetToDiffNoAliasLocalKinematics(int errcode)
 
   if(err > threshold)
   {
-    std::cout << "Error too large : " << err << std::endl;
+    std::cout << "Error too large : " << err << ". Threshold: " << threshold << std::endl;
     return errcode;
   }
   return 0;

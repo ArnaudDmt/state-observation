@@ -1,7 +1,7 @@
 macro(ADD_SO_TEST name)
   add_executable(${name} ${name}.cpp)
 
-  target_link_libraries(${name} PUBLIC state-observation benchmark ${ARGN})
+  target_link_libraries(${name} PUBLIC state-observation ${ARGN})
 
   add_test(
     NAME ${name}

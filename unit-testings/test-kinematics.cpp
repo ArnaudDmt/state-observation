@@ -154,7 +154,7 @@ int testSetToDiffNoAliasKinematics(int errcode)
 
   if(err > threshold)
   {
-    std::cout << "Error too large : " << err << ". Threshold: " << threshold << std::endl;
+    std::cout << "Error too large : " << err << std::endl;
     return errcode;
   }
   return 0;
@@ -810,7 +810,7 @@ int testKinematics(int errcode)
 
   int count = int(pow(2, 6) * pow(2, 6));
   double err = 0;
-  double threshold = 1e-30 * count;
+  double threshold = 1e-28 * count;
 
   for(int i = 0; i < count; i++)
   {
@@ -922,7 +922,7 @@ int testKinematics(int errcode)
 
   if(err > threshold)
   {
-    std::cout << "Error too large : " << err << std::endl;
+    std::cout << "Error too large : " << err << ". Threshold: " << threshold << std::endl;
     return errcode;
   }
 

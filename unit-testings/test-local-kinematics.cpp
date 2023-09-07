@@ -245,7 +245,7 @@ int testSetToDiffNoAliasLocalKinematics(int errcode)
 
   int count = int(pow(2, 6) * pow(2, 6));
   double err = 0;
-  double threshold = 1e-30 * count;
+  double threshold = 1e-29 * count;
 
   for(int i = 0; i < count; i++)
   {

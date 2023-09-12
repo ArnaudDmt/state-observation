@@ -430,11 +430,8 @@ kine::LocalKinematics KineticsObserver::estimateAccelerations()
   addUnmodeledAndContactWrench_(worldCentroidStateVector_, forceCentroid, torqueCentroid);
 
   /// The accelerations are about to be computed so we set them to "initialized"
-  worldCentroidStateKinematics_.linAcc.set(true);
-  worldCentroidStateKinematics_.angAcc.set(true);
-
   computeLocalAccelerations_(worldCentroidStateKinematics_, forceCentroid, torqueCentroid,
-                             worldCentroidStateKinematics_.linAcc(), worldCentroidStateKinematics_.angAcc());
+                             worldCentroidStateKinematics_.linAcc.set(), worldCentroidStateKinematics_.angAcc.set());
 
   return worldCentroidStateKinematics_;
 }
@@ -1836,11 +1833,8 @@ Matrix KineticsObserver::computeCMatrix()
                                                         flagsStateKine);
 
   /// The accelerations are about to be computed so we set them to "initialized"
-  predictedWorldCentroidStateKinematics.linAcc.set(true);
-  predictedWorldCentroidStateKinematics.angAcc.set(true);
-
-  Vector3 & linacc = predictedWorldCentroidStateKinematics.linAcc();
-  Vector3 & angacc = predictedWorldCentroidStateKinematics.angAcc();
+  Vector3 & linacc = predictedWorldCentroidStateKinematics.linAcc.set();
+  Vector3 & angacc = predictedWorldCentroidStateKinematics.angAcc.set();
 
   computeLocalAccelerations_(predictedWorldCentroidStateKinematics, forceCentroid, torqueCentroid, linacc, angacc);
 

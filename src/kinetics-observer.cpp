@@ -7,7 +7,7 @@
 
 #include <state-observation/dynamics-estimators/kinetics-observer.hpp>
 
-#ifdef NDEBUG
+#ifndef NDEBUG
 #  include <iostream>
 #endif
 

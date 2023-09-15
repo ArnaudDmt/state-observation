@@ -131,13 +131,12 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
   ekf_.setFunctor(this);
   ekf_.setStateArithmetics(this);
 
-  /*  The initialization of the observer is now called by MCKineticsObserver
+  /*  The state vector is initialized to zero but can be initialized afterwards using setInitWorldCentroidStateVector();
+   */
   worldCentroidStateVector_.setZero();
   oldWorldCentroidStateVector_ = worldCentroidStateVector_;
 
   ekf_.setState(worldCentroidStateVector_, k_est_);
-  updateKine_();
-  */
 
   stateKinematicsInitCovMat_.setZero();
   stateKinematicsInitCovMat_.block<sizePos, sizePos>(posIndexTangent(), posIndexTangent()) = statePosInitCovMat_;

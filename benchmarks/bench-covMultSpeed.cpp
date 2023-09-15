@@ -1,4 +1,3 @@
-#include <bitset>
 #include <iostream>
 #include <state-observation/tools/definitions.hpp>
 
@@ -12,7 +11,27 @@
 
 using namespace stateObservation::kine;
 
-static void Method1(benchmark::State & state)
+class MyFixture : public benchmark::Fixture
+{
+public:
+  void SetUp(const ::benchmark::State & state)
+  {
+    // Perform setup here
+    Eigen::MatrixXd P =
+        stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+    Eigen::MatrixXd Q =
+        stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+    Eigen::MatrixXd A =
+        stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+    P = P * P.transpose(); // symmetric matrix
+    Q = Q * Q.transpose(); // symmetric matrix
+    Eigen::MatrixXd B;
+    B.resize(72, 72);
+  }
+};
+
+// Method 1: "1_Adj_Upper_APAt"
+static void meth1_Adj_Upper_APAt(benchmark::State & state)
 {
   // Perform setup here
   Eigen::MatrixXd P =
@@ -23,20 +42,66 @@ static void Method1(benchmark::State & state)
       stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
   P = P * P.transpose(); // symmetric matrix
   Q = Q * Q.transpose(); // symmetric matrix
-  Eigen::MatrixXd B1;
-  B1.resize(72, 72);
+  Eigen::MatrixXd B;
+  B.resize(72, 72);
+
   for(auto _ : state)
   {
     // This code gets timed
 
-    // Method 1
+    B.triangularView<Eigen::Upper>() = A * P * A.transpose();
+    Eigen::MatrixXd C(B.selfadjointView<Eigen::Upper>());
+  }
+}
 
-    B1.noalias() = Q + A * P * A.transpose();
+// Method 2: "2_Adj_Upper_AUpperPAt"
+static void meth2_Adj_Upper_AUpperPAt(benchmark::State & state)
+{
+  // Perform setup here
+  Eigen::MatrixXd P =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+  Eigen::MatrixXd Q =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+  Eigen::MatrixXd A =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+  P = P * P.transpose(); // symmetric matrix
+  Q = Q * Q.transpose(); // symmetric matrix
+  Eigen::MatrixXd B;
+  B.resize(72, 72);
+  for(auto _ : state)
+  {
+    // This code gets timed
+
+    B.triangularView<Eigen::Upper>() = A * P.selfadjointView<Eigen::Upper>() * A.transpose();
+    Eigen::MatrixXd D(B.selfadjointView<Eigen::Upper>());
+  }
+}
+
+// Method 3: "3_QAPAt". Basic method, no optimization.
+static void meth3_QAPAt(benchmark::State & state)
+{
+  // Perform setup here
+  Eigen::MatrixXd P =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+  Eigen::MatrixXd Q =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+  Eigen::MatrixXd A =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
+  P = P * P.transpose(); // symmetric matrix
+  Q = Q * Q.transpose(); // symmetric matrix
+  Eigen::MatrixXd B;
+  B.resize(72, 72);
+  for(auto _ : state)
+  {
+    // This code gets timed
+
+    B.noalias() = Q + A * P * A.transpose();
   }
   // std::cout << std::endl << "Method1: " << B1.sum() << std::endl;
 }
 
-static void Method2(benchmark::State & state)
+// Method 4: "sum_2_Q". Adding Q to the method 2.
+static void meth4_sum_meth2_Q(benchmark::State & state)
 {
   // Perform setup here
   Eigen::MatrixXd P =
@@ -47,20 +112,19 @@ static void Method2(benchmark::State & state)
       stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
   P = P * P.transpose(); // symmetric matrix
   Q = Q * Q.transpose(); // symmetric matrix
-  Eigen::MatrixXd B2;
-  B2.resize(72, 72);
+  Eigen::MatrixXd B;
+  B.resize(72, 72);
   for(auto _ : state)
   {
     // This code gets timed
 
-    // Method 2
-
-    B2.triangularView<Eigen::Upper>() = A * P * A.transpose();
-    Eigen::MatrixXd C(B2.selfadjointView<Eigen::Upper>());
+    B.triangularView<Eigen::Upper>() = Q;
+    B.triangularView<Eigen::Upper>() += A * P.selfadjointView<Eigen::Upper>() * A.transpose();
   }
 }
 
-static void Method3(benchmark::State & state)
+// Method 5: "sum_UpperQUpper_AAdjP_At"
+static void meth5_sum_UpperQUpper_AAdjP_At(benchmark::State & state)
 {
   // Perform setup here
   Eigen::MatrixXd P =
@@ -71,19 +135,21 @@ static void Method3(benchmark::State & state)
       stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
   P = P * P.transpose(); // symmetric matrix
   Q = Q * Q.transpose(); // symmetric matrix
-  Eigen::MatrixXd B3;
-  B3.resize(72, 72);
+  Eigen::MatrixXd B;
+  Eigen::MatrixXd Bt(72, 72);
+  B.resize(72, 72);
   for(auto _ : state)
   {
     // This code gets timed
 
-    // Method 3
-    B3.triangularView<Eigen::Upper>() = A * P.selfadjointView<Eigen::Upper>() * A.transpose();
-    Eigen::MatrixXd D(B3.selfadjointView<Eigen::Upper>());
+    Bt.noalias() = A * P.selfadjointView<Eigen::Upper>();
+    B.triangularView<Eigen::Upper>() = Bt * A.transpose();
+    B.triangularView<Eigen::Upper>() += Q;
   }
 }
 
-static void Method3bis(benchmark::State & state)
+// Method 6: "6_llt_rankUpdate"
+static void meth6_llt_rankUpdate(benchmark::State & state)
 {
   // Perform setup here
   Eigen::MatrixXd P =
@@ -94,69 +160,19 @@ static void Method3bis(benchmark::State & state)
       stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
   P = P * P.transpose(); // symmetric matrix
   Q = Q * Q.transpose(); // symmetric matrix
-  Eigen::MatrixXd B3;
-  B3.resize(72, 72);
-  for(auto _ : state)
-  {
-    // This code gets timed
-
-    // Method 3
-    B3.triangularView<Eigen::Upper>() = Q;
-    B3.triangularView<Eigen::Upper>() += A * P.selfadjointView<Eigen::Upper>() * A.transpose();
-  }
-}
-
-static void Method5(benchmark::State & state)
-{
-  // Perform setup here
-  Eigen::MatrixXd P =
-      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
-  Eigen::MatrixXd Q =
-      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
-  Eigen::MatrixXd A =
-      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
-  P = P * P.transpose(); // symmetric matrix
-  Q = Q * Q.transpose(); // symmetric matrix
-  Eigen::MatrixXd B5;
-  Eigen::MatrixXd B5t(72, 72);
-  B5.resize(72, 72);
-  for(auto _ : state)
-  {
-    // This code gets timed
-
-    // Method 5
-
-    B5t.noalias() = A * P.selfadjointView<Eigen::Upper>();
-    B5.triangularView<Eigen::Upper>() = B5t * A.transpose();
-    B5.triangularView<Eigen::Upper>() += Q;
-  }
-}
-
-static void Method7(benchmark::State & state)
-{
-  // Perform setup here
-  Eigen::MatrixXd P =
-      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
-  Eigen::MatrixXd Q =
-      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
-  Eigen::MatrixXd A =
-      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, 72, 72>>() / 10;
-  P = P * P.transpose(); // symmetric matrix
-  Q = Q * Q.transpose(); // symmetric matrix
-  Eigen::MatrixXd B7;
-  B7.resize(72, 72);
-  Eigen::MatrixXd B7temp;
-  B7temp.resize(72, 72);
+  Eigen::MatrixXd B;
+  B.resize(72, 72);
+  Eigen::MatrixXd Btemp;
+  Btemp.resize(72, 72);
   Eigen::LLT<Eigen::MatrixXd> llt(72 * 72);
   for(auto _ : state)
   {
     // This code gets timed
 
-    // Method 7
-    B7.triangularView<Eigen::Upper>() = Q;
+    B.triangularView<Eigen::Upper>() = Q;
     llt.compute(P);
-    B7temp.noalias() = A * llt.matrixL();
-    B7.selfadjointView<Eigen::Upper>().rankUpdate(B7temp);
+    Btemp.noalias() = A * llt.matrixL();
+    B.selfadjointView<Eigen::Upper>().rankUpdate(Btemp);
   }
 }
 
@@ -166,13 +182,16 @@ static void Method7(benchmark::State & state)
 
 int main(int argc, char ** argv)
 {
-  // Register the function as a benchmark
-  BENCHMARK(Method1);
-  BENCHMARK(Method2);
-  BENCHMARK(Method3);
-  BENCHMARK(Method3bis);
-  BENCHMARK(Method5);
-  BENCHMARK(Method7);
+  // Register the function as a benchmark. The name of functions corresponds to the operations tested in the function.
+
+  /* Tests for the symmetric matrix multiplications */
+  BENCHMARK(meth1_Adj_Upper_APAt);
+  BENCHMARK(meth2_Adj_Upper_AUpperPAt);
+  /* Adding the sum with the Q symmetric matrix */
+  BENCHMARK(meth3_QAPAt);
+  BENCHMARK(meth4_sum_meth2_Q);
+  BENCHMARK(meth5_sum_UpperQUpper_AAdjP_At);
+  BENCHMARK(meth6_llt_rankUpdate);
 
   ::benchmark::Initialize(&argc, argv);
   if(::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;

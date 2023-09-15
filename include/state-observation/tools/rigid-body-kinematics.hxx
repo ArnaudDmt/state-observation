@@ -1254,6 +1254,7 @@ inline Kinematics & Kinematics::setZero(Kinematics::Flags::Byte flags)
 inline const Kinematics & Kinematics::integrateRungeKutta4(double dt,
                                                            RecursiveAccelerationFunctorBase & accelerationFunctor)
 {
+  BOOST_ASSERT(false && "the runge kutta integration must be fixed");
   BOOST_ASSERT((position.isSet() && orientation.isSet() && linVel.isSet() && angVel.isSet())
                && "The kinematics of the LocalKinematics object are not entirely set");
   BOOST_ASSERT((linAcc.isSet() && angAcc.isSet())
@@ -2570,6 +2571,7 @@ inline const LocalKinematics & LocalKinematics::integrateRungeKutta4(
     double dt,
     RecursiveAccelerationFunctorBase & accelerationFunctor)
 {
+  BOOST_ASSERT(false && "the runge kutta integration must be fixed");
   BOOST_ASSERT((position.isSet() && orientation.isSet() && linVel.isSet() && angVel.isSet())
                && "The kinematics of the LocalKinematics object are not entirely set");
   BOOST_ASSERT((linAcc.isSet() && angAcc.isSet())

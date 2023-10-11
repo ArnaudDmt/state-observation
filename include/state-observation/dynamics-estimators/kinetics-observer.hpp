@@ -1091,13 +1091,13 @@ protected:
   /// forces.These forces replace the contact forces of the previously know state to compute the accelerations. Used to
   /// compute the acceleration of the centroid in the world frame over the steps of the Runge-Kutta intergation.
   /// @param predictedWorldCentroidKinematics Newly predicted kinematics of the centroid in the world frame.
-  virtual void computeRecursiveGlobalAccelerations_(Kinematics & predictedWorldCentroidKinematics);
+  virtual void computeRecursiveGlobalAccelerations_(Kinematics & predictedWorldCentroidKinematics) override;
 
   /// @brief @copybrief computeLocalAccelerations_(LocalKinematics & localStateKine, const Vector3 & totalForceLocal,
   /// const Vector3 & totalMomentLocal, Vector3 & linAcc, Vector3 & angAcc). Version adapted to local kinematics.
   /// @details @copydetails computeLocalAccelerations_(LocalKinematics & localStateKine, const Vector3 &
   /// totalForceLocal, const Vector3 & totalMomentLocal, Vector3 & linAcc, Vector3 & angAcc)
-  virtual void computeRecursiveLocalAccelerations_(LocalKinematics & predictedWorldCentroidKinematics);
+  virtual void computeRecursiveLocalAccelerations_(LocalKinematics & predictedWorldCentroidKinematics) override;
 
   /// @brief Computes the force exerted at a contact using the visco-elastic model on the given state vector.
   /// @param i Contact to estimate
@@ -1218,7 +1218,7 @@ public:
   /// @brief Define if we use the Runge-Kutta approximation method or not
   ///
   /// @param b true means we use finite differences
-  virtual void useRungeKutta(bool b = true);
+  void useRungeKutta(bool b = true);
 
   virtual Matrix computeAMatrix();
 

@@ -495,8 +495,16 @@ struct Kinematics
     static const Byte all = position | orientation | linVel | angVel | linAcc | angAcc;
   };
 
+  /// @brief functor that defines the function computeRecursiveGlobalAccelerations_ used to compute the acceleration
+  /// recursively.
   struct RecursiveAccelerationFunctorBase
   {
+    /// @brief Computes the predicted acceleration of a frame within another, based on the current and predicted
+    /// kinematics.
+    /// @details Can be used during the Runge-Kutta integration to compute the new acceleration over the
+    /// small-increments. We can for instance consider it as constant or use a model to compute it. For an example of
+    /// the latter case, please see KineticsObserver::computeRecursiveGlobalAccelerations_(Kinematics &)
+    /// @param predictedWorldCentroidKinematics Newly predicted kinematics.
     virtual void computeRecursiveGlobalAccelerations_(Kinematics & kine) = 0;
   };
 
@@ -615,6 +623,12 @@ struct LocalKinematics
 
   struct RecursiveAccelerationFunctorBase
   {
+    /// @brief Computes the predicted local acceleration of a frame within another, based on the current and predicted
+    /// local kinematics.
+    /// @details Can be used during the Runge-Kutta integration to compute the new acceleration over the
+    /// small-increments. We can for instance consider it as constant or use a model to compute it. For an example of
+    /// the latter case, please see KineticsObserver::computeRecursiveLocalAccelerations_(LocalKinematics &)
+    /// @param predictedWorldCentroidKinematics Newly predicted local kinematics.
     virtual void computeRecursiveLocalAccelerations_(LocalKinematics & locKine) = 0;
   };
 

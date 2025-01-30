@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef VanytEstimatorHPP
-#define VanytEstimatorHPP
+#ifndef VikingHPP
+#define VikingHPP
 
 #include "state-observation/observer/tilt-estimator-humanoid.hpp"
 
@@ -22,11 +22,11 @@ namespace stateObservation
 {
 
 /**
- * \class  VanytEstimator
+ * \class  Viking: Velocity Inertial Kinematic Input Nonlinear Geolocation
  * \brief  Version of the Tilt Estimator for humanoid robots.
  *
  */
-class STATE_OBSERVATION_DLLAPI VanytEstimator : public ZeroDelayObserver // : public TiltEstimatorHumanoid
+class STATE_OBSERVATION_DLLAPI Viking : public ZeroDelayObserver
 {
   typedef kine::Orientation Orientation;
 
@@ -38,11 +38,8 @@ protected:
     // add an orientation measurement of the IMU's frame in the world frame to the correction
     void addOrientationMeasurement(const Matrix3 & meas, double gain);
 
-    // add the correction coming from a contact position to the estimation
-    void addContactPosMeasurement(const Vector3 & posMeasurement,
-                                  const Vector3 & imuContactPos,
-                                  double gainDelta,
-                                  double gainSigma);
+    // add a position measurement of the IMU's frame in the world frame to the correction
+    void addPosMeasurement(const Vector3 & posMeasurement, double gain);
 
     StateVector replayBufferedIteration();
 
@@ -77,16 +74,13 @@ protected:
 
     // correction of the orientation passed as a local angular velocity
     Vector3 sigma_ = Vector3::Zero();
-    // correction of the orientation coming from the contact orientations, passed as a local angular velocity.
-    Vector3 oriCorrFromOriMeas_ = Vector3::Zero();
-    // correction of the position coming from the contact positions, passed as a local linear velocity.
-    Vector3 posCorrFromContactPos_ = Vector3::Zero();
-    // correction of the orientation coming from the contact positions, passed as a local angular velocity.
-    Vector3 oriCorrFromContactPos_ = Vector3::Zero();
+    // correction of the orientation coming from orientation measurements, passed as a local angular velocity.
+    Vector3 oriCorrFromMeas_ = Vector3::Zero();
+    // correction of the position coming from position measurements, passed as a local linear velocity.
+    Vector3 posCorrFromMeas_ = Vector3::Zero();
 
     TimeIndex k_est_ = 0; // time index of the last estimation
     TimeIndex k_data_ = 0; // time index of the current measurements
-    TimeIndex k_contacts_ = 0; // time index of the contact measurements
   };
 
 private:
@@ -99,7 +93,7 @@ public:
   ///  \li beta  : parameter related to the fast convergence of the tilt
   ///  \li rho  : parameter related to the orthogonality
   ///  \li dt  : timestep between each iteration
-  VanytEstimator(double alpha, double beta, double rho, double dt);
+  Viking(double alpha, double beta, double rho, double dt);
 
   /// The constructor
   ///  \li alpha : parameter related to the convergence of the linear velocity
@@ -108,7 +102,7 @@ public:
   ///  \li rho  : parameter related to the orthogonality
   ///  \li dt  : timestep between each iteration
   ///  \li dt  : capacity of the iteration buffer
-  VanytEstimator(double alpha, double beta, double rho, double dt, unsigned long bufferCapacity);
+  Viking(double alpha, double beta, double rho, double dt, unsigned long bufferCapacity);
 
   inline IterInfos & getCurrentIter()
   {
@@ -143,15 +137,10 @@ public:
   /// @param gain weight of the correction
   void addOrientationMeasurement(const Matrix3 & meas, double gain);
 
-  /// @brief adds the correction from a contact position measurement
-  /// @param posMeasurement measured position of the contact in the world
-  /// @param imuContactPos position of the contact in the imu's frame.
-  /// @param gainDelta weight of the position correction
-  /// @param gainSigma weight of the orientation correction
-  void addContactPosMeasurement(const Vector3 & posMeasurement,
-                                const Vector3 & imuContactPos,
-                                double gainDelta,
-                                double gainSigma);
+  /// @brief adds the correction from a direct measurement of the IMU's frame position.
+  /// @param posMeasurement measured position of the IMU's frame in the world
+  /// @param gain weight of the correction
+  void addPosMeasurement(const Vector3 & posMeasurement, double gain);
 
   /// @brief replays a previous iteration with an additional orientation measurement.
   /// @param delay delay between the iteration receiving the measurement and the current one.
@@ -165,6 +154,19 @@ public:
   /// @param meas measured orientation of the IMU's frame in the world
   /// @param gain weight of the correction
   StateVector replayIterationsWithDelayedOri(unsigned long delay, const Matrix3 & meas, double gain);
+
+  /// @brief replays a previous iteration with an additional orientation measurement.
+  /// @param delay delay between the iteration receiving the measurement and the current one.
+  /// @param meas measured orientation of the IMU's frame in the world
+  /// @param gain weight of the correction
+  StateVector replayIterationWithDelayedPosition(unsigned long delay, const Matrix3 & meas, double gain);
+
+  /// @brief replays a previous iteration with an additional orientation measurement and applies the obtained correction
+  /// to the current state.
+  /// @param delay delay between the iteration receiving the measurement and the current one.
+  /// @param meas measured orientation of the IMU's frame in the world
+  /// @param gain weight of the correction
+  StateVector replayIterationsWithDelayedPosition(unsigned long delay, const Matrix3 & meas, double gain);
 
   Vector3 getVirtualLocalVelocityMeasurement()
   {
@@ -232,20 +234,16 @@ public:
   {
     return getCurrentIter().sigma_;
   }
-  // correction of the position coming from the contact positions, passed as a local linear velocity.
-  inline const stateObservation::Vector3 & getPosCorrectionFromContactPos()
+  // correction of the position coming from position measurements, passed as a local linear velocity.
+  inline const stateObservation::Vector3 & getPosCorrectionFromMeas()
   {
-    return getCurrentIter().posCorrFromContactPos_;
+    return getCurrentIter().posCorrFromMeas_;
   }
-  // correction of the orientation coming from the contact positions, passed as a local angular velocity.
-  inline const stateObservation::Vector3 & geOriCorrectionFromContactPos()
-  {
-    return getCurrentIter().oriCorrFromContactPos_;
-  }
+
   // correction of the orientation coming from direct orientation measurements, passed as a local angular velocity.
-  inline const stateObservation::Vector3 & getOriCorrFromOriMeas()
+  inline const stateObservation::Vector3 & getOriCorrFromMeas()
   {
-    return getCurrentIter().oriCorrFromOriMeas_;
+    return getCurrentIter().oriCorrFromMeas_;
   }
 
 protected:
@@ -264,4 +262,4 @@ protected:
 
 } // namespace stateObservation
 
-#endif // VanytEstimatorHPP
+#endif // VikingHPP

@@ -26,7 +26,7 @@ namespace stateObservation
  * \brief  Version of the Tilt Estimator for humanoid robots.
  *
  */
-class STATE_OBSERVATION_DLLAPI Waiko : public ZeroDelayObserver // : public TiltEstimatorHumanoid
+class STATE_OBSERVATION_DLLAPI Waiko : public ZeroDelayObserver
 {
   typedef kine::Orientation Orientation;
 
@@ -77,7 +77,7 @@ protected:
 
     // correction of the orientation passed as a local angular velocity
     Vector3 sigma_ = Vector3::Zero();
-    // correction of the orientation coming from the contact orientations, passed as a local angular velocity.
+    // correction of the orientation coming from orientation measurements, passed as a local angular velocity.
     Vector3 oriCorrFromOriMeas_ = Vector3::Zero();
     // correction of the position coming from the contact positions, passed as a local linear velocity.
     Vector3 posCorrFromContactPos_ = Vector3::Zero();

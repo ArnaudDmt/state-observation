@@ -158,10 +158,6 @@ Eigen::Matrix<double, 12, 1> Waiko::IterInfos::computeStateDerivatives()
   const Vector3 & ya = y_k_.segment<3>(3);
   const Vector3 & yg = y_k_.segment<3>(6);
 
-  Vector3 & oriCorrFromOriMeas = oriCorrFromOriMeas_;
-  Vector3 & oriCorrFromContactPos = oriCorrFromContactPos_;
-  Vector3 & posCorrFromContactPos = posCorrFromContactPos_;
-
   const Eigen::Ref<Vector3> x1_hat = initState_.segment<3>(0);
   const Eigen::Ref<Vector3> x2_hat_prime = initState_.segment<3>(3);
 
@@ -169,10 +165,10 @@ Eigen::Matrix<double, 12, 1> Waiko::IterInfos::computeStateDerivatives()
   dx_hat.segment<3>(0) = x1_hat.cross(yg) - cst::gravityConstant * x2_hat_prime + ya + alpha_ * (yv - x1_hat); // x1
   dx_hat.segment<3>(3) = x2_hat_prime.cross(yg) - beta_ * (yv - x1_hat); // x2_prime
 
-  dx_hat.segment<3>(6) = (x1_hat - posCorrFromContactPos); // using p_dot = R(v_l) = R(x1 - delta)
+  dx_hat.segment<3>(6) = (x1_hat - posCorrFromContactPos_); // using p_dot = R(v_l) = R(x1 - delta)
 
   sigma_ = rho_ * (initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()).cross(x2_hat_prime)
-           + oriCorrFromContactPos + oriCorrFromOriMeas;
+           + oriCorrFromContactPos_ + oriCorrFromOriMeas_;
 
   dx_hat.segment<3>(9) = (yg - sigma_); // using R_dot = RS(w_l) = RS(yg-sigma)
 
@@ -184,6 +180,8 @@ void Waiko::IterInfos::integrateState(const Eigen::Matrix<double, 12, 1> & dx_ha
   const Vector3 & vl = dx_hat.segment<3>(6);
   const Vector3 & omega = dx_hat.segment<3>(9);
 
+  // we copy the state and pose before integration to keep them in case we need to replay this iteration with new
+  // measurements
   updatedState_ = initState_;
   updatedPose_ = initPose_;
 
@@ -225,10 +223,14 @@ ObserverBase::StateVector Waiko::replayIterationsWithDelayedOri(unsigned long de
 
   kine::Kinematics & latestKine = getCurrentIter().updatedPose_;
 
+  // compute the delta between the pose at the buffered iteration and the most recent one.
   kine::Kinematics deltaKine = bufferedIter.updatedPose_.getInverse() * latestKine;
 
-  // we add the delayed orientation measurement to the inputs of the buffered iteration and recompute the state update.
+  // we add the delayed orientation measurement to the inputs of the buffered iteration and recompute the state update
+  // (bufferedIter.updatedPose_ is thus now the new one)
   replayIterationWithDelayedOri(delay, meas, gain);
+
+  // apply the pose delta to the updated pose of the buffered iteration
   latestKine = bufferedIter.updatedPose_ * deltaKine;
 
   latestStatePose = latestKine.toVector(kine::Kinematics::Flags::pose);

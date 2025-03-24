@@ -42,6 +42,9 @@ public:
   ///  \li gamma : parameter related to the orthogonality
   TiltEstimator(double alpha, double beta, double gamma, double dt);
 
+  /// Constructor that allows to initialize the estimator's parameters afterwards. Handle with care.
+  TiltEstimator();
+
 protected:
   // constructor that allows to use custom sizes for the state and measurement vectors. Might be useful for other
   // estimators inheriting from this one.
@@ -49,12 +52,14 @@ protected:
 
 public:
   /// @brief initializes the state vector.
+  /// @param xInit The initial state vector
+  virtual void initEstimator(Vector & x);
+
+  /// @brief initializes the state vector.
   /// @param x1 The initial local linear velocity of the IMU.
   /// @param x2_p The initial value of the intermediate estimate of the IMU's tilt.
   /// @param x2 The initial tilt of the IMU.
-  virtual void initEstimator(Vector3 x1 = Vector3::Zero(),
-                             Vector3 x2_prime = Vector3::UnitZ(),
-                             Vector3 x2 = Vector3::UnitZ());
+  virtual void initEstimator(Vector3 & x1, Vector3 & x2_prime, Vector3 & x2);
 
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)

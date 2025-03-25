@@ -16,7 +16,7 @@ set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME})
 
 set(HEADERS
     ${PROJECT_INCLUDE_DIR}/observer/waiko.hpp
-    ${PROJECT_INCLUDE_DIR}/observer/vanyte.hpp
+    ${PROJECT_INCLUDE_DIR}/observer/viking.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-visual-humanoid.hpp
@@ -73,7 +73,7 @@ set(HEADERS
 
 set(SRC
     waiko.cpp
-    vanyte.cpp
+    viking.cpp
     tilt-estimator.cpp
     tilt-estimator-humanoid.cpp
     tilt-visual-humanoid.cpp

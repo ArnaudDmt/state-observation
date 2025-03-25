@@ -4,12 +4,12 @@
 namespace stateObservation
 {
 Waiko::Waiko(double alpha, double beta, double rho, double dt)
-: ZeroDelayObserver(13, 9), iterInfos_(alpha, beta, rho, dt)
+: ZeroDelayObserver(13, 9), currentIter_(alpha, beta, rho, dt)
 {
-  iterInfos_.alpha_ = alpha;
-  iterInfos_.beta_ = beta;
-  iterInfos_.rho_ = rho;
-  iterInfos_.dt_ = dt;
+  currentIter_.alpha_ = alpha;
+  currentIter_.beta_ = beta;
+  currentIter_.rho_ = rho;
+  currentIter_.dt_ = dt;
 }
 
 void Waiko::initEstimator(const Vector3 & pos, const Vector3 & x1, const Vector3 & x2_prime, const Vector4 & R)
@@ -31,7 +31,7 @@ void Waiko::initEstimator(const Vector3 & pos, const Vector3 & x1, const Vector3
   getCurrentIter().updatedPose_ = getCurrentIter().initPose_;
 }
 
-void Waiko::IterInfos::startNewIteration()
+void Waiko::Iteration::startNewIteration()
 {
   if(k_est_ == k_data_)
   {
@@ -44,7 +44,7 @@ void Waiko::IterInfos::startNewIteration()
   }
 }
 
-void Waiko::IterInfos::resetCorrectionTerms()
+void Waiko::Iteration::resetCorrectionTerms()
 {
   sigma_.setZero();
   oriCorrFromOriMeas_.setZero();
@@ -80,7 +80,7 @@ void Waiko::setMeasurement(const ObserverBase::MeasureVector & y_k, TimeIndex k)
   getCurrentIter().saveMeasurement(getMeasurement(getMeasurementTime()));
 }
 
-void Waiko::IterInfos::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
+void Waiko::Iteration::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
 {
   startNewIteration();
 
@@ -104,7 +104,7 @@ void Waiko::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gai
   getCurrentIter().addOrientationMeasurement(oriMeasurement, gain);
 }
 
-void Waiko::IterInfos::addContactPosMeasurement(const Vector3 & posMeasurement,
+void Waiko::Iteration::addContactPosMeasurement(const Vector3 & posMeasurement,
                                                 const Vector3 & imuContactPos,
                                                 double gainDelta,
                                                 double gainSigma)
@@ -123,7 +123,7 @@ void Waiko::IterInfos::addContactPosMeasurement(const Vector3 & posMeasurement,
 ObserverBase::StateVector Waiko::oneStepEstimation_()
 {
   TimeIndex k = this->x_.getTime();
-  IterInfos & currentIter = getCurrentIter();
+  Iteration & currentIter = getCurrentIter();
 
   BOOST_ASSERT(this->y_.size() > 0 && this->y_.checkIndex(k + 1) && "ERROR: The measurement vector is not set");
 
@@ -138,13 +138,13 @@ ObserverBase::StateVector Waiko::oneStepEstimation_()
 
   if(withDelayedOri_)
   {
-    bufferedIters_.push_front(currentIter);
+    bufferedIters_.push_front(std::make_unique<Iteration>(currentIter));
   }
 
   return x_hat;
 }
 
-ObserverBase::StateVector Waiko::IterInfos::replayBufferedIteration()
+ObserverBase::StateVector Waiko::Iteration::replayBufferedIteration()
 {
   Eigen::Matrix<double, 12, 1> dx_hat = computeStateDerivatives();
   integrateState(dx_hat);
@@ -152,7 +152,7 @@ ObserverBase::StateVector Waiko::IterInfos::replayBufferedIteration()
   return updatedState_;
 }
 
-Eigen::Matrix<double, 12, 1> Waiko::IterInfos::computeStateDerivatives()
+Eigen::Matrix<double, 12, 1> Waiko::Iteration::computeStateDerivatives()
 {
   const Vector3 & yv = y_k_.head<3>();
   const Vector3 & ya = y_k_.segment<3>(3);
@@ -175,7 +175,7 @@ Eigen::Matrix<double, 12, 1> Waiko::IterInfos::computeStateDerivatives()
   return dx_hat;
 }
 
-void Waiko::IterInfos::integrateState(const Eigen::Matrix<double, 12, 1> & dx_hat)
+void Waiko::Iteration::integrateState(const Eigen::Matrix<double, 12, 1> & dx_hat)
 {
   const Vector3 & vl = dx_hat.segment<3>(6);
   const Vector3 & omega = dx_hat.segment<3>(9);
@@ -199,7 +199,7 @@ ObserverBase::StateVector Waiko::replayIterationWithDelayedOri(unsigned long del
 {
   BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
 
-  IterInfos & bufferedIter = bufferedIters_.at(delay - 1);
+  Iteration & bufferedIter = *bufferedIters_.at(delay - 1);
   // allows to avoid runing startNewIteration() and thus resetting the correction terms.
   bufferedIter.k_est_--;
 
@@ -216,7 +216,7 @@ ObserverBase::StateVector Waiko::replayIterationsWithDelayedOri(unsigned long de
   BOOST_ASSERT_MSG(getCurrentIter().k_data_ == getCurrentIter().k_est_,
                    "The replay must be called at the beginning or the end of the iteration.");
 
-  IterInfos & bufferedIter = bufferedIters_.at(delay - 1);
+  Iteration & bufferedIter = *bufferedIters_.at(delay - 1);
   StateVector latestState = getCurrentEstimatedState();
 
   Eigen::Ref<Eigen::Matrix<double, 7, 1>> latestStatePose = latestState.tail(7);

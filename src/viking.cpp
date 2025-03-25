@@ -4,12 +4,12 @@
 namespace stateObservation
 {
 Viking::Viking(double alpha, double beta, double rho, double dt)
-: ZeroDelayObserver(13, 9), iterInfos_(alpha, beta, rho, dt)
+: ZeroDelayObserver(13, 9), currentIter_(alpha, beta, rho, dt)
 {
-  iterInfos_.alpha_ = alpha;
-  iterInfos_.beta_ = beta;
-  iterInfos_.rho_ = rho;
-  iterInfos_.dt_ = dt;
+  currentIter_.alpha_ = alpha;
+  currentIter_.beta_ = beta;
+  currentIter_.rho_ = rho;
+  currentIter_.dt_ = dt;
 }
 
 void Viking::initEstimator(const Vector3 & pos, const Vector3 & x1, const Vector3 & x2_prime, const Vector4 & R)
@@ -31,7 +31,7 @@ void Viking::initEstimator(const Vector3 & pos, const Vector3 & x1, const Vector
   getCurrentIter().updatedPose_ = getCurrentIter().initPose_;
 }
 
-void Viking::IterInfos::startNewIteration()
+void Viking::Iteration::startNewIteration()
 {
   if(k_est_ == k_data_)
   {
@@ -44,7 +44,7 @@ void Viking::IterInfos::startNewIteration()
   }
 }
 
-void Viking::IterInfos::resetCorrectionTerms()
+void Viking::Iteration::resetCorrectionTerms()
 {
   sigma_.setZero();
   oriCorrFromMeas_.setZero();
@@ -79,7 +79,7 @@ void Viking::setMeasurement(const ObserverBase::MeasureVector & y_k, TimeIndex k
   getCurrentIter().saveMeasurement(getMeasurement(getMeasurementTime()));
 }
 
-void Viking::IterInfos::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
+void Viking::Iteration::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
 {
   startNewIteration();
 
@@ -100,7 +100,7 @@ void Viking::addOrientationMeasurement(const Matrix3 & oriMeasurement, double ga
   getCurrentIter().addOrientationMeasurement(oriMeasurement, gain);
 }
 
-void Viking::IterInfos::addPosMeasurement(const Vector3 & posMeasurement, double gain)
+void Viking::Iteration::addPosMeasurement(const Vector3 & posMeasurement, double gain)
 {
   startNewIteration();
 
@@ -110,7 +110,7 @@ void Viking::IterInfos::addPosMeasurement(const Vector3 & posMeasurement, double
 ObserverBase::StateVector Viking::oneStepEstimation_()
 {
   TimeIndex k = this->x_.getTime();
-  IterInfos & currentIter = getCurrentIter();
+  Iteration & currentIter = getCurrentIter();
 
   BOOST_ASSERT(this->y_.size() > 0 && this->y_.checkIndex(k + 1) && "ERROR: The measurement vector is not set");
 
@@ -131,7 +131,7 @@ ObserverBase::StateVector Viking::oneStepEstimation_()
   return x_hat;
 }
 
-ObserverBase::StateVector Viking::IterInfos::replayBufferedIteration()
+ObserverBase::StateVector Viking::Iteration::replayBufferedIteration()
 {
   Eigen::Matrix<double, 12, 1> dx_hat = computeStateDerivatives();
   integrateState(dx_hat);
@@ -139,7 +139,7 @@ ObserverBase::StateVector Viking::IterInfos::replayBufferedIteration()
   return updatedState_;
 }
 
-Eigen::Matrix<double, 12, 1> Viking::IterInfos::computeStateDerivatives()
+Eigen::Matrix<double, 12, 1> Viking::Iteration::computeStateDerivatives()
 {
   const Vector3 & yv = y_k_.head<3>();
   const Vector3 & ya = y_k_.segment<3>(3);
@@ -162,7 +162,7 @@ Eigen::Matrix<double, 12, 1> Viking::IterInfos::computeStateDerivatives()
   return dx_hat;
 }
 
-void Viking::IterInfos::integrateState(const Eigen::Matrix<double, 12, 1> & dx_hat)
+void Viking::Iteration::integrateState(const Eigen::Matrix<double, 12, 1> & dx_hat)
 {
   const Vector3 & vl = dx_hat.segment<3>(6);
   const Vector3 & omega = dx_hat.segment<3>(9);
@@ -188,7 +188,7 @@ ObserverBase::StateVector Viking::replayIterationWithDelayedOri(unsigned long de
 {
   BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
 
-  IterInfos & bufferedIter = bufferedIters_.at(delay - 1);
+  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
   // allows to avoid runing startNewIteration() and thus resetting the correction terms.
   bufferedIter.k_est_--;
 
@@ -207,7 +207,7 @@ ObserverBase::StateVector Viking::replayIterationsWithDelayedOri(unsigned long d
   BOOST_ASSERT_MSG(getCurrentIter().k_data_ == getCurrentIter().k_est_,
                    "The replay must be called at the beginning or the end of the iteration.");
 
-  IterInfos & bufferedIter = bufferedIters_.at(delay - 1);
+  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
   StateVector latestState = getCurrentEstimatedState();
 
   Eigen::Ref<Eigen::Matrix<double, 7, 1>> latestStatePose = latestState.tail(7);
@@ -234,7 +234,7 @@ ObserverBase::StateVector Viking::replayIterationWithDelayedPosition(unsigned lo
 {
   BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
 
-  IterInfos & bufferedIter = bufferedIters_.at(delay - 1);
+  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
   // allows to avoid runing startNewIteration() and thus resetting the correction terms.
   bufferedIter.k_est_--;
 
@@ -253,7 +253,7 @@ ObserverBase::StateVector Viking::replayIterationsWithDelayedPosition(unsigned l
   BOOST_ASSERT_MSG(getCurrentIter().k_data_ == getCurrentIter().k_est_,
                    "The replay must be called at the beginning or the end of the iteration.");
 
-  IterInfos & bufferedIter = bufferedIters_.at(delay - 1);
+  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
   StateVector latestState = getCurrentEstimatedState();
 
   Eigen::Ref<Eigen::Matrix<double, 7, 1>> latestStatePose = latestState.tail(7);

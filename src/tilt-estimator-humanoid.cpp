@@ -2,6 +2,8 @@
 
 namespace stateObservation
 {
+TiltEstimatorHumanoid::TiltEstimatorHumanoid() : TiltEstimator() {}
+
 TiltEstimatorHumanoid::TiltEstimatorHumanoid(double alpha, double beta, double gamma, double dt)
 : TiltEstimator(alpha, beta, gamma, dt)
 {

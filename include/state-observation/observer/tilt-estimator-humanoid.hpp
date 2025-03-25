@@ -36,6 +36,9 @@ public:
   ///  \li gamma : parameter related to the orthogonality
   TiltEstimatorHumanoid(double alpha, double beta, double gamma, double dt);
 
+  /// Constructor that allows to initialize the estimator's parameters afterwards. Handle with care.
+  TiltEstimatorHumanoid();
+
 protected:
   // constructor that allows to use custom sizes for the state and measurement vectors. Might be useful for other
   // estimators inheriting from this one.

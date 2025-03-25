@@ -31,9 +31,9 @@ class STATE_OBSERVATION_DLLAPI Waiko : public ZeroDelayObserver
   typedef kine::Orientation Orientation;
 
 protected:
-  struct IterInfos
+  struct Iteration
   {
-    IterInfos(double alpha, double beta, double rho, double dt) : dt_(dt), alpha_(alpha), beta_(beta), rho_(rho) {}
+    Iteration(double alpha, double beta, double rho, double dt) : dt_(dt), alpha_(alpha), beta_(beta), rho_(rho) {}
 
     // add an orientation measurement of the IMU's frame in the world frame to the correction
     void addOrientationMeasurement(const Matrix3 & meas, double gain);
@@ -90,7 +90,7 @@ protected:
   };
 
 private:
-  IterInfos iterInfos_;
+  Iteration currentIter_;
 
 public:
   /// The constructor
@@ -110,9 +110,9 @@ public:
   ///  \li dt  : capacity of the iteration buffer
   Waiko(double alpha, double beta, double rho, double dt, unsigned long bufferCapacity);
 
-  inline IterInfos & getCurrentIter()
+  inline Iteration & getCurrentIter()
   {
-    return iterInfos_;
+    return currentIter_;
   }
   /// @brief initializes the state vector.
   /// @param x1 The initial local linear velocity of the IMU.
@@ -222,7 +222,7 @@ public:
     return getCurrentIter().rho_;
   }
 
-  inline const boost::circular_buffer<IterInfos> & getIterationsBuffer() const
+  inline const boost::circular_buffer<std::unique_ptr<Iteration>> & getIterationsBuffer() const
   {
     return bufferedIters_;
   }
@@ -259,7 +259,7 @@ protected:
   /// variables used for the computation
   Vector3 x1_;
 
-  boost::circular_buffer<IterInfos> bufferedIters_;
+  boost::circular_buffer<std::unique_ptr<Iteration>> bufferedIters_;
 };
 
 } // namespace stateObservation

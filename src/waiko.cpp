@@ -138,7 +138,7 @@ ObserverBase::StateVector Waiko::oneStepEstimation_()
 
   if(withDelayedOri_)
   {
-    bufferedIters_.push_front(std::make_unique<Iteration>(currentIter));
+    bufferedIters_.push_front(currentIter);
   }
 
   return x_hat;
@@ -199,7 +199,7 @@ ObserverBase::StateVector Waiko::replayIterationWithDelayedOri(unsigned long del
 {
   BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
 
-  Iteration & bufferedIter = *bufferedIters_.at(delay - 1);
+  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
   // allows to avoid runing startNewIteration() and thus resetting the correction terms.
   bufferedIter.k_est_--;
 
@@ -216,7 +216,7 @@ ObserverBase::StateVector Waiko::replayIterationsWithDelayedOri(unsigned long de
   BOOST_ASSERT_MSG(getCurrentIter().k_data_ == getCurrentIter().k_est_,
                    "The replay must be called at the beginning or the end of the iteration.");
 
-  Iteration & bufferedIter = *bufferedIters_.at(delay - 1);
+  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
   StateVector latestState = getCurrentEstimatedState();
 
   Eigen::Ref<Eigen::Matrix<double, 7, 1>> latestStatePose = latestState.tail(7);

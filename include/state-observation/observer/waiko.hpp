@@ -222,7 +222,7 @@ public:
     return getCurrentIter().rho_;
   }
 
-  inline const boost::circular_buffer<std::unique_ptr<Iteration>> & getIterationsBuffer() const
+  inline const boost::circular_buffer<Iteration> & getIterationsBuffer() const
   {
     return bufferedIters_;
   }
@@ -259,7 +259,7 @@ protected:
   /// variables used for the computation
   Vector3 x1_;
 
-  boost::circular_buffer<std::unique_ptr<Iteration>> bufferedIters_;
+  boost::circular_buffer<Iteration> bufferedIters_;
 };
 
 } // namespace stateObservation

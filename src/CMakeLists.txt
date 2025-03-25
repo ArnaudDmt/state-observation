@@ -78,7 +78,6 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/examples/offline-model-base-flex-estimation.hxx)
 
 set(SRC
-    delayed-measurements-observer.cpp
     waiko.cpp
     viking.cpp
     tilt-estimator.cpp

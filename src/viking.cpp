@@ -3,15 +3,6 @@
 
 namespace stateObservation
 {
-Viking::Viking(double alpha, double beta, double rho, double dt)
-: ZeroDelayObserver(13, 9), currentIter_(alpha, beta, rho, dt)
-{
-  currentIter_.alpha_ = alpha;
-  currentIter_.beta_ = beta;
-  currentIter_.rho_ = rho;
-  currentIter_.dt_ = dt;
-}
-
 void Viking::initEstimator(const Vector3 & pos, const Vector3 & x1, const Vector3 & x2_prime, const Vector4 & R)
 {
   Eigen::VectorXd initStateVector = Eigen::VectorXd::Zero(getStateSize());
@@ -21,34 +12,19 @@ void Viking::initEstimator(const Vector3 & pos, const Vector3 & x1, const Vector
   initStateVector.segment<3>(6) = pos;
   initStateVector.tail(4) = R;
 
-  setState(initStateVector, 0);
-
-  getCurrentIter().initState_ = initStateVector;
-  getCurrentIter().updatedState_ = initStateVector;
-
-  getCurrentIter().initPose_.position = pos;
-  getCurrentIter().initPose_.orientation.fromVector4(R);
-  getCurrentIter().updatedPose_ = getCurrentIter().initPose_;
+  initEstimator(initStateVector);
 }
 
-void Viking::Iteration::startNewIteration()
+void Viking::startNewIteration_()
 {
   if(k_est_ == k_data_)
   {
     ++k_data_;
 
-    initState_ = updatedState_;
-    initPose_ = updatedPose_;
+    IterationViking newIter = IterationViking(getCurrentEstimatedState(), stateKinematics_, dt_);
 
-    resetCorrectionTerms();
+    bufferedIters_.push_front(std::move(newIter));
   }
-}
-
-void Viking::Iteration::resetCorrectionTerms()
-{
-  sigma_.setZero();
-  oriCorrFromMeas_.setZero();
-  posCorrFromMeas_.setZero();
 }
 
 void Viking::setMeasurement(const Vector3 & yv_k,
@@ -57,8 +33,6 @@ void Viking::setMeasurement(const Vector3 & yv_k,
                             TimeIndex k,
                             bool resetImuLocVelHat)
 {
-  getCurrentIter().startNewIteration();
-
   ObserverBase::MeasureVector y_k(getMeasureSize());
   y_k << yv_k, ya_k, yg_k;
 
@@ -70,58 +44,34 @@ void Viking::setMeasurement(const Vector3 & yv_k,
   }
 }
 
-void Viking::setMeasurement(const ObserverBase::MeasureVector & y_k, TimeIndex k)
+void Viking::addContactPosMeasurement(const Vector3 & posMeasurement,
+                                      const Vector3 & imuContactPos,
+                                      double gainDelta,
+                                      double gainSigma)
 {
-  getCurrentIter().startNewIteration();
-
-  ZeroDelayObserver::setMeasurement(y_k, k);
-
-  getCurrentIter().saveMeasurement(getMeasurement(getMeasurementTime()));
-}
-
-void Viking::Iteration::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
-{
-  startNewIteration();
-
-  Matrix3 rot_diff = oriMeasurement * initPose_.orientation.toMatrix3().transpose();
-  Vector3 rot_diff_vec = kine::skewSymmetricToRotationVector(rot_diff - rot_diff.transpose()) / 2.0;
-
-  oriCorrFromMeas_ -= gain * initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
-                      * (Vector3::UnitZ()).transpose() * rot_diff_vec;
-}
-
-void Viking::addPosMeasurement(const Vector3 & posMeasurement, double gain)
-{
-  getCurrentIter().addPosMeasurement(posMeasurement, gain);
+  startNewIteration_();
+  getCurrentIter().addContactPosMeasurement(posMeasurement, imuContactPos, gainDelta, gainSigma);
 }
 
 void Viking::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
 {
+  startNewIteration_();
   getCurrentIter().addOrientationMeasurement(oriMeasurement, gain);
-}
-
-void Viking::Iteration::addPosMeasurement(const Vector3 & posMeasurement, double gain)
-{
-  startNewIteration();
-
-  posCorrFromMeas_ += gain * (posMeasurement - initPose_.position());
 }
 
 ObserverBase::StateVector Viking::oneStepEstimation_()
 {
   TimeIndex k = this->x_.getTime();
-  Iteration & currentIter = getCurrentIter();
+  IterationViking & currentIter = getCurrentIter();
 
   BOOST_ASSERT(this->y_.size() > 0 && this->y_.checkIndex(k + 1) && "ERROR: The measurement vector is not set");
 
   ObserverBase::StateVector x_hat = getCurrentEstimatedState();
 
-  Eigen::Matrix<double, 12, 1> dx_hat = currentIter.computeStateDerivatives();
-  currentIter.integrateState(dx_hat);
+  setState(currentIter.runIteration_(), k + 1);
+  stateKinematics_ = currentIter.finalPose_;
 
-  setState(currentIter.updatedState_, k + 1);
-
-  currentIter.k_est_++;
+  k_est_++;
 
   if(withDelayedOri_)
   {
@@ -131,19 +81,52 @@ ObserverBase::StateVector Viking::oneStepEstimation_()
   return x_hat;
 }
 
-ObserverBase::StateVector Viking::Iteration::replayBufferedIteration()
+ObserverBase::StateVector Viking::replayIterationWithDelayedOri(unsigned long delay, const Matrix3 & meas, double gain)
 {
-  Eigen::Matrix<double, 12, 1> dx_hat = computeStateDerivatives();
-  integrateState(dx_hat);
+  BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
 
-  return updatedState_;
+  IterationViking & bufferedIter = bufferedIters_.at(delay - 1);
+
+  bufferedIter.addOrientationMeasurement(meas, gain);
+
+  return bufferedIter.runIteration_();
 }
 
-Eigen::Matrix<double, 12, 1> Viking::Iteration::computeStateDerivatives()
+ObserverBase::StateVector Viking::replayIterationsWithDelayedOri(unsigned long delay, const Matrix3 & meas, double gain)
 {
-  const Vector3 & yv = y_k_.head<3>();
-  const Vector3 & ya = y_k_.segment<3>(3);
-  const Vector3 & yg = y_k_.segment<3>(6);
+  BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
+  BOOST_ASSERT_MSG(k_data_ == k_est_, "The replay must be called at the beginning or the end of the iteration.");
+
+  IterationViking & bufferedIter = bufferedIters_.at(delay - 1);
+  StateVector latestState = getCurrentEstimatedState();
+
+  Eigen::Ref<Eigen::Matrix<double, 7, 1>> latestStatePose = latestState.tail(7);
+
+  kine::Kinematics & latestKine = getCurrentIter().finalPose_;
+
+  // compute the delta between the pose at the buffered iteration and the most recent one.
+  kine::Kinematics deltaKine = bufferedIter.finalPose_.getInverse() * latestKine;
+
+  // we add the delayed orientation measurement to the inputs of the buffered iteration and recompute the state update
+  // (bufferedIter.updatedPose_ is thus now the new one)
+  replayIterationWithDelayedOri(delay, meas, gain);
+
+  // apply the pose delta to the updated pose of the buffered iteration
+  latestKine = bufferedIter.finalPose_ * deltaKine;
+
+  latestStatePose = latestKine.toVector(kine::Kinematics::Flags::pose);
+
+  setCurrentState(latestState);
+  getCurrentIter().finalState_ = latestState;
+
+  return latestState;
+}
+
+Vector IterationViking::computeStateDerivatives_()
+{
+  const Vector3 & yv = y_.head<3>();
+  const Vector3 & ya = y_.segment<3>(3);
+  const Vector3 & yg = y_.segment<3>(6);
 
   const Eigen::Ref<Vector3> x1_hat = initState_.segment<3>(0);
   const Eigen::Ref<Vector3> x2_hat_prime = initState_.segment<3>(3);
@@ -152,130 +135,57 @@ Eigen::Matrix<double, 12, 1> Viking::Iteration::computeStateDerivatives()
   dx_hat.segment<3>(0) = x1_hat.cross(yg) - cst::gravityConstant * x2_hat_prime + ya + alpha_ * (yv - x1_hat); // x1
   dx_hat.segment<3>(3) = x2_hat_prime.cross(yg) - beta_ * (yv - x1_hat); // x2_prime
 
-  dx_hat.segment<3>(6) = (x1_hat - posCorrFromMeas_); // using p_dot = R(v_l) = R(x1 - delta)
+  dx_hat.segment<3>(6) = (x1_hat - posCorrFromContactPos_); // using p_dot = R(v_l) = R(x1 - delta)
 
-  sigma_ =
-      rho_ * (initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()).cross(x2_hat_prime) + oriCorrFromMeas_;
+  sigma_ = rho_ * (initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()).cross(x2_hat_prime)
+           + oriCorrFromContactPos_ + oriCorrFromOriMeas_;
 
   dx_hat.segment<3>(9) = (yg - sigma_); // using R_dot = RS(w_l) = RS(yg-sigma)
 
   return dx_hat;
 }
 
-void Viking::Iteration::integrateState(const Eigen::Matrix<double, 12, 1> & dx_hat)
+void IterationViking::integrateState_(const Vector & dx_hat)
 {
   const Vector3 & vl = dx_hat.segment<3>(6);
   const Vector3 & omega = dx_hat.segment<3>(9);
 
   // we copy the state and pose before integration to keep them in case we need to replay this iteration with new
   // measurements
-  updatedState_ = initState_;
-  updatedPose_ = initPose_;
+  finalState_ = initState_;
+  finalPose_ = initPose_;
 
   // discrete-time integration of x1 and x2
-  updatedState_.segment<6>(0) += dx_hat.segment<6>(0) * dt_;
+  finalState_.segment<6>(0) += dx_hat.segment<6>(0) * dt_;
 
   // discrete-time integration of p and R
-  updatedPose_.SE3_integration(vl * dt_, omega * dt_);
+  finalPose_.SE3_integration(vl * dt_, omega * dt_);
 
-  updatedState_.segment<3>(6) = updatedPose_.position();
-  updatedState_.tail(4) = updatedPose_.orientation.toVector4();
+  finalState_.segment<3>(6) = finalPose_.position();
+  finalState_.tail(4) = finalPose_.orientation.toVector4();
 }
 
-ObserverBase::StateVector Viking::replayIterationWithDelayedOri(unsigned long delay,
-                                                                const Matrix3 & oriMeas,
-                                                                double gain)
+void IterationViking::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
 {
-  BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
+  Matrix3 rot_diff = oriMeasurement * initPose_.orientation.toMatrix3().transpose();
+  Vector3 rot_diff_vec = kine::skewSymmetricToRotationVector(rot_diff - rot_diff.transpose()) / 2.0;
 
-  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
-  // allows to avoid runing startNewIteration() and thus resetting the correction terms.
-  bufferedIter.k_est_--;
-
-  bufferedIter.addOrientationMeasurement(oriMeas, gain);
-
-  bufferedIter.k_est_++;
-
-  return bufferedIter.replayBufferedIteration();
+  oriCorrFromOriMeas_ -= gain * initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
+                         * (Vector3::UnitZ()).transpose() * rot_diff_vec;
 }
 
-ObserverBase::StateVector Viking::replayIterationsWithDelayedOri(unsigned long delay,
-                                                                 const Matrix3 & oriMeas,
-                                                                 double gain)
+void IterationViking::addContactPosMeasurement(const Vector3 & posMeasurement,
+                                               const Vector3 & imuContactPos,
+                                               double gainDelta,
+                                               double gainSigma)
 {
-  BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
-  BOOST_ASSERT_MSG(getCurrentIter().k_data_ == getCurrentIter().k_est_,
-                   "The replay must be called at the beginning or the end of the iteration.");
+  oriCorrFromContactPos_ +=
+      gainSigma
+      * (initPose_.orientation.toMatrix3().transpose() * (posMeasurement - initPose_.position())).cross(imuContactPos);
 
-  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
-  StateVector latestState = getCurrentEstimatedState();
-
-  Eigen::Ref<Eigen::Matrix<double, 7, 1>> latestStatePose = latestState.tail(7);
-
-  kine::Kinematics & latestKine = getCurrentIter().updatedPose_;
-
-  kine::Kinematics deltaKine = bufferedIter.updatedPose_.getInverse() * latestKine;
-
-  // we add the delayed orientation measurement to the inputs of the buffered iteration and recompute the state update.
-  replayIterationWithDelayedOri(delay, oriMeas, gain);
-  latestKine = bufferedIter.updatedPose_ * deltaKine;
-
-  latestStatePose = latestKine.toVector(kine::Kinematics::Flags::pose);
-
-  setCurrentState(latestState);
-  getCurrentIter().updatedState_ = latestState;
-
-  return latestState;
-}
-
-ObserverBase::StateVector Viking::replayIterationWithDelayedPosition(unsigned long delay,
-                                                                     const Matrix3 & posMeas,
-                                                                     double gain)
-{
-  BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
-
-  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
-  // allows to avoid runing startNewIteration() and thus resetting the correction terms.
-  bufferedIter.k_est_--;
-
-  bufferedIter.addPosMeasurement(posMeas, gain);
-
-  bufferedIter.k_est_++;
-
-  return bufferedIter.replayBufferedIteration();
-}
-
-ObserverBase::StateVector Viking::replayIterationsWithDelayedPosition(unsigned long delay,
-                                                                      const Matrix3 & posMeas,
-                                                                      double gain)
-{
-  BOOST_ASSERT_MSG(withDelayedOri_, "The mode allowing to deal with delayed orientations has not been switched on.");
-  BOOST_ASSERT_MSG(getCurrentIter().k_data_ == getCurrentIter().k_est_,
-                   "The replay must be called at the beginning or the end of the iteration.");
-
-  Iteration & bufferedIter = bufferedIters_.at(delay - 1);
-  StateVector latestState = getCurrentEstimatedState();
-
-  Eigen::Ref<Eigen::Matrix<double, 7, 1>> latestStatePose = latestState.tail(7);
-
-  kine::Kinematics & latestKine = getCurrentIter().updatedPose_;
-
-  // compute the delta between the pose at the buffered iteration and the most recent one.
-  kine::Kinematics deltaKine = bufferedIter.updatedPose_.getInverse() * latestKine;
-
-  // we add the delayed position measurement to the inputs of the buffered iteration and recompute the state update
-  // (bufferedIter.updatedPose_ is thus now the new one)
-  replayIterationWithDelayedPosition(delay, posMeas, gain);
-
-  // apply the pose delta to the updated pose of the buffered iteration
-  latestKine = bufferedIter.updatedPose_ * deltaKine;
-
-  latestStatePose = latestKine.toVector(kine::Kinematics::Flags::pose);
-
-  setCurrentState(latestState);
-  getCurrentIter().updatedState_ = latestState;
-
-  return latestState;
+  posCorrFromContactPos_ +=
+      gainDelta
+      * (imuContactPos - initPose_.orientation.toMatrix3().transpose() * (posMeasurement - initPose_.position()));
 }
 
 } // namespace stateObservation

@@ -24,16 +24,21 @@ struct Iteration
 {
   Iteration(const Vector & initState, double dt) : dt_(dt), initState_(initState) {}
 
-  virtual Vector runIteration_() = 0;
-  virtual void startNewIteration_() = 0;
+  virtual Vector & runIteration_() = 0;
+
+  inline double getSamplingTime()
+  {
+    return dt_;
+  }
 
   /// Iteration's sampling time
   double dt_;
-
   // state at time k-1
   ObserverBase::StateVector initState_;
   // updated state (at the end of the iteration)
   ObserverBase::StateVector finalState_;
+  /// Container for the measurements.
+  Vector y_;
 };
 
 /**
@@ -50,7 +55,7 @@ public:
   ///  \li m : size of the measurements vector
   ///  \li dt  : timestep between each iteration
   ///  \li p : size of the input vector
-  DelayedMeasurementObserver(Index n, Index m, double dt, Index p = 0);
+  DelayedMeasurementObserver(double dt, Index n, Index m, Index p = 0);
 
   /// The constructor
   ///  \li n : size of the state vector
@@ -58,11 +63,11 @@ public:
   ///  \li p : size of the input vector
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer
-  DelayedMeasurementObserver(Index n, Index m, double dt, unsigned long bufferCapacity, Index p = 0);
+  DelayedMeasurementObserver(double dt, Index n, Index m, unsigned long bufferCapacity, Index p = 0);
 
   inline IterationT & getCurrentIter()
   {
-    return *bufferedIters_.front();
+    return bufferedIters_.front();
   }
   /// @brief initializes the state vector.
   /// @param x The initial state vector
@@ -73,18 +78,20 @@ public:
   /// @param k the time index
   void setMeasurement(const Vector & y, TimeIndex k) override;
 
+  virtual void startNewIteration_() = 0;
+
   /// set the sampling time of the measurements
-  void setBufferCapacity(unsigned long bufferCapacity)
+  inline void setBufferCapacity(unsigned long bufferCapacity)
   {
     bufferedIters_.set_capacity(bufferCapacity);
   }
 
   /// set the sampling time of the measurements
-  void setSamplingTime(const double dt)
+  inline void setSamplingTime(const double dt)
   {
     dt_ = dt;
   }
-  double getSamplingTime()
+  inline double getSamplingTime()
   {
     return dt_;
   }
@@ -92,25 +99,33 @@ public:
 protected:
   virtual StateVector oneStepEstimation_() = 0;
 
+  /// @brief Get the Current Estimated State
+  /// @return ObserverBase::StateVector
+  virtual ObserverBase::StateVector getCurrentEstimatedState() const;
+
+  void setCurrentState(const ObserverBase::StateVector & x_k);
+
   inline const boost::circular_buffer<std::unique_ptr<IterationT>> & getIterationsBuffer() const
   {
     return bufferedIters_;
   }
 
+  bool stateIsSet() const;
+
 protected:
   /// Sampling time
   double dt_;
   /// The state estimation of the observer (only one state is recorded)
-  Vector x_;
+  IndexedVector x_;
   /// Container for the measurements.
-  Vector y_;
+  IndexedVectorArray y_;
   /// Container for the inputs.
-  Vector u_;
+  IndexedVectorArray u_;
 
   TimeIndex k_est_ = 0; // time index of the last estimation
   TimeIndex k_data_ = 0; // time index of the current measurements
 
-  boost::circular_buffer<std::unique_ptr<IterationT>> bufferedIters_;
+  boost::circular_buffer<IterationT> bufferedIters_;
 };
 
 } // namespace stateObservation

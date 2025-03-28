@@ -24,6 +24,12 @@ struct Iteration
 {
   Iteration(const Vector & initState, double dt) : dt_(dt), initState_(initState) {}
 
+  /// Default constructor
+  Iteration() = delete;
+
+  /// Default destructor
+  virtual ~Iteration(){};
+
   virtual Vector & runIteration_() = 0;
 
   inline double getSamplingTime()
@@ -65,6 +71,12 @@ public:
   ///  \li bufferCapacity  : capacity of the iteration buffer
   DelayedMeasurementObserver(double dt, Index n, Index m, unsigned long bufferCapacity, Index p = 0);
 
+  /// Default constructor
+  DelayedMeasurementObserver() = delete;
+
+  /// Destructor
+  virtual ~DelayedMeasurementObserver(){};
+
   inline IterationT & getCurrentIter()
   {
     return bufferedIters_.front();
@@ -73,15 +85,66 @@ public:
   /// @param x The initial state vector
   virtual void initEstimator(const Vector & x);
 
+  /// @brief Set the value of the state vector at time index k.
+  ///
+  /// @details This replaces the current state estimate. If k < current time then the measurements and the inputs
+  /// are also cleared. Otherwise only past measurements and inputs are removed.
+  ///
+  /// @param x_k
+  /// @param k
+  virtual void setState(const ObserverBase::StateVector & x_k, TimeIndex k) override;
+
+  /// @brief getestimated State
+  /// @param k The time index of the expected state value
+  /// @return ObserverBase::StateVector
+  virtual ObserverBase::StateVector getEstimatedState(TimeIndex k) override;
+
+  /// @brief Get the Current Estimated State
+  /// @return ObserverBase::StateVector
+  virtual ObserverBase::StateVector getCurrentEstimatedState() const;
+
   /// @brief sets the measurement
   /// @param y the measurement vector
   /// @param k the time index
   void setMeasurement(const Vector & y, TimeIndex k) override;
 
+  /// Get the measurement of the time index k
+  Vector getMeasurement(TimeIndex k) const;
+
+  /// Get the time index of the last given measurement
+  virtual TimeIndex getMeasurementTime() const;
+
+  /// Remove all the given values of the measurements
+  virtual void clearMeasurements() override;
+
+  /// Set the value of the input vector at time index k. The
+  /// inputs have to be inserted in chronological order without gaps.
+  /// If there is no input in the system (p==0), this instruction has no effect
+  virtual void setInput(const ObserverBase::InputVector & u_k, TimeIndex k) override;
+
+  /// Remove all the given values of the inputs
+  /// If there is no input, this instruction has no effect
+  virtual void clearInputs() override;
+
+  /// @brief Modify the value of the state vector at the current time.
+  ///
+  /// @param x_k The new state value
+  ///
+  /// This method should NOT be used for first initialization
+  /// Use setState() instead.
+  ///
+  /// Calling this function will not affect the measurements nor the input vectors. It will only replace the current
+  /// state/estimate with a new one
+  void setCurrentState(const ObserverBase::StateVector & x_k);
+
+  /// @brief  Removes the state estimation
+  /// @details inherited from ObserverBase
+  virtual void clearStates() override;
+
   virtual void startNewIteration_() = 0;
 
   /// set the sampling time of the measurements
-  inline void setBufferCapacity(unsigned long bufferCapacity)
+  inline virtual void setBufferCapacity(unsigned long bufferCapacity)
   {
     bufferedIters_.set_capacity(bufferCapacity);
   }
@@ -96,14 +159,11 @@ public:
     return dt_;
   }
 
+  /// Get the value of the time index of the current state estimation
+  virtual TimeIndex getCurrentTime() const;
+
 protected:
   virtual StateVector oneStepEstimation_() = 0;
-
-  /// @brief Get the Current Estimated State
-  /// @return ObserverBase::StateVector
-  virtual ObserverBase::StateVector getCurrentEstimatedState() const;
-
-  void setCurrentState(const ObserverBase::StateVector & x_k);
 
   inline const boost::circular_buffer<std::unique_ptr<IterationT>> & getIterationsBuffer() const
   {

@@ -9,13 +9,13 @@ struct IterationComplementaryFilter : public Iteration
 {
   IterationComplementaryFilter(const Vector & initState, double dt) : Iteration(initState, dt) {}
 
-  inline virtual Vector & runIteration_() override
-  {
-    Vector dx_hat = computeStateDerivatives_();
-    integrateState_(dx_hat);
+  /// Default constructor
+  IterationComplementaryFilter() = delete;
 
-    return finalState_;
-  }
+  /// Default destructor
+  virtual ~IterationComplementaryFilter(){};
+
+  virtual Vector & runIteration_() override = 0;
 
   virtual Vector computeStateDerivatives_() = 0;
   /// @brief integrates the given dx into the given state.
@@ -46,6 +46,11 @@ public:
   : DelayedMeasurementObserver<IterationT>(dt, n, m, bufferCapacity, p)
   {
   }
+
+  DelayedMeasurementComplemFilter() = delete;
+
+  /// Destructor
+  virtual ~DelayedMeasurementComplemFilter(){};
 
 protected:
   virtual Vector oneStepEstimation_() = 0;

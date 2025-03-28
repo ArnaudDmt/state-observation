@@ -13,7 +13,7 @@
 #ifndef VikingHPP
 #define VikingHPP
 
-#include "state-observation/observer/delayed-measurement-complem-filter.hpp"
+#include "state-observation/observer/delayed-measurements-complem-filter.hpp"
 #include <state-observation/tools/rigid-body-kinematics.hpp>
 
 namespace stateObservation
@@ -28,15 +28,21 @@ namespace stateObservation
 struct IterationViking : public IterationComplementaryFilter
 {
   IterationViking(const Vector & initState, const kine::Kinematics & initPose, double dt)
-  : IterationComplementaryFilter(initState, dt)
+  : IterationComplementaryFilter(initState, dt), initPose_(initPose)
   {
-    initPose_ = initPose;
   }
 
-  virtual Vector computeStateDerivatives_() override;
+  /// Default constructor
+  IterationViking() = delete;
+
+  virtual ~IterationViking(){};
+
+  Vector computeStateDerivatives_() override;
   /// @brief integrates the given dx into the given state.
   /// @param dx_hat The state increment to integrate
-  virtual void integrateState_(const Vector & dx_hat) override;
+  void integrateState_(const Vector & dx_hat) override;
+
+  Vector & runIteration_() override;
 
   /// @brief adds the correction from a direct measurement of the IMU's frame orientation.
   /// @param meas measured orientation of the IMU's frame in the world
@@ -96,7 +102,13 @@ public:
   ///  \li rho  : parameter related to the orthogonality
   ///  \li dt  : timestep between each iteration
   ///  \li dt  : capacity of the iteration buffer
-  Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity);
+  Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity)
+  : DelayedMeasurementComplemFilter<IterationViking>(dt, 13, 9, bufferCapacity)
+  {
+    setAlpha(alpha);
+    setBeta(beta);
+    setRho(rho);
+  }
 
   /// @brief initializes the state vector.
   /// @param x1 The initial local linear velocity of the IMU.
@@ -154,13 +166,13 @@ public:
   /// @param gain weight of the correction
   StateVector replayIterationsWithDelayedOri(unsigned long delay, const Matrix3 & meas, double gain);
 
-  Vector3 getVirtualLocalVelocityMeasurement()
-  {
-    return x1_;
-  }
+  // Vector3 getVirtualLocalVelocityMeasurement()
+  // {
+  //   return x1_;
+  // }
 
   /// set the sampling time of the measurements
-  virtual void setBufferCapacity(unsigned long bufferCapacity)
+  void setBufferCapacity(unsigned long bufferCapacity) override
   {
     withDelayedOri_ = true;
     bufferedIters_.set_capacity(bufferCapacity);
@@ -168,16 +180,6 @@ public:
   double getWithDelayedOri() const
   {
     return withDelayedOri_;
-  }
-
-  /// set the sampling time of the measurements
-  virtual void setSamplingTime(const double dt)
-  {
-    getCurrentIter().dt_ = dt;
-  }
-  double getSamplingTime()
-  {
-    return getCurrentIter().dt_;
   }
 
   /// set the gain of x1_hat variable
@@ -244,8 +246,8 @@ protected:
   // indicates if the estimator will be used along a source of delayed orientation measurements.
   bool withDelayedOri_;
 
-  /// variables used for the computation
-  Vector3 x1_;
+  // /// variables used for the computation
+  // Vector3 x1_;
 
   kine::Kinematics stateKinematics_;
 

@@ -5,23 +5,6 @@
 
 namespace stateObservation
 {
-struct IterationComplementaryFilter : public Iteration
-{
-  IterationComplementaryFilter(const Vector & initState, double dt) : Iteration(initState, dt) {}
-
-  /// Default constructor
-  IterationComplementaryFilter() = delete;
-
-  /// Default destructor
-  virtual ~IterationComplementaryFilter(){};
-
-  virtual Vector & runIteration_() override = 0;
-
-  virtual Vector computeStateDerivatives_() = 0;
-  /// @brief integrates the given dx into the given state.
-  /// @param dx_hat The state increment to integrate
-  virtual void integrateState_(const Vector & dx_hat) = 0;
-};
 
 template<typename IterationT>
 class STATE_OBSERVATION_DLLAPI DelayedMeasurementComplemFilter : public DelayedMeasurementObserver<IterationT>

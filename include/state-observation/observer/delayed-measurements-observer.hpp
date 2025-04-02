@@ -20,33 +20,6 @@
 namespace stateObservation
 {
 
-struct Iteration
-{
-  Iteration(const Vector & initState, double dt) : dt_(dt), initState_(initState) {}
-
-  /// Default constructor
-  Iteration() = delete;
-
-  /// Default destructor
-  virtual ~Iteration(){};
-
-  virtual Vector & runIteration_() = 0;
-
-  inline double getSamplingTime()
-  {
-    return dt_;
-  }
-
-  /// Iteration's sampling time
-  double dt_;
-  // state at time k-1
-  ObserverBase::StateVector initState_;
-  // updated state (at the end of the iteration)
-  ObserverBase::StateVector finalState_;
-  /// Container for the measurements.
-  Vector y_;
-};
-
 /**
  * \class  DelayedMeasurementObserver
  * \brief

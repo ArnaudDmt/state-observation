@@ -13,29 +13,21 @@
 #ifndef VikingHPP
 #define VikingHPP
 
-#include "state-observation/observer/delayed-measurements-complem-filter.hpp"
+#include <state-observation/observer/delayed-measurements-complem-filter.hpp>
+#include <state-observation/tools/delayed-measurements-observer-iteration.hpp>
 #include <state-observation/tools/rigid-body-kinematics.hpp>
 
 namespace stateObservation
 {
 
-/**
- * \class  Viking
- * \brief  Version of the Tilt Estimator for humanoid robots.
- *
- */
-
 struct IterationViking : public IterationComplementaryFilter
 {
-  IterationViking(const Vector & initState, const kine::Kinematics & initPose, double dt)
-  : IterationComplementaryFilter(initState, dt), initPose_(initPose)
-  {
-  }
+  IterationViking(const Vector & initState, const kine::Kinematics & initPose, double dt);
 
   /// Default constructor
   IterationViking() = delete;
 
-  virtual ~IterationViking(){};
+  virtual ~IterationViking();
 
   Vector computeStateDerivatives_() override;
   /// @brief integrates the given dx into the given state.
@@ -79,6 +71,12 @@ public:
   TimeIndex k_contacts_ = 0; // time index of the contact measurements
 };
 
+/**
+ * \class  Viking
+ * \brief  Version of the Tilt Estimator for humanoid robots.
+ *
+ */
+
 class STATE_OBSERVATION_DLLAPI Viking : public DelayedMeasurementComplemFilter<IterationViking>
 {
 public:
@@ -88,12 +86,7 @@ public:
   ///  \li beta  : parameter related to the fast convergence of the tilt
   ///  \li rho  : parameter related to the orthogonality
   ///  \li dt  : timestep between each iteration
-  Viking(double dt, double alpha, double beta, double rho) : DelayedMeasurementComplemFilter<IterationViking>(dt, 13, 9)
-  {
-    setAlpha(alpha);
-    setBeta(beta);
-    setRho(rho);
-  }
+  Viking(double dt, double alpha, double beta, double rho);
 
   /// The constructor
   ///  \li alpha : parameter related to the convergence of the linear velocity
@@ -102,13 +95,11 @@ public:
   ///  \li rho  : parameter related to the orthogonality
   ///  \li dt  : timestep between each iteration
   ///  \li dt  : capacity of the iteration buffer
-  Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity)
-  : DelayedMeasurementComplemFilter<IterationViking>(dt, 13, 9, bufferCapacity)
-  {
-    setAlpha(alpha);
-    setBeta(beta);
-    setRho(rho);
-  }
+  Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity);
+
+  /// @brief Destroy the Kinetics Observer
+  ///
+  virtual ~Viking();
 
   /// @brief initializes the state vector.
   /// @param x1 The initial local linear velocity of the IMU.

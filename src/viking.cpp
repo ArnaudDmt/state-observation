@@ -3,6 +3,106 @@
 
 namespace stateObservation
 {
+
+IterationViking::IterationViking(const Vector & initState, const kine::Kinematics & initPose, double dt)
+: IterationComplementaryFilter(initState, dt), initPose_(initPose)
+{
+}
+
+Vector & IterationViking::runIteration_()
+{
+  Vector dx_hat = computeStateDerivatives_();
+  integrateState_(dx_hat);
+
+  return finalState_;
+}
+
+Vector IterationViking::computeStateDerivatives_()
+{
+  const Vector3 & yv = y_.head<3>();
+  const Vector3 & ya = y_.segment<3>(3);
+  const Vector3 & yg = y_.segment<3>(6);
+
+  const Eigen::Ref<Vector3> x1_hat = initState_.segment<3>(0);
+  const Eigen::Ref<Vector3> x2_hat_prime = initState_.segment<3>(3);
+
+  Eigen::Matrix<double, 12, 1> dx_hat;
+  dx_hat.segment<3>(0) = x1_hat.cross(yg) - cst::gravityConstant * x2_hat_prime + ya + alpha_ * (yv - x1_hat); // x1
+  dx_hat.segment<3>(3) = x2_hat_prime.cross(yg) - beta_ * (yv - x1_hat); // x2_prime
+
+  dx_hat.segment<3>(6) = (x1_hat - posCorrFromContactPos_); // using p_dot = R(v_l) = R(x1 - delta)
+
+  sigma_ = rho_ * (initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()).cross(x2_hat_prime)
+           + oriCorrFromContactPos_ + oriCorrFromOriMeas_;
+
+  dx_hat.segment<3>(9) = (yg - sigma_); // using R_dot = RS(w_l) = RS(yg-sigma)
+
+  return dx_hat;
+}
+
+void IterationViking::integrateState_(const Vector & dx_hat)
+{
+  const Vector3 & vl = dx_hat.segment<3>(6);
+  const Vector3 & omega = dx_hat.segment<3>(9);
+
+  // we copy the state and pose before integration to keep them in case we need to replay this iteration with new
+  // measurements
+  finalState_ = initState_;
+  finalPose_ = initPose_;
+
+  // discrete-time integration of x1 and x2
+  finalState_.segment<6>(0) += dx_hat.segment<6>(0) * dt_;
+
+  // discrete-time integration of p and R
+  finalPose_.SE3_integration(vl * dt_, omega * dt_);
+
+  finalState_.segment<3>(6) = finalPose_.position();
+  finalState_.tail(4) = finalPose_.orientation.toVector4();
+}
+
+void IterationViking::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
+{
+  Matrix3 rot_diff = oriMeasurement * initPose_.orientation.toMatrix3().transpose();
+  Vector3 rot_diff_vec = kine::skewSymmetricToRotationVector(rot_diff - rot_diff.transpose()) / 2.0;
+
+  oriCorrFromOriMeas_ -= gain * initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
+                         * (Vector3::UnitZ()).transpose() * rot_diff_vec;
+}
+
+void IterationViking::addContactPosMeasurement(const Vector3 & posMeasurement,
+                                               const Vector3 & imuContactPos,
+                                               double gainDelta,
+                                               double gainSigma)
+{
+  oriCorrFromContactPos_ +=
+      gainSigma
+      * (initPose_.orientation.toMatrix3().transpose() * (posMeasurement - initPose_.position())).cross(imuContactPos);
+
+  posCorrFromContactPos_ +=
+      gainDelta
+      * (imuContactPos - initPose_.orientation.toMatrix3().transpose() * (posMeasurement - initPose_.position()));
+}
+
+IterationViking::~IterationViking() {}
+
+Viking::Viking(double dt, double alpha, double beta, double rho)
+: DelayedMeasurementComplemFilter<IterationViking>(dt, 13, 9)
+{
+  setAlpha(alpha);
+  setBeta(beta);
+  setRho(rho);
+}
+
+Viking::Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity)
+: DelayedMeasurementComplemFilter<IterationViking>(dt, 13, 9, bufferCapacity)
+{
+  setAlpha(alpha);
+  setBeta(beta);
+  setRho(rho);
+}
+
+Viking::~Viking(){};
+
 void Viking::initEstimator(const Vector3 & pos, const Vector3 & x1, const Vector3 & x2_prime, const Vector4 & R)
 {
   Eigen::VectorXd initStateVector = Eigen::VectorXd::Zero(getStateSize());
@@ -11,6 +111,9 @@ void Viking::initEstimator(const Vector3 & pos, const Vector3 & x1, const Vector
   initStateVector.segment<3>(3) = x2_prime;
   initStateVector.segment<3>(6) = pos;
   initStateVector.tail(4) = R;
+
+  stateKinematics_.position = initStateVector.segment<3>(6);
+  stateKinematics_.orientation.fromVector4(initStateVector.tail(4));
 
   initEstimator(initStateVector);
 }
@@ -120,72 +223,6 @@ ObserverBase::StateVector Viking::replayIterationsWithDelayedOri(unsigned long d
   getCurrentIter().finalState_ = latestState;
 
   return latestState;
-}
-
-Vector IterationViking::computeStateDerivatives_()
-{
-  const Vector3 & yv = y_.head<3>();
-  const Vector3 & ya = y_.segment<3>(3);
-  const Vector3 & yg = y_.segment<3>(6);
-
-  const Eigen::Ref<Vector3> x1_hat = initState_.segment<3>(0);
-  const Eigen::Ref<Vector3> x2_hat_prime = initState_.segment<3>(3);
-
-  Eigen::Matrix<double, 12, 1> dx_hat;
-  dx_hat.segment<3>(0) = x1_hat.cross(yg) - cst::gravityConstant * x2_hat_prime + ya + alpha_ * (yv - x1_hat); // x1
-  dx_hat.segment<3>(3) = x2_hat_prime.cross(yg) - beta_ * (yv - x1_hat); // x2_prime
-
-  dx_hat.segment<3>(6) = (x1_hat - posCorrFromContactPos_); // using p_dot = R(v_l) = R(x1 - delta)
-
-  sigma_ = rho_ * (initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()).cross(x2_hat_prime)
-           + oriCorrFromContactPos_ + oriCorrFromOriMeas_;
-
-  dx_hat.segment<3>(9) = (yg - sigma_); // using R_dot = RS(w_l) = RS(yg-sigma)
-
-  return dx_hat;
-}
-
-void IterationViking::integrateState_(const Vector & dx_hat)
-{
-  const Vector3 & vl = dx_hat.segment<3>(6);
-  const Vector3 & omega = dx_hat.segment<3>(9);
-
-  // we copy the state and pose before integration to keep them in case we need to replay this iteration with new
-  // measurements
-  finalState_ = initState_;
-  finalPose_ = initPose_;
-
-  // discrete-time integration of x1 and x2
-  finalState_.segment<6>(0) += dx_hat.segment<6>(0) * dt_;
-
-  // discrete-time integration of p and R
-  finalPose_.SE3_integration(vl * dt_, omega * dt_);
-
-  finalState_.segment<3>(6) = finalPose_.position();
-  finalState_.tail(4) = finalPose_.orientation.toVector4();
-}
-
-void IterationViking::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
-{
-  Matrix3 rot_diff = oriMeasurement * initPose_.orientation.toMatrix3().transpose();
-  Vector3 rot_diff_vec = kine::skewSymmetricToRotationVector(rot_diff - rot_diff.transpose()) / 2.0;
-
-  oriCorrFromOriMeas_ -= gain * initPose_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
-                         * (Vector3::UnitZ()).transpose() * rot_diff_vec;
-}
-
-void IterationViking::addContactPosMeasurement(const Vector3 & posMeasurement,
-                                               const Vector3 & imuContactPos,
-                                               double gainDelta,
-                                               double gainSigma)
-{
-  oriCorrFromContactPos_ +=
-      gainSigma
-      * (initPose_.orientation.toMatrix3().transpose() * (posMeasurement - initPose_.position())).cross(imuContactPos);
-
-  posCorrFromContactPos_ +=
-      gainDelta
-      * (imuContactPos - initPose_.orientation.toMatrix3().transpose() * (posMeasurement - initPose_.position()));
 }
 
 } // namespace stateObservation

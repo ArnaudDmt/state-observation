@@ -31,30 +31,23 @@ ObserverBase::StateVector DelayedMeasurementObserver::getEstimatedState(TimeInde
     TimeIndex k_asynchronousMeas = y_asynchronous_.top().getTime();
     StateIterator it_x = xBuffer_.begin() + k0 - k_asynchronousMeas - 1;
 
-    BOOST_ASSERT_MSG(it_x->getTime() - 1 == y_asynchronous_.top().getTime(), "WESH");
+    BOOST_ASSERT_MSG(it_x->getTime() - 1 == y_asynchronous_.top().getTime(), "ERROR");
 
     // we remove all the input and measurements from iterations before the oldest asynchronous measurement
     while(y_.size() > 0 && y_.getFirstIndex() < k_asynchronousMeas)
     {
       y_.popFront();
     }
-    if(p_ > 0)
-      while(u_.size() > 0 && u_.getFirstIndex() < k_asynchronousMeas)
-      {
-        u_.popFront();
-      }
+    while(u_.size() > 0 && u_.getFirstIndex() < k_asynchronousMeas)
+    {
+      u_.popFront();
+    }
 
     for(boost::circular_buffer<IndexedVector>::iterator it = it_x; it != xBuffer_.begin(); --it)
     {
       oneStepEstimation_(it);
 
-      BOOST_ASSERT_MSG((it)->getTime() == (it + 1)->getTime() + 1, "WESH2");
-
-      if(p_ > 0)
-      {
-        u_.popFront();
-      }
-
+      u_.popFront();
       y_.popFront();
     }
   }
@@ -64,10 +57,7 @@ ObserverBase::StateVector DelayedMeasurementObserver::getEstimatedState(TimeInde
     xBuffer_.push_front(IndexedVector(xBuffer_.front()(), i + 1));
     oneStepEstimation_(xBuffer_.begin());
 
-    if(p_ > 0)
-    {
-      u_.popFront();
-    }
+    u_.popFront();
     y_.popFront();
   }
 
@@ -115,6 +105,21 @@ void DelayedMeasurementObserver::setMeasurement(const ObserverBase::MeasureVecto
                                 (must be [current_time+1])");
 
   y_.setValue(y_k, k);
+}
+
+void DelayedMeasurementObserver::pushInput(const std::any & u_k)
+{
+  if(u_.size() > 0)
+  {
+    u_.pushBack(u_k);
+  }
+  else
+  {
+    BOOST_ASSERT(xBuffer_.size() > 0
+                 && "Unable to initialize input without time index, the state vector has not been set.");
+    /// we need the input at the time of the state vector to predict the next one
+    u_.setValue(u_k, getCurrentTime());
+  }
 }
 
 void DelayedMeasurementObserver::setAsyncMeasurement(const AsynchronousMeasurement & asyncMeas)
@@ -178,15 +183,8 @@ void DelayedMeasurementObserver::setInput(const ObserverBase::InputVector & u_k,
   {
     BOOST_ASSERT(checkInputVector(u_k) && "The size of the input vector is incorrect");
 
-    if(u_.size() > 0)
-      BOOST_ASSERT((u_.getNextIndex() == k || u_.checkIndex(k)) && "ERROR: The time is set incorrectly \
+    BOOST_ASSERT((u_.getNextIndex() == k || u_.checkIndex(k)) && "ERROR: The time is set incorrectly \
                                 for the inputs (order or gap)");
-    else
-    {
-      BOOST_ASSERT((!xBuffer_.front().isSet() || xBuffer_.front().getTime() == k || xBuffer_.front().getTime() == k - 1)
-                   && "ERROR: The time is set incorrectly for the \
-                          inputs (must be [current_time] or [current_time+1])");
-    }
 
     u_.setValue(u_k, k);
   }

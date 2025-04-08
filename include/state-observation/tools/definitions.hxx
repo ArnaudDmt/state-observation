@@ -781,6 +781,11 @@ inline TimeIndex IndexedAnyArray::setFirstIndex(int index)
   return k_ = index;
 }
 
+inline TimeSize IndexedAnyArray::size() const
+{
+  return TimeSize(v_.size());
+}
+
 /// Switch off the initialization flag, the value is no longer accessible
 
 inline void IndexedAnyArray::reset()

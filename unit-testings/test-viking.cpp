@@ -6,96 +6,97 @@
 using namespace stateObservation;
 using namespace kine;
 
-// case we estimate the new state as soon as the new measurement is given
-int testVikingRealTimeEstimation(int errorcode)
+int testOrientationMeasurement(int errorcode)
 {
-  double err = 0.0;
   Viking viking(0.005, 1, 1, 1, 1);
 
   Vector3 initPosition = Vector3::Zero();
   Vector3 initX1 = Vector3::Zero();
-  Matrix3 initRmat;
-  initRmat << 0, 0, 1, 0, 1, 1, -1, 0, 0; // rotation by 90 degrees around y
-  Orientation initOri(initRmat);
+  Orientation initOri = kine::Orientation::randomRotation();
   Vector3 initX2prime = initOri.toMatrix3().transpose() * Vector3::UnitZ();
 
-  Vector initState(initX1.size() + initX2prime.size() + initPosition.size() + 4); // 4 for quaternion
+  viking.initEstimator(initX1, initX2prime, initPosition, initOri.toVector4());
 
-  initState.segment(0, initX1.size()) = initX1;
-  initState.segment(initX1.size(), initX2prime.size()) = initX2prime;
-  initState.segment(initX1.size() + initX2prime.size(), initPosition.size()) = initPosition;
-  initState.tail(4) = initOri.toVector4(); // Assuming .toVector4() returns Eigen::Vector4d
+  Matrix3 measOri = kine::rotationVectorToRotationMatrix(randomAngle() * Vector3::UnitZ());
 
-  viking.initEstimator(initState);
-
-  for(int i = 0; i < 50; i++)
+  int targetIter = 1000;
+  for(int i = 0; i < targetIter; i++)
   {
-    TimeIndex k = viking.getCurrentTime();
-    viking.setMeasurement(Vector3::Zero(), cst::gravityConstant * initX2prime, Vector3::Zero(), k + 1);
-    viking.getEstimatedState(k + 1);
+    viking.setMeasurement(Vector3::Zero(), cst::gravityConstant * initX2prime, Vector3::Zero(), i + 1);
+    viking.addOrientationMeasurement(measOri, 50);
+    viking.getEstimatedState(i + 1);
   }
 
-  err = (viking.getCurrentEstimatedState() - initState).norm();
+  // initOri becomes the final estimated orientation
+  initOri.fromVector4(viking.getCurrentEstimatedState().tail(4));
+
+  double err = pow(
+      kine::rotationMatrixToYawAxisAgnostic(initOri.toMatrix3()) - kine::rotationMatrixToYawAxisAgnostic(measOri), 2);
   if(err > 1e-15)
   {
-    std::cout << std::endl << "The obtained vector does not match the initial one." << std::endl;
+    std::cout << std::endl << "The correction from the orientation measurement doesn't work." << std::endl;
     return errorcode;
   }
 
   return 0;
 }
 
-int testVikingAwaitingEstimation(int errorcode)
-{
-  Viking viking(0.005, 1, 1, 1, 1);
+// // the estimation is required after successive inputs are given. Cannot use since addOrientationMeasurement only sets
+// the current input, not future ones. int testVikingAwaitingEstimation(int errorcode)
+// {
+//   Viking viking(0.005, 1, 1, 1, 1);
+//   Viking viking2(0.005, 1, 1, 1, 1);
 
-  Vector3 initPosition = Vector3::Zero();
-  Vector3 initX1 = Vector3::Zero();
-  Matrix3 initRmat;
-  initRmat << 0, 0, 1, 0, 1, 1, -1, 0, 0; // rotation by 90 degrees around y
-  Orientation initOri(initRmat);
-  Vector3 initX2prime = initOri.toMatrix3().transpose() * Vector3::UnitZ();
+//   Vector3 initPosition = Vector3::Zero();
+//   Vector3 initX1 = Vector3::Zero();
+//   Orientation initOri = kine::Orientation::randomRotation();
+//   Vector3 initX2prime = initOri.toMatrix3().transpose() * Vector3::UnitZ();
 
-  viking.initEstimator(initX1, initX2prime, initPosition, initOri.toVector4());
+//   viking.initEstimator(initX1, initX2prime, initPosition, initOri.toVector4());
+//   viking2.initEstimator(initX1, initX2prime, initPosition, initOri.toVector4());
 
-  int targetIter = 50;
-  for(int i = 0; i < targetIter; i++)
-  {
-    viking.setMeasurement(Vector3::Zero(), -cst::gravity, Vector3::Zero(), i + 1);
-  }
+//   Matrix3 measOri = kine::rotationVectorToRotationMatrix(randomAngle() * Vector3::UnitZ());
 
-  viking.getEstimatedState(targetIter);
+//   int targetIter = 50;
+//   for(int i = 0; i < targetIter; i++)
+//   {
+//     viking.setMeasurement(Vector3::Zero(), cst::gravityConstant * initX2prime, Vector3::Zero(), i + 1);
+//     viking.addOrientationMeasurement(measOri, 10);
+//     viking.getEstimatedState(i);
 
-  return 0;
-}
+//     viking2.setMeasurement(Vector3::Zero(), cst::gravityConstant * initX2prime, Vector3::Zero(), i + 1);
+//     viking2.addOrientationMeasurement(measOri, 10);
+//   }
+//   viking.getEstimatedState(targetIter);
+
+//   double err = (viking.getCurrentEstimatedState() - viking2.getCurrentEstimatedState()).squaredNorm();
+//   if(err > 1e-15)
+//   {
+//     std::cout
+//         << std::endl
+//         << "The estimation from the buffered inputs does not return the same state as the iteration-by-iteration one"
+//         << std::endl;
+//     return errorcode;
+//   }
+
+//   return 0;
+// }
 
 int main()
 {
   int returnVal;
   int errorcode = 1;
 
-  std::cout << "Starting testVikingRealTimeEstimation" << errorcode << std::endl;
-  if((returnVal = testVikingRealTimeEstimation(errorcode)))
+  if((returnVal = testOrientationMeasurement(errorcode)))
   {
-    std::cout << "testVikingRealTimeEstimation failed, code : " << errorcode << std::endl;
+    std::cout << "Starting testOrientationMeasurement" << errorcode << std::endl;
     return returnVal;
   }
   else
   {
-    std::cout << "testVikingRealTimeEstimation succeeded" << std::endl;
+    std::cout << "testOrientationMeasurement succeeded" << std::endl;
   }
-
   errorcode++;
-
-  if((returnVal = testVikingAwaitingEstimation(errorcode)))
-  {
-    std::cout << "Starting testVikingAwaitingEstimation" << errorcode << std::endl;
-    return returnVal;
-  }
-  else
-  {
-    std::cout << "testVikingAwaitingEstimation succeeded" << std::endl;
-  }
 
   std::cout << "Test Viking succeeded" << std::endl;
   return 0;

@@ -153,8 +153,6 @@ protected:
 
   /// inputSize is the size of the input vector
   Index p_;
-
-  IndexedAnyArray u_test_;
 };
 
 } // namespace stateObservation

@@ -28,17 +28,17 @@ public:
 protected:
   /// @brief Runs one loop of the estimator.
   /// @details Calls \ref computeStateDerivatives_ then \ref integrateState_
-  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   virtual StateVector oneStepEstimation_(StateIterator it) override = 0;
 
   /// @brief Computes the dynamics of the state at the desired iteration.
   /// @details Computes x^{dot}_{k-1}
-  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   virtual StateVector computeStateDynamics_(StateIterator it) = 0;
 
   /// @brief Integrates the computed state dynamics
   /// @details Computes x_{k} = x_{k-1} + x^{dot}_{k-1} * dt
-  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   virtual void integrateState_(StateIterator it, const Vector & dx_hat) = 0;
 };
 } // namespace stateObservation

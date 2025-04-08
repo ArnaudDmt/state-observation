@@ -232,17 +232,17 @@ public:
 protected:
   /// @brief Runs one loop of the estimator.
   /// @details Calls \ref computeStateDerivatives_ then \ref integrateState_
-  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   StateVector oneStepEstimation_(StateIterator it) override;
 
   /// @brief Computes the dynamics of the state at the desired iteration.
   /// @details Computes x^{dot}_{k-1}
-  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   StateVector computeStateDynamics_(StateIterator it) override;
 
   /// @brief Integrates the computed state dynamics
   /// @details Computes x_{k} = x_{k-1} + x^{dot}_{k-1} * dt
-  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   void integrateState_(StateIterator it, const Vector & dx_hat) override;
 
   /// @brief Computes the correction terms, used to compute the state dynamics in \ref computeStateDerivatives_

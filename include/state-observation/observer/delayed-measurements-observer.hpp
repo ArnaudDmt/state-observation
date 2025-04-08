@@ -87,6 +87,8 @@ public:
   /// @param k the time index
   void setMeasurement(const Vector & y, TimeIndex k) override;
 
+  void pushInput(const std::any & u_k);
+
   void setAsyncMeasurement(const AsynchronousMeasurement & asyncMeas);
 
   /// Get the measurement of the time index k
@@ -153,7 +155,7 @@ protected:
   };
 
   /// @brief Runs one loop of the estimator.
-  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   virtual StateVector oneStepEstimation_(StateIterator it) = 0;
   virtual void startNewIteration_() = 0;
 
@@ -175,7 +177,7 @@ protected:
   std::priority_queue<AsynchronousMeasurement, std::vector<AsynchronousMeasurement>, GreaterIndexAM> y_asynchronous_;
 
   /// Container for the inputs.
-  IndexedVectorArray u_;
+  IndexedAnyArray u_;
 
   // TimeIndex k_est_ = 0; // time index of the last estimation
   // TimeIndex k_meas_ = 0; // time index of the current measurements

@@ -14,34 +14,39 @@
 #define DelayedMeasurementObserverHPP
 
 #include <boost/circular_buffer.hpp>
+#include <queue>
 #include <state-observation/api.h>
 #include <state-observation/observer/observer-base.hpp>
 
 namespace stateObservation
 {
+struct AsynchronousMeasurement
+{
+  AsynchronousMeasurement(TimeIndex k) : k_(k) {}
+  inline TimeIndex getTime() const
+  {
+    return k_;
+  }
+
+protected:
+  TimeIndex k_;
+};
 
 /**
  * \class  DelayedMeasurementObserver
  * \brief
  *
  */
-template<typename IterationT>
 class STATE_OBSERVATION_DLLAPI DelayedMeasurementObserver : public ObserverBase
 {
+
 public:
   /// The constructor
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
-  ///  \li dt  : timestep between each iteration
-  ///  \li p : size of the input vector
-  DelayedMeasurementObserver(double dt, Index n, Index m, Index p = 0);
-
-  /// The constructor
-  ///  \li n : size of the state vector
-  ///  \li m : size of the measurements vector
   ///  \li p : size of the input vector
   ///  \li dt  : timestep between each iteration
-  ///  \li bufferCapacity  : capacity of the iteration buffer
+  ///  \li bufferCapacity  : capacity of the iteration buffer. Given in seconds, as the buffer's duration.
   DelayedMeasurementObserver(double dt, Index n, Index m, unsigned long bufferCapacity, Index p = 0);
 
   /// Default constructor
@@ -50,10 +55,15 @@ public:
   /// Destructor
   virtual ~DelayedMeasurementObserver(){};
 
-  inline IterationT & getCurrentIter()
-  {
-    return bufferedIters_.front();
-  }
+  // inline const IndexedVector & getPastState(size_t nbIters)
+  // {
+  //   return xBuffer_.at(nbIters);
+  // }
+
+  /// @brief Get the Current Estimated State
+  /// @return ObserverBase::StateVector
+  const ObserverBase::StateVector & getCurrentEstimatedState();
+
   /// @brief initializes the state vector.
   /// @param x The initial state vector
   virtual void initEstimator(const Vector & x);
@@ -72,14 +82,12 @@ public:
   /// @return ObserverBase::StateVector
   virtual ObserverBase::StateVector getEstimatedState(TimeIndex k) override;
 
-  /// @brief Get the Current Estimated State
-  /// @return ObserverBase::StateVector
-  virtual ObserverBase::StateVector getCurrentEstimatedState() const;
-
   /// @brief sets the measurement
   /// @param y the measurement vector
   /// @param k the time index
   void setMeasurement(const Vector & y, TimeIndex k) override;
+
+  void setAsyncMeasurement(const AsynchronousMeasurement & asyncMeas);
 
   /// Get the measurement of the time index k
   Vector getMeasurement(TimeIndex k) const;
@@ -114,12 +122,10 @@ public:
   /// @details inherited from ObserverBase
   virtual void clearStates() override;
 
-  virtual void startNewIteration_() = 0;
-
   /// set the sampling time of the measurements
-  inline virtual void setBufferCapacity(unsigned long bufferCapacity)
+  inline virtual void setStateCapacity(unsigned long stateCapacity)
   {
-    bufferedIters_.set_capacity(bufferCapacity);
+    xBuffer_.set_capacity(stateCapacity);
   }
 
   /// set the sampling time of the measurements
@@ -136,11 +142,24 @@ public:
   virtual TimeIndex getCurrentTime() const;
 
 protected:
-  virtual StateVector oneStepEstimation_() = 0;
+  typedef boost::circular_buffer<IndexedVector>::iterator StateIterator;
 
-  inline const boost::circular_buffer<std::unique_ptr<IterationT>> & getIterationsBuffer() const
+  struct GreaterIndexAM
   {
-    return bufferedIters_;
+    bool operator()(const AsynchronousMeasurement & lhs, const AsynchronousMeasurement & rhs) const
+    {
+      return lhs.getTime() > rhs.getTime();
+    }
+  };
+
+  /// @brief Runs one loop of the estimator.
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  virtual StateVector oneStepEstimation_(StateIterator it) = 0;
+  virtual void startNewIteration_() = 0;
+
+  inline const boost::circular_buffer<IndexedVector> & getStateVectorBuffer() const
+  {
+    return xBuffer_;
   }
 
   bool stateIsSet() const;
@@ -149,20 +168,20 @@ protected:
   /// Sampling time
   double dt_;
   /// The state estimation of the observer (only one state is recorded)
-  IndexedVector x_;
+  boost::circular_buffer<IndexedVector> xBuffer_;
   /// Container for the measurements.
   IndexedVectorArray y_;
+
+  std::priority_queue<AsynchronousMeasurement, std::vector<AsynchronousMeasurement>, GreaterIndexAM> y_asynchronous_;
+
   /// Container for the inputs.
   IndexedVectorArray u_;
 
-  TimeIndex k_est_ = 0; // time index of the last estimation
-  TimeIndex k_data_ = 0; // time index of the current measurements
-
-  boost::circular_buffer<IterationT> bufferedIters_;
+  // TimeIndex k_est_ = 0; // time index of the last estimation
+  // TimeIndex k_meas_ = 0; // time index of the current measurements
+  // TimeIndex k_input_ = 0; // time index of the current measurements
 };
 
 } // namespace stateObservation
-
-#include <state-observation/observer/delayed-measurements-observer.hxx>
 
 #endif // DelayedMeasurementObserverHPP

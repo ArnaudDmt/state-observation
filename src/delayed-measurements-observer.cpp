@@ -1,91 +1,108 @@
-#pragma once
-
-#include "state-observation/tools/definitions.hpp"
 #include <state-observation/observer/delayed-measurements-observer.hpp>
+#include <state-observation/tools/definitions.hpp>
 
 namespace stateObservation
 {
-template<typename IterationT>
-DelayedMeasurementObserver<IterationT>::DelayedMeasurementObserver(double dt, Index n, Index m, Index p)
+DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
+                                                       Index n,
+                                                       Index m,
+                                                       unsigned long bufferCapacity,
+                                                       Index p)
 : ObserverBase(n, m, p)
 {
+  setStateCapacity(bufferCapacity / dt);
   setSamplingTime(dt);
 }
 
-template<typename IterationT>
-DelayedMeasurementObserver<IterationT>::DelayedMeasurementObserver(double dt,
-                                                                   Index n,
-                                                                   Index m,
-                                                                   unsigned long bufferCapacity,
-                                                                   Index p)
-: ObserverBase(n, m, p)
+void DelayedMeasurementObserver::initEstimator(const Vector & x)
 {
-  bufferedIters_.set_capacity(bufferCapacity);
-  setSamplingTime(dt);
+  xBuffer_.push_front(IndexedVector(x, 0));
 }
 
-template<typename IterationT>
-void DelayedMeasurementObserver<IterationT>::initEstimator(const Vector & x)
-{
-  setState(x, 0);
-}
-
-template<typename IterationT>
-ObserverBase::StateVector DelayedMeasurementObserver<IterationT>::getEstimatedState(TimeIndex k)
+ObserverBase::StateVector DelayedMeasurementObserver::getEstimatedState(TimeIndex k)
 {
   BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
 
   TimeIndex k0 = getCurrentTime();
 
-  BOOST_ASSERT(k0 <= k && "ERROR: The observer cannot estimate previous states");
+  // if there are asynchronous measurements, the impacted previous iterations are re-computed until the current one.
+  if(!y_asynchronous_.empty())
+  {
+    TimeIndex k_asynchronousMeas = y_asynchronous_.top().getTime();
+    StateIterator it_x = xBuffer_.begin() + k0 - k_asynchronousMeas - 1;
+
+    BOOST_ASSERT_MSG(it_x->getTime() - 1 == y_asynchronous_.top().getTime(), "WESH");
+
+    // we remove all the input and measurements from iterations before the oldest asynchronous measurement
+    while(y_.size() > 0 && y_.getFirstIndex() < k_asynchronousMeas)
+    {
+      y_.popFront();
+    }
+    if(p_ > 0)
+      while(u_.size() > 0 && u_.getFirstIndex() < k_asynchronousMeas)
+      {
+        u_.popFront();
+      }
+
+    for(boost::circular_buffer<IndexedVector>::iterator it = it_x; it != xBuffer_.begin(); --it)
+    {
+      oneStepEstimation_(it);
+
+      BOOST_ASSERT_MSG((it)->getTime() == (it + 1)->getTime() + 1, "WESH2");
+
+      if(p_ > 0)
+      {
+        u_.popFront();
+      }
+
+      y_.popFront();
+    }
+  }
 
   for(TimeIndex i = k0; i < k; ++i)
   {
-    oneStepEstimation_();
-    if(y_.getFirstIndex() < k) y_.popFront();
+    xBuffer_.push_front(IndexedVector(xBuffer_.front()(), i + 1));
+    oneStepEstimation_(xBuffer_.begin());
 
     if(p_ > 0)
-      if(u_.getFirstIndex() < k) u_.popFront();
+    {
+      u_.popFront();
+    }
+    y_.popFront();
   }
 
-  return x_();
+  return xBuffer_.front()();
 }
 
-template<typename IterationT>
-ObserverBase::StateVector DelayedMeasurementObserver<IterationT>::getCurrentEstimatedState() const
+const ObserverBase::StateVector & DelayedMeasurementObserver::getCurrentEstimatedState()
 {
   BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
-  return x_();
+  return xBuffer_.front()();
 }
 
-template<typename IterationT>
-Vector DelayedMeasurementObserver<IterationT>::getMeasurement(TimeIndex k) const
+Vector DelayedMeasurementObserver::getMeasurement(TimeIndex k) const
 {
   return y_[k];
 }
 
-template<typename IterationT>
-TimeIndex DelayedMeasurementObserver<IterationT>::getMeasurementTime() const
+TimeIndex DelayedMeasurementObserver::getMeasurementTime() const
 {
   BOOST_ASSERT(y_.size() > 0 && "ERROR: There is no measurements registered (past measurements are erased)");
   return y_.getLastIndex();
 }
 
-template<typename IterationT>
-TimeIndex DelayedMeasurementObserver<IterationT>::getCurrentTime() const
+TimeIndex DelayedMeasurementObserver::getCurrentTime() const
 {
   BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
-  return x_.getTime();
+  return xBuffer_.front().getTime();
 }
 
-template<typename IterationT>
-bool DelayedMeasurementObserver<IterationT>::stateIsSet() const
+bool DelayedMeasurementObserver::stateIsSet() const
 {
-  return x_.isSet();
+  return xBuffer_.front().isSet();
 }
 
-template<typename IterationT>
-void DelayedMeasurementObserver<IterationT>::setMeasurement(const ObserverBase::MeasureVector & y_k, TimeIndex k)
+void DelayedMeasurementObserver::setMeasurement(const ObserverBase::MeasureVector & y_k, TimeIndex k)
 {
 
   BOOST_ASSERT(checkMeasureVector(y_k) && "The size of the measure vector is incorrect");
@@ -93,65 +110,69 @@ void DelayedMeasurementObserver<IterationT>::setMeasurement(const ObserverBase::
     BOOST_ASSERT((y_.getNextIndex() == k || y_.checkIndex(k)) && "ERROR: The time is set incorrectly for \
                                 the measurements (order or gap)");
   else
-    BOOST_ASSERT((!x_.isSet() || x_.getTime() == k - 1) && "ERROR: The time is set incorrectly for the measurements \
+    BOOST_ASSERT((!xBuffer_.front().isSet() || xBuffer_.front().getTime() == k - 1)
+                 && "ERROR: The time is set incorrectly for the measurements \
                                 (must be [current_time+1])");
 
-  startNewIteration_();
-
-  getCurrentIter().y_ = y_k;
   y_.setValue(y_k, k);
 }
 
-template<typename IterationT>
-void DelayedMeasurementObserver<IterationT>::setState(const ObserverBase::StateVector & x_k, TimeIndex k)
+void DelayedMeasurementObserver::setAsyncMeasurement(const AsynchronousMeasurement & asyncMeas)
+{
+  y_asynchronous_.push(asyncMeas);
+}
+
+void DelayedMeasurementObserver::setState(const ObserverBase::StateVector & x_k, TimeIndex k)
 {
   BOOST_ASSERT(checkStateVector(x_k) && "The size of the state vector is incorrect");
-
-  x_.set(x_k, k);
-
-  if(k < getCurrentTime())
+  BOOST_ASSERT(k > getCurrentTime() && "Cannot modify a past state.");
+  if(xBuffer_.empty())
   {
-    y_.clear();
-    u_.clear();
-  }
-  else
-  {
-    while(y_.size() > 0 && y_.getFirstIndex() <= k)
-    {
-      y_.popFront();
-    }
 
-    if(p_ > 0)
-      while(u_.size() > 0 && u_.getFirstIndex() < k)
-      {
-        u_.popFront();
-      }
+    xBuffer_.push_front(IndexedVector(x_k, k));
   }
+
+  // xBuffer_.front().set(x_k, k);
+
+  // if(k < getCurrentTime())
+  // {
+  //   y_.clear();
+  //   u_.clear();
+  // }
+  // else
+  // {
+  //   while(y_.size() > 0 && y_.getFirstIndex() <= k)
+  //   {
+  //     y_.popFront();
+  //   }
+
+  //   if(p_ > 0)
+  //     while(u_.size() > 0 && u_.getFirstIndex() < k)
+  //     {
+  //       u_.popFront();
+  //     }
+  // }
 }
 
-template<typename IterationT>
-void DelayedMeasurementObserver<IterationT>::setCurrentState(const ObserverBase::StateVector & x_k)
+void DelayedMeasurementObserver::setCurrentState(const ObserverBase::StateVector & x_k)
 {
-  BOOST_ASSERT(x_.isSet() && "The state vector has not been set");
+  BOOST_ASSERT(xBuffer_.front().isSet() && "The state vector has not been set");
   BOOST_ASSERT(checkStateVector(x_k) && "The size of the state vector is incorrect");
 
-  x_() = x_k;
+  xBuffer_.front()() = x_k;
 }
 
-template<typename IterationT>
-void DelayedMeasurementObserver<IterationT>::clearStates()
+void DelayedMeasurementObserver::clearStates()
 {
-  x_.reset();
+  xBuffer_.front().reset();
 }
 
-template<typename IterationT>
-void DelayedMeasurementObserver<IterationT>::clearMeasurements()
+void DelayedMeasurementObserver::clearMeasurements()
 {
   y_.reset();
 }
 
-template<typename IterationT>
-void DelayedMeasurementObserver<IterationT>::setInput(const ObserverBase::InputVector & u_k, TimeIndex k)
+void DelayedMeasurementObserver::setInput(const ObserverBase::InputVector & u_k, TimeIndex k)
 {
   if(p_ > 0)
   {
@@ -162,7 +183,7 @@ void DelayedMeasurementObserver<IterationT>::setInput(const ObserverBase::InputV
                                 for the inputs (order or gap)");
     else
     {
-      BOOST_ASSERT((!x_.isSet() || x_.getTime() == k || x_.getTime() == k - 1)
+      BOOST_ASSERT((!xBuffer_.front().isSet() || xBuffer_.front().getTime() == k || xBuffer_.front().getTime() == k - 1)
                    && "ERROR: The time is set incorrectly for the \
                           inputs (must be [current_time] or [current_time+1])");
     }
@@ -171,8 +192,7 @@ void DelayedMeasurementObserver<IterationT>::setInput(const ObserverBase::InputV
   }
 }
 
-template<typename IterationT>
-void DelayedMeasurementObserver<IterationT>::clearInputs()
+void DelayedMeasurementObserver::clearInputs()
 {
   u_.reset();
 }

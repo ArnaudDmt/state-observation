@@ -141,7 +141,7 @@ ObserverBase::StateVector Waiko::oneStepEstimation_()
     bufferedIters_.push_front(currentIter);
   }
 
-  return x_hat;
+  return currentIter.updatedState_;
 }
 
 ObserverBase::StateVector Waiko::Iteration::replayBufferedIteration()

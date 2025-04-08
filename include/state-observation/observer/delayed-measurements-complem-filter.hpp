@@ -6,19 +6,9 @@
 namespace stateObservation
 {
 
-template<typename IterationT>
-class STATE_OBSERVATION_DLLAPI DelayedMeasurementComplemFilter : public DelayedMeasurementObserver<IterationT>
+class STATE_OBSERVATION_DLLAPI DelayedMeasurementComplemFilter : public DelayedMeasurementObserver
 {
 public:
-  /// The constructor
-  ///  \li n : size of the state vector
-  ///  \li m : size of the measurements vector
-  ///  \li dt  : timestep between each iteration
-  ///  \li p : size of the input vector
-  DelayedMeasurementComplemFilter(double dt, Index n, Index m, Index p = 0)
-  : DelayedMeasurementObserver<IterationT>(dt, n, m, p)
-  {
-  }
   /// The constructor
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
@@ -26,7 +16,7 @@ public:
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer
   DelayedMeasurementComplemFilter(double dt, Index n, Index m, unsigned long bufferCapacity, Index p = 0)
-  : DelayedMeasurementObserver<IterationT>(dt, n, m, bufferCapacity, p)
+  : DelayedMeasurementObserver(dt, n, m, bufferCapacity, p)
   {
   }
 
@@ -36,7 +26,20 @@ public:
   virtual ~DelayedMeasurementComplemFilter(){};
 
 protected:
-  virtual Vector oneStepEstimation_() = 0;
+  /// @brief Runs one loop of the estimator.
+  /// @details Calls \ref computeStateDerivatives_ then \ref integrateState_
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  virtual StateVector oneStepEstimation_(StateIterator it) override = 0;
+
+  /// @brief Computes the dynamics of the state at the desired iteration.
+  /// @details Computes x^{dot}_{k-1}
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  virtual StateVector computeStateDynamics_(StateIterator it) = 0;
+
+  /// @brief Integrates the computed state dynamics
+  /// @details Computes x_{k} = x_{k-1} + x^{dot}_{k-1} * dt
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k})
+  virtual void integrateState_(StateIterator it, const Vector & dx_hat) = 0;
 };
 } // namespace stateObservation
 

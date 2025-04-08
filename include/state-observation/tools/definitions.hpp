@@ -14,6 +14,7 @@
 
 // #define STATEOBSERVATION_VERBOUS_CONSTRUCTORS
 
+#include <any>
 #include <chrono>
 #include <deque>
 #include <stdexcept>
@@ -658,6 +659,103 @@ protected:
 typedef IndexedMatrixArrayT<Matrix> IndexedMatrixArray;
 typedef IndexedMatrixArrayT<Vector> IndexedVectorArray;
 
+class IndexedAnyArray
+{
+public:
+  /// Default constructor
+  IndexedAnyArray() : k_(0) {}
+
+  /// @brief Construct a new IndexedAnyArray
+  ///
+  /// @param initTime is the index of the initial time. It is zero by default
+  IndexedAnyArray(TimeIndex initTime) : k_(initTime) {}
+
+  /// Sets the value v at the time index k
+  /// It can be used to push a value into the back of the array
+  template<typename T>
+  inline void setValue(T && value, TimeIndex k);
+
+  /// Pushes back the std::any to the array, the new value will take the next time
+  inline void pushBack(const std::any & v);
+
+  /// removes the first (oldest) element of the array
+  inline void popFront();
+
+  /// gets the value with the given time index
+  inline std::any operator[](TimeIndex index) const;
+
+  /// gets the value with the given time index, non const version
+  inline std::any & operator[](TimeIndex index);
+
+  /// gets the first value
+  inline const std::any & front() const;
+
+  /// gets the first value
+  inline std::any & front();
+
+  /// gets the last value
+  inline const std::any & back() const;
+
+  /// gets the last value
+  inline std::any & back();
+
+  /// removes all the elements with larger indexes than timeIndex
+  void truncateAfter(TimeIndex timeIndex);
+
+  /// removes all the elements with smaller indexes than timeIndex
+  void truncateBefore(TimeIndex timeIndex);
+
+  /// Get the time index
+  inline TimeIndex getLastIndex() const;
+
+  /// Get the time index of the next value that will be pushed back
+  /// Can be used in for loops
+  inline TimeIndex getNextIndex() const;
+
+  /// Set the time index of the last element
+  inline TimeIndex setLastIndex(int index);
+
+  /// Get the time index
+  inline TimeIndex getFirstIndex() const;
+
+  /// set the time index of the first element
+  inline TimeIndex setFirstIndex(int index);
+
+  inline TimeSize size() const;
+
+  /// Resets the array to initial state
+  /// the value is no longer accessible
+  inline void reset();
+
+  /// Clears the vector but keeps the last index
+  inline void clear();
+
+  /// converts the array into a standard vector
+  const std::deque<std::any> & getArray();
+
+  /// checks whether the index is present in the array
+  inline bool checkIndex(TimeIndex k) const;
+
+protected:
+  typedef std::deque<std::any> Deque;
+
+  /// Asserts that the index is present in the array
+  /// does nothing in release mode
+  inline void check_(TimeIndex time) const;
+
+  /// Asserts that the array is not empty
+  /// does nothing in release mode
+  inline void check_() const;
+
+  /// Asserts that the given time can be pushed at the back of the vector
+  /// does nothing in release mode
+  inline void checkNext_(TimeIndex time) const;
+
+  TimeIndex k_;
+
+  Deque v_;
+};
+
 namespace cst
 {
 constexpr double gravityConstant = 9.80665;
@@ -731,7 +829,7 @@ Vector STATE_OBSERVATION_DLLAPI stringToVector(const std::string & str, Index le
 Vector STATE_OBSERVATION_DLLAPI stringToVector(const std::string & str);
 } // namespace tools
 
-#include <state-observation/tools/definitions.hxx>
 } // namespace stateObservation
+#include <state-observation/tools/definitions.hxx>
 
 #endif // STATEOBSERVATIONDEFINITIONSHPP

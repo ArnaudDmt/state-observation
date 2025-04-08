@@ -1,3 +1,9 @@
+#pragma once
+#include <state-observation/tools/definitions.hpp>
+
+namespace stateObservation
+{
+
 template<typename T, bool lazy, bool alwaysCheck, bool assertion, bool eigenAlignedNew, typename additionalChecker>
 inline CheckedItem<T, lazy, alwaysCheck, assertion, eigenAlignedNew, additionalChecker>::CheckedItem(bool initialize)
 {
@@ -672,6 +678,195 @@ void IndexedMatrixArrayT<MatrixType, Allocator>::writeInFile(const char * filena
   }
 }
 
+template<typename T>
+inline void IndexedAnyArray::setValue(T && v, TimeIndex k)
+{
+  if(checkIndex(k))
+  {
+    (*this)[k] = std::forward<T>(v);
+  }
+  else
+  {
+    checkNext_(k);
+    if(v_.size() == 0) k_ = k;
+
+    v_.emplace_back(std::forward<T>(v));
+  }
+}
+
+inline void IndexedAnyArray::pushBack(const std::any & v)
+{
+  v_.push_back(v);
+}
+
+inline void IndexedAnyArray::popFront()
+{
+  check_();
+  v_.pop_front();
+  ++k_;
+}
+
+/// Get the matrix value
+
+inline std::any IndexedAnyArray::operator[](TimeIndex time) const
+{
+  check_(time);
+  return v_[size_t(time - k_)];
+}
+
+/// Get the matrix value
+
+inline std::any & IndexedAnyArray::operator[](TimeIndex time)
+{
+  check_(time);
+  return v_[size_t(time - k_)];
+}
+
+/// gets the first value
+
+inline const std::any & IndexedAnyArray::front() const
+{
+  return v_.front();
+}
+
+/// gets the first value
+
+inline std::any & IndexedAnyArray::front()
+{
+  return v_.front();
+}
+
+/// gets the last value
+
+inline const std::any & IndexedAnyArray::back() const
+{
+  return v_.back();
+}
+
+/// gets the last value
+
+inline std::any & IndexedAnyArray::back()
+{
+  return v_.back();
+}
+
+/// Get the time index
+
+inline TimeIndex IndexedAnyArray::getLastIndex() const
+{
+  return k_ + TimeIndex(v_.size()) - 1;
+}
+
+/// Get the time index
+
+inline TimeIndex IndexedAnyArray::getNextIndex() const
+{
+  return k_ + TimeIndex(v_.size());
+}
+
+/// Get the time index
+
+inline TimeIndex IndexedAnyArray::getFirstIndex() const
+{
+  return k_;
+}
+
+inline TimeIndex IndexedAnyArray::setLastIndex(int index)
+{
+  return k_ = index - (v_.size() + 1);
+}
+
+inline TimeIndex IndexedAnyArray::setFirstIndex(int index)
+{
+  return k_ = index;
+}
+
+/// Switch off the initialization flag, the value is no longer accessible
+
+inline void IndexedAnyArray::reset()
+{
+  k_ = 0;
+  v_.clear();
+}
+
+inline void IndexedAnyArray::clear()
+{
+  k_ = k_ + TimeIndex(v_.size());
+  v_.clear();
+}
+
+inline const std::deque<std::any> & IndexedAnyArray::getArray()
+{
+  return v_;
+}
+
+inline bool IndexedAnyArray::checkIndex(TimeIndex time) const
+{
+  return (v_.size() > 0 && k_ <= time && k_ + TimeIndex(v_.size()) > time);
+}
+
+/// Checks whether the matrix is set or not (assert)
+/// does nothing in release mode
+
+inline void IndexedAnyArray::check_(TimeIndex time) const
+{
+  (void)time; // avoid warning in release mode
+  BOOST_ASSERT(checkIndex(time) && "Error: Time out of range");
+}
+
+/// Checks whether the matrix is set or not (assert)
+/// does nothing in release mode
+
+inline void IndexedAnyArray::check_() const
+{
+  BOOST_ASSERT(v_.size() && "Error: Matrix array is empty");
+}
+
+inline void IndexedAnyArray::checkNext_(TimeIndex time) const
+{
+  (void)time; // avoid warning
+  BOOST_ASSERT((v_.size() == 0 || k_ + TimeIndex(v_.size()) == time)
+               && "Error: New time instants must be consecutive to existing ones");
+}
+
+inline void IndexedAnyArray::truncateAfter(TimeIndex time)
+{
+  if(v_.size() > 0)
+  {
+    if(time >= getFirstIndex())
+    {
+      for(TimeIndex i = getLastIndex(); i > time; --i)
+      {
+        v_.pop_back();
+      }
+    }
+    else
+    {
+      v_.clear();
+    }
+  }
+}
+
+inline void IndexedAnyArray::truncateBefore(TimeIndex time)
+{
+  if(v_.size() > 0)
+  {
+    if(time < getLastIndex())
+    {
+      for(TimeIndex i = getFirstIndex(); i < time; ++i)
+      {
+        v_.pop_front();
+      }
+
+      setFirstIndex(time);
+    }
+    else
+    {
+      v_.clear();
+    }
+  }
+}
+
 inline bool isApprox(double a, double b, double relativePrecision)
 {
   return fabs(a - b) < fabs(a + b) * relativePrecision;
@@ -681,3 +876,5 @@ inline bool isApproxAbs(double a, double b, double absolutePrecision)
 {
   return fabs(a - b) < absolutePrecision;
 }
+
+} // namespace stateObservation

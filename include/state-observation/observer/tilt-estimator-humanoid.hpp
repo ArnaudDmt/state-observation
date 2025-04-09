@@ -1,7 +1,7 @@
 /**
- * \file      tilt-estimator.hpp
- * \author    Rafael Cisneros, Mehdi Benallegue
- * \date       2018
+ * \file      tilt-estimator-humanoid.hpp
+ * \author    Arnaud Demont, Mehdi Benallegue
+ * \date       2024
  * \brief      Version of the Tilt Estimator that implements all the necessary functions to perform the estimation for
  * humanoid robots.
  *

@@ -1,9 +1,7 @@
 /**
- * \file      tilt-estimator.hpp
- * \author    Arnaud Demont, Mehdi Benallegue
- * \date       2018
- * \brief      Version of the Tilt Estimator that implements all the necessary functions to perform the estimation for
- * humanoid robots.
+ * \file      viking.hpp
+ * \author    Arnaud Demont, Mehdi Benallegue, Abdelaziz Benallegue
+ * \date       2025
  *
  * \details
  *
@@ -33,56 +31,6 @@ struct InputViking
   // position measurements from contacts = posMeasurement (in the world) << imuContactPos
   std::vector<ContactPosMeas_Gains> pos_measurements_from_contact_;
 };
-// struct IterationViking : public IterationComplementaryFilter
-// {
-//   IterationViking(const Vector & initState, const kine::Kinematics & initPose, double dt);
-
-//   /// Default constructor
-//   IterationViking() = delete;
-
-//   virtual ~IterationViking();
-
-//   Vector computeStateDerivatives_() override;
-//   /// @brief integrates the given dx into the given state.
-//   /// @param dx_hat The state increment to integrate
-//   void integrateState_(const Vector & dx_hat) override;
-
-//   Vector & runIteration_() override;
-
-//   /// @brief adds the correction from a direct measurement of the IMU's frame orientation.
-//   /// @param meas measured orientation of the IMU's frame in the world
-//   /// @param gain weight of the correction
-//   void addOrientationMeasurement(const Matrix3 & meas, double gain);
-
-//   /// @brief adds the correction from a contact position measurement
-//   /// @param posMeasurement measured position of the contact in the world
-//   /// @param imuContactPos position of the contact in the imu's frame.
-//   /// @param gainDelta weight of the position correction
-//   /// @param gainSigma weight of the orientation correction
-//   void addContactPosMeasurement(const Vector3 & posMeasurement,
-//                                 const Vector3 & imuContactPos,
-//                                 double gainDelta,
-//                                 double gainSigma);
-
-// public:
-//   /// The parameters of the estimator
-//   double alpha_, beta_, rho_;
-//   /// Estimated pose of the IMU at the beginning of the iteration
-//   kine::Kinematics initPose_;
-//   /// Estimated pose of the IMU at the end of the iteration
-//   kine::Kinematics finalPose_;
-
-//   // correction of the orientation passed as a local angular velocity
-//   Vector3 sigma_ = Vector3::Zero();
-//   // correction of the orientation coming from orientation measurements, passed as a local angular velocity.
-//   Vector3 oriCorrFromOriMeas_ = Vector3::Zero();
-//   // correction of the position coming from the contact positions, passed as a local linear velocity.
-//   Vector3 posCorrFromContactPos_ = Vector3::Zero();
-//   // correction of the orientation coming from the contact positions, passed as a local angular velocity.
-//   Vector3 oriCorrFromContactPos_ = Vector3::Zero();
-
-//   TimeIndex k_contacts_ = 0; // time index of the contact measurements
-// };
 
 /**
  * \class  Viking

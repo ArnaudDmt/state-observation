@@ -95,31 +95,6 @@ public:
                                 double gainDelta,
                                 double gainSigma);
 
-  /// @brief replays a previous iteration with an additional orientation measurement.
-  /// @param delay delay between the iteration receiving the measurement and the current one.
-  /// @param meas measured orientation of the IMU's frame in the world
-  /// @param gain weight of the correction
-  StateVector replayIterationWithDelayedOri(unsigned long delay, const Matrix3 & meas, double gain);
-
-  /// @brief replays a previous iteration with an additional orientation measurement and applies the obtained correction
-  /// to the current state.
-  /// @param delay delay between the iteration receiving the measurement and the current one.
-  /// @param meas measured orientation of the IMU's frame in the world
-  /// @param gain weight of the correction
-  StateVector replayIterationsWithDelayedOri(unsigned long delay, const Matrix3 & meas, double gain);
-
-  // Vector3 getVirtualLocalVelocityMeasurement()
-  // {
-  //   return x1_;
-  // }
-
-  /// set the sampling time of the measurements
-  // void setBufferCapacity(unsigned long bufferCapacity) override
-  // {
-  //   withDelayedOri_ = true;
-  //   bufferedIters_.set_capacity(bufferCapacity);
-  // }
-
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)
   {
@@ -149,33 +124,6 @@ public:
   {
     return rho_;
   }
-
-  // inline const boost::circular_buffer & getIterationsBuffer() const
-  // {
-  //   return bufferedIters_;
-  // }
-
-  // returns the correction term applied on the estimated orientation
-
-  // inline const stateObservation::Vector3 & getOriCorrection()
-  // {
-  //   return getCurrentIter().sigma_;
-  // }
-  // // correction of the position coming from the contact positions, passed as a local linear velocity.
-  // inline const stateObservation::Vector3 & getPosCorrectionFromContactPos()
-  // {
-  //   return getCurrentIter().posCorrFromContactPos_;
-  // }
-  // // correction of the orientation coming from the contact positions, passed as a local angular velocity.
-  // inline const stateObservation::Vector3 & geOriCorrectionFromContactPos()
-  // {
-  //   return getCurrentIter().oriCorrFromContactPos_;
-  // }
-  // // correction of the orientation coming from direct orientation measurements, passed as a local angular velocity.
-  // inline const stateObservation::Vector3 & getOriCorrFromOriMeas()
-  // {
-  //   return getCurrentIter().oriCorrFromOriMeas_;
-  // }
 
 protected:
   /// @brief Runs one loop of the estimator.

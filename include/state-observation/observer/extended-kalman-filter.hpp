@@ -52,22 +52,16 @@ public:
   /// The constructor.
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
-  ///  \li p : size of the input vector
   ///  \li The parameter directInputOutputFeedthrough defines whether (true) or not (false) the measurement y_k requires
   ///  the input u_k \li The parameter directInputStateProcessFeedthrough defines whether (true) or not (false) the
   ///  state x_{k+1} requires the input u_k
 
-  ExtendedKalmanFilter(Index n,
-                       Index m,
-                       Index p,
-                       bool directInputOutputFeedthrough = true,
-                       bool directInputStateProcessFeedthrough = true);
+  ExtendedKalmanFilter(Index n, Index m, bool directInputOutputFeedthrough, bool directInputStateProcessFeedthrough);
 
   /// The constructor.
   ///  \li n : size of the state vector
   ///  \li nt: size of the state tengent vector representation (usually nt<=n)
   ///  \li m : size of the measurements vector
-  ///  \li p : size of the input vector
   ///  \li The parameter directInputOutputFeedthrough defines whether (true) or not (false) the measurement y_k requires
   ///  the input u_k \li The parameter directInputStateProcessFeedthrough defines whether (true) or not (false) the
   ///  state x_{k+1} requires the input u_k
@@ -76,7 +70,6 @@ public:
                        Index nt,
                        Index m,
                        Index mt,
-                       Index p,
                        bool directInputOutputFeedthrough,
                        bool directInputStateProcessFeedthrough);
 
@@ -139,7 +132,7 @@ protected:
   struct Optimization
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    ObserverBase::InputVector u_;
+    std::any u_;
     KalmanFilterBase::Amatrix a_;
     KalmanFilterBase::Cmatrix c_;
     ObserverBase::StateVector x_;

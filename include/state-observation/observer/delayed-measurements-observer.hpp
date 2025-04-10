@@ -44,10 +44,9 @@ public:
   /// The constructor
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
-  ///  \li p : size of the input vector
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer. Given in seconds, as the buffer's duration.
-  DelayedMeasurementObserver(double dt, Index n, Index m, unsigned long bufferCapacity, Index p = 0);
+  DelayedMeasurementObserver(double dt, Index n, Index m, unsigned long bufferCapacity);
 
   /// Default constructor
   DelayedMeasurementObserver() = delete;
@@ -80,7 +79,7 @@ public:
   /// @brief getestimated State
   /// @param k The time index of the expected state value
   /// @return ObserverBase::StateVector
-  virtual ObserverBase::StateVector getEstimatedState(TimeIndex k) override;
+  virtual const ObserverBase::StateVector & getEstimatedState(TimeIndex k) override;
 
   /// @brief sets the measurement
   /// @param y the measurement vector
@@ -102,8 +101,7 @@ public:
 
   /// Set the value of the input vector at time index k. The
   /// inputs have to be inserted in chronological order without gaps.
-  /// If there is no input in the system (p==0), this instruction has no effect
-  virtual void setInput(const ObserverBase::InputVector & u_k, TimeIndex k) override;
+  virtual void setInput(const std::any & u_k, TimeIndex k) override;
 
   /// Remove all the given values of the inputs
   /// If there is no input, this instruction has no effect

@@ -3,12 +3,8 @@
 
 namespace stateObservation
 {
-DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
-                                                       Index n,
-                                                       Index m,
-                                                       unsigned long bufferCapacity,
-                                                       Index p)
-: ObserverBase(n, m, p)
+DelayedMeasurementObserver::DelayedMeasurementObserver(double dt, Index n, Index m, unsigned long bufferCapacity)
+: ObserverBase(n, m)
 {
   setStateCapacity(bufferCapacity / dt);
   setSamplingTime(dt);
@@ -19,7 +15,7 @@ void DelayedMeasurementObserver::initEstimator(const Vector & x)
   xBuffer_.push_front(IndexedVector(x, 0));
 }
 
-ObserverBase::StateVector DelayedMeasurementObserver::getEstimatedState(TimeIndex k)
+const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(TimeIndex k)
 {
   BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
 
@@ -47,7 +43,10 @@ ObserverBase::StateVector DelayedMeasurementObserver::getEstimatedState(TimeInde
     {
       oneStepEstimation_(it);
 
-      u_.popFront();
+      if(u_.checkIndex(it->getTime() - 1))
+      {
+        u_.popFront();
+      }
       y_.popFront();
     }
   }
@@ -57,7 +56,11 @@ ObserverBase::StateVector DelayedMeasurementObserver::getEstimatedState(TimeInde
     xBuffer_.push_front(IndexedVector(xBuffer_.front()(), i + 1));
     oneStepEstimation_(xBuffer_.begin());
 
-    u_.popFront();
+    if(u_.checkIndex(i))
+    {
+      u_.popFront();
+    }
+
     y_.popFront();
   }
 
@@ -177,17 +180,12 @@ void DelayedMeasurementObserver::clearMeasurements()
   y_.reset();
 }
 
-void DelayedMeasurementObserver::setInput(const ObserverBase::InputVector & u_k, TimeIndex k)
+void DelayedMeasurementObserver::setInput(const std::any & u_k, TimeIndex k)
 {
-  if(p_ > 0)
-  {
-    BOOST_ASSERT(checkInputVector(u_k) && "The size of the input vector is incorrect");
-
-    BOOST_ASSERT((u_.getNextIndex() == k || u_.checkIndex(k)) && "ERROR: The time is set incorrectly \
+  BOOST_ASSERT((u_.getNextIndex() == k || u_.checkIndex(k)) && "ERROR: The time is set incorrectly \
                                 for the inputs (order or gap)");
 
-    u_.setValue(u_k, k);
-  }
+  u_.setValue(u_k, k);
 }
 
 void DelayedMeasurementObserver::clearInputs()

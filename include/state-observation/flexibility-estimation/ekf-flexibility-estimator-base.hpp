@@ -41,10 +41,7 @@ public:
   ///  \li inputSize : size of the input vector
   ///  \li dx gives the derivation step for a finite differences derivation method
 
-  EKFFlexibilityEstimatorBase(Index stateSize,
-                              Index measurementSize,
-                              Index inputSize,
-                              const Vector & dx = Vector::Zero(0));
+  EKFFlexibilityEstimatorBase(Index stateSize, Index measurementSize, const Vector & dx = Vector::Zero(0));
 
   /// virtual destructor
   virtual ~EKFFlexibilityEstimatorBase();
@@ -82,15 +79,15 @@ public:
 
   /// Sets the value of the next input for the state process dynamics
   /// i.e. : gives u_k such that x_{k+1} = f(x_k,u_k)
-  virtual void setInput(const Vector & u);
+  virtual void setInput(const std::any & u);
 
   /// Sets the value of the next  measurement
   /// i.e. : gives u_{k+1} such that y_{k+1}=h(x_{k+1},u_{k+1})
-  virtual void setMeasurementInput(const Vector & u);
+  virtual void setMeasurementInput(const std::any & u);
 
-  virtual Vector getInput();
+  virtual const std::any & getInput();
 
-  virtual Vector getMeasurementInput();
+  virtual const std::any & getMeasurementInput();
 
   /// Gets an estimation of the flexibility in the form of a state vector \hat{x_{k+1}}
   virtual const Vector & getFlexibilityVector();

@@ -43,7 +43,11 @@ ObserverBase::StateVector LinearKalmanFilter::prediction_(TimeIndex k)
                     "(the state at time k+1 needs the input at time k which was not given) "
                     "if you don't need the input in the computation of state, you "
                     "must set B matrix to zero");
-    xbar_().noalias() += b_ * this->u_[k - 1];
+
+    const Vector & u = std::any_cast<Vector>(u_[k - 1]);
+    BOOST_ASSERT(checkInputVector(u) && "The size of the input vector is incorrect.");
+
+    xbar_().noalias() += b_ * u;
   }
 
   return xbar_();
@@ -61,7 +65,11 @@ ObserverBase::MeasureVector LinearKalmanFilter::simulateSensor_(const StateVecto
                     "(the measurement at time k needs the input at time k which was not given) "
                     "if you don't need the input in the computation of measurement, you "
                     "must set D matrix to zero");
-    ybar_.set(c_ * x + d_ * u_[k], k);
+
+    const Vector & u = std::any_cast<Vector>(u_[k]);
+    BOOST_ASSERT(checkInputVector(u) && "The size of the input vector is incorrect.");
+
+    ybar_.set(c_ * x + d_ * u, k);
   }
   else
   {
@@ -132,10 +140,20 @@ void LinearKalmanFilter::setInputSize(Index p)
 {
   if(p != p_)
   {
-    KalmanFilterBase::setInputSize(p);
+    p_ = p;
     clearB();
     clearD();
   }
+}
+
+bool LinearKalmanFilter::checkInputVector(const StateVector & v) const
+{
+  return (v.rows() == n_ && v.cols() == 1);
+}
+
+Index LinearKalmanFilter::getInputSize() const
+{
+  return p_;
 }
 
 } // namespace stateObservation

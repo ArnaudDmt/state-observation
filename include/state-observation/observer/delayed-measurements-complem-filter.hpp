@@ -15,8 +15,8 @@ public:
   ///  \li p : size of the input vector
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer
-  DelayedMeasurementComplemFilter(double dt, Index n, Index m, unsigned long bufferCapacity, Index p = 0)
-  : DelayedMeasurementObserver(dt, n, m, bufferCapacity, p)
+  DelayedMeasurementComplemFilter(double dt, Index n, Index m, unsigned long bufferCapacity)
+  : DelayedMeasurementObserver(dt, n, m, bufferCapacity)
   {
   }
 

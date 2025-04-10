@@ -19,8 +19,7 @@ KalmanFilterBase::KalmanFilterBase() : nt_(0), arithm_(this)
   pr_.resize(nt_, nt_);
 }
 
-KalmanFilterBase::KalmanFilterBase(Index n, Index m, Index p)
-: ZeroDelayObserver(n, m, p), nt_(n), mt_(m), arithm_(this)
+KalmanFilterBase::KalmanFilterBase(Index n, Index m) : ZeroDelayObserver(n, m), nt_(n), mt_(m), arithm_(this)
 {
   oc_.pbar.resize(nt_, nt_);
   pr_.resize(nt_, nt_);
@@ -28,8 +27,8 @@ KalmanFilterBase::KalmanFilterBase(Index n, Index m, Index p)
   oc_.inoMeasCovInverse.resize(mt_, mt_);
 }
 
-KalmanFilterBase::KalmanFilterBase(Index n, Index nt, Index m, Index mt, Index p)
-: ZeroDelayObserver(n, m, p), nt_(nt), mt_(mt), arithm_(this)
+KalmanFilterBase::KalmanFilterBase(Index n, Index nt, Index m, Index mt)
+: ZeroDelayObserver(n, m), nt_(nt), mt_(mt), arithm_(this)
 {
   oc_.pbar.resize(nt_, nt_);
   pr_.resize(nt_, nt_);

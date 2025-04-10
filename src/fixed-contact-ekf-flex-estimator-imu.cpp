@@ -10,10 +10,7 @@ namespace stateObservation
 namespace flexibilityEstimation
 {
 FixedContactEKFFlexEstimatorIMU::FixedContactEKFFlexEstimatorIMU(double dt)
-: EKFFlexibilityEstimatorBase(stateSizeConst_,
-                              measurementSizeConst_,
-                              inputSizeConst_,
-                              Matrix::Constant(getStateSize(), 1, dxFactor)),
+: EKFFlexibilityEstimatorBase(stateSizeConst_, measurementSizeConst_, Matrix::Constant(getStateSize(), 1, dxFactor)),
   functor_(dt), virtualMeasurementCovariance_(initialVirtualMeasurementCovariance)
 {
   ekf_.setDirectInputStateFeedthrough(false);
@@ -179,11 +176,6 @@ void FixedContactEKFFlexEstimatorIMU::updateCovarianceMatrix_()
 Index FixedContactEKFFlexEstimatorIMU::getStateSize() const
 {
   return stateSizeConst_;
-}
-
-Index FixedContactEKFFlexEstimatorIMU::getInputSize() const
-{
-  return inputSizeConst_;
 }
 
 Index FixedContactEKFFlexEstimatorIMU::getMeasurementSize() const

@@ -11,17 +11,13 @@ namespace flexibilityEstimation
 typedef IMUElasticLocalFrameDynamicalSystem::state state;
 
 ModelBaseEKFFlexEstimatorIMU::ModelBaseEKFFlexEstimatorIMU(double dt)
-: EKFFlexibilityEstimatorBase(stateSize,
-                              measurementSizeBase_,
-                              inputSizeBase_,
-                              Matrix::Constant(stateSize, 1, dxFactor)),
-  functor_(dt), stateSize_(stateSize), unmodeledForceVariance_(1e-6), forceVariance_(Matrix::Identity(6, 6) * 1e-4),
+: EKFFlexibilityEstimatorBase(stateSize, measurementSizeBase_, Matrix::Constant(stateSize, 1, dxFactor)), functor_(dt),
+  stateSize_(stateSize), unmodeledForceVariance_(1e-6), forceVariance_(Matrix::Identity(6, 6) * 1e-4),
   absPosVariance_(1e-4), useFTSensors_(false), withAbsolutePos_(false), withComBias_(false),
   withUnmodeledForces_(false), limitOn_(true)
 {
   ekf_.setMeasureSize(functor_.getMeasurementSize());
   ekf_.setStateSize(stateSize_);
-  ekf_.setInputSize(functor_.getInputSize());
   inputSize_ = functor_.getInputSize();
 
   ModelBaseEKFFlexEstimatorIMU::resetCovarianceMatrices();
@@ -133,7 +129,6 @@ void ModelBaseEKFFlexEstimatorIMU::setContactsNumber(unsigned i)
   functor_.setContactsNumber(i);
 
   inputSize_ = functor_.getInputSize();
-  ekf_.setInputSize(inputSize_);
 
   if(useFTSensors_)
   {
@@ -304,11 +299,6 @@ void ModelBaseEKFFlexEstimatorIMU::updateMeasurementCovarianceMatrix_()
 Index ModelBaseEKFFlexEstimatorIMU::getStateSize() const
 {
   return stateSize;
-}
-
-Index ModelBaseEKFFlexEstimatorIMU::getInputSize() const
-{
-  return ekf_.getInputSize();
 }
 
 Index ModelBaseEKFFlexEstimatorIMU::getMeasurementSize() const
@@ -546,7 +536,6 @@ void ModelBaseEKFFlexEstimatorIMU::setWithUnmodeledForces(bool b)
   {
     functor_.setWithUnmodeledForces(b);
     ekf_.setMeasureSize(functor_.getMeasurementSize());
-    ekf_.setInputSize(functor_.getInputSize());
     withUnmodeledForces_ = b;
     updateMeasurementCovarianceMatrix_();
   }

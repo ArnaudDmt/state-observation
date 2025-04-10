@@ -19,10 +19,11 @@ IMUMltpctiveDynamicalSystem::~IMUMltpctiveDynamicalSystem()
   // dtor
 }
 
-Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const Vector & u, TimeIndex)
+Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const std::any & u, TimeIndex)
 {
   assertStateVector_(x);
-  assertInputVector_(u);
+  const inputType & input = std::any_cast<inputType>(u);
+  assertInputVector_(input);
 
   Vector3 position = x.segment(indexes::pos, 3);
   Vector3 velocity = x.segment(indexes::linVel, 3);
@@ -52,8 +53,8 @@ Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const Vector
   xk1.segment(indexes::angVel, 3) = angularVelocity;
 
   // inputs
-  Vector3 jerkInput = u.head(3);
-  Vector3 angularjerkInput = u.tail(3);
+  Vector3 jerkInput = input.head(3);
+  Vector3 angularjerkInput = input.tail(3);
 
   xk1.segment<3>(indexes::linAcc) += jerkInput * dt_;
   xk1.segment<3>(indexes::angAcc) += angularjerkInput * dt_;
@@ -64,7 +65,7 @@ Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const Vector
     return xk1;
 }
 
-Vector IMUMltpctiveDynamicalSystem::measureDynamics(const Vector & x, const Vector &, TimeIndex k)
+Vector IMUMltpctiveDynamicalSystem::measureDynamics(const Vector & x, const std::any &, TimeIndex k)
 {
   assertStateVector_(x);
 
@@ -154,6 +155,11 @@ Index IMUMltpctiveDynamicalSystem::getStateSize() const
 Index IMUMltpctiveDynamicalSystem::getInputSize() const
 {
   return inputSize_;
+}
+
+bool IMUMltpctiveDynamicalSystem::checkInputvector(const Vector & v)
+{
+  return (v.rows() == getInputSize() && v.cols() == 1);
 }
 
 Index IMUMltpctiveDynamicalSystem::getMeasurementSize() const

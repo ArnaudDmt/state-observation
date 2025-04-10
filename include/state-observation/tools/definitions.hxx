@@ -267,183 +267,23 @@ TimeIndex IndexedMatrixT<MatrixType, lazy>::getTime() const
   return k_;
 }
 
-/// Set the value of the matrix and the time sample
-template<typename MatrixType, typename Allocator>
-inline void IndexedMatrixArrayT<MatrixType, Allocator>::setValue(const MatrixType & v, TimeIndex k)
-{
-  if(checkIndex(k))
-  {
-    (*this)[k] = v;
-  }
-  else
-  {
-    checkNext_(k);
-    if(v_.size() == 0) k_ = k;
-
-    v_.push_back(v);
-  }
-}
-
-template<typename MatrixType, typename Allocator>
-inline void IndexedMatrixArrayT<MatrixType, Allocator>::pushBack(const MatrixType & v)
-{
-  v_.push_back(v);
-}
-
-template<typename MatrixType, typename Allocator>
-inline void IndexedMatrixArrayT<MatrixType, Allocator>::popFront()
-{
-  check_();
-  v_.pop_front();
-  ++k_;
-}
-
-/// Get the matrix value
-template<typename MatrixType, typename Allocator>
-inline MatrixType IndexedMatrixArrayT<MatrixType, Allocator>::operator[](TimeIndex time) const
-{
-  check_(time);
-  return v_[size_t(time - k_)];
-}
-
-/// Get the matrix value
-template<typename MatrixType, typename Allocator>
-inline MatrixType & IndexedMatrixArrayT<MatrixType, Allocator>::operator[](TimeIndex time)
-{
-  check_(time);
-  return v_[size_t(time - k_)];
-}
-
-/// gets the first value
-template<typename MatrixType, typename Allocator>
-inline const MatrixType & IndexedMatrixArrayT<MatrixType, Allocator>::front() const
-{
-  return v_.front();
-}
-
-/// gets the first value
-template<typename MatrixType, typename Allocator>
-inline MatrixType & IndexedMatrixArrayT<MatrixType, Allocator>::front()
-{
-  return v_.front();
-}
-
-/// gets the last value
-template<typename MatrixType, typename Allocator>
-inline const MatrixType & IndexedMatrixArrayT<MatrixType, Allocator>::back() const
-{
-  return v_.back();
-}
-
-/// gets the last value
-template<typename MatrixType, typename Allocator>
-inline MatrixType & IndexedMatrixArrayT<MatrixType, Allocator>::back()
-{
-  return v_.back();
-}
-
-/// Get the time index
-template<typename MatrixType, typename Allocator>
-inline TimeIndex IndexedMatrixArrayT<MatrixType, Allocator>::getLastIndex() const
-{
-  return k_ + TimeIndex(v_.size()) - 1;
-}
-
-/// Get the time index
-template<typename MatrixType, typename Allocator>
-inline TimeIndex IndexedMatrixArrayT<MatrixType, Allocator>::getNextIndex() const
-{
-  return k_ + TimeIndex(v_.size());
-}
-
-/// Get the time index
-template<typename MatrixType, typename Allocator>
-inline TimeIndex IndexedMatrixArrayT<MatrixType, Allocator>::getFirstIndex() const
-{
-  return k_;
-}
-
-template<typename MatrixType, typename Allocator>
-inline TimeIndex IndexedMatrixArrayT<MatrixType, Allocator>::setLastIndex(int index)
-{
-  return k_ = index - (v_.size() + 1);
-}
-
-template<typename MatrixType, typename Allocator>
-inline TimeIndex IndexedMatrixArrayT<MatrixType, Allocator>::setFirstIndex(int index)
-{
-  return k_ = index;
-}
-
-template<typename MatrixType, typename Allocator>
-inline TimeSize IndexedMatrixArrayT<MatrixType, Allocator>::size() const
-{
-  return TimeSize(v_.size());
-}
-
-/// Switch off the initialization flag, the value is no longer accessible
-template<typename MatrixType, typename Allocator>
-inline void IndexedMatrixArrayT<MatrixType, Allocator>::reset()
-{
-  k_ = 0;
-  v_.clear();
-}
-
-template<typename MatrixType, typename Allocator>
-void IndexedMatrixArrayT<MatrixType, Allocator>::clear()
-{
-  k_ = k_ + TimeIndex(v_.size());
-  v_.clear();
-}
-
-template<typename MatrixType, typename Allocator>
-inline bool IndexedMatrixArrayT<MatrixType, Allocator>::checkIndex(TimeIndex time) const
-{
-  return (v_.size() > 0 && k_ <= time && k_ + TimeIndex(v_.size()) > time);
-}
-
-/// Checks whether the matrix is set or not (assert)
-/// does nothing in release mode
-template<typename MatrixType, typename Allocator>
-inline void IndexedMatrixArrayT<MatrixType, Allocator>::check_(TimeIndex time) const
-{
-  (void)time; // avoid warning in release mode
-  BOOST_ASSERT(checkIndex(time) && "Error: Time out of range");
-}
-
-/// Checks whether the matrix is set or not (assert)
-/// does nothing in release mode
-template<typename MatrixType, typename Allocator>
-inline void IndexedMatrixArrayT<MatrixType, Allocator>::check_() const
-{
-  BOOST_ASSERT(v_.size() && "Error: Matrix array is empty");
-}
-
-template<typename MatrixType, typename Allocator>
-inline void IndexedMatrixArrayT<MatrixType, Allocator>::checkNext_(TimeIndex time) const
-{
-  (void)time; // avoid warning
-  BOOST_ASSERT((v_.size() == 0 || k_ + TimeIndex(v_.size()) == time)
-               && "Error: New time instants must be consecutive to existing ones");
-}
-
 /// resizes the array
 template<typename MatrixType, typename Allocator>
 inline void IndexedMatrixArrayT<MatrixType, Allocator>::resize(TimeSize i, const MatrixType & m)
 {
-  v_.resize(size_t(i), m);
+  this->v_.resize(size_t(i), m);
 }
 
 /// Default constructor
 template<typename MatrixType, typename Allocator>
-IndexedMatrixArrayT<MatrixType, Allocator>::IndexedMatrixArrayT() : k_(0)
+IndexedMatrixArrayT<MatrixType, Allocator>::IndexedMatrixArrayT() : IndexedObjectArrayT<MatrixType, Allocator>()
 {
 }
 
 /// size based constructor
 template<typename MatrixType, typename Allocator>
 IndexedMatrixArrayT<MatrixType, Allocator>::IndexedMatrixArrayT(TimeSize size, TimeIndex initial)
-: k_(initial), v_(size)
+: IndexedObjectArrayT<MatrixType, Allocator>(size, initial)
 {
 }
 
@@ -452,52 +292,12 @@ typename IndexedMatrixArrayT<MatrixType, Allocator>::Array IndexedMatrixArrayT<M
 {
   Array v;
 
-  for(TimeSize i = 0; i < v_.size(); ++i)
+  for(TimeSize i = 0; i < this->v_.size(); ++i)
   {
-    v.push_back(v_[i]);
+    this->v.push_back(this->v_[i]);
   }
 
   return v;
-}
-
-template<typename MatrixType, typename Allocator>
-void IndexedMatrixArrayT<MatrixType, Allocator>::truncateAfter(TimeIndex time)
-{
-  if(v_.size() > 0)
-  {
-    if(time >= getFirstIndex())
-    {
-      if(time < getLastIndex())
-      {
-        resize(TimeSize(time - getFirstIndex() + 1));
-      }
-    }
-    else
-    {
-      v_.clear();
-    }
-  }
-}
-
-template<typename MatrixType, typename Allocator>
-void IndexedMatrixArrayT<MatrixType, Allocator>::truncateBefore(TimeIndex time)
-{
-  if(v_.size() > 0)
-  {
-    if(time < getLastIndex())
-    {
-      for(TimeIndex i = getFirstIndex(); i < time; ++i)
-      {
-        v_.pop_front();
-      }
-
-      setFirstIndex(time);
-    }
-    else
-    {
-      v_.clear();
-    }
-  }
 }
 
 template<typename MatrixType, typename Allocator>
@@ -515,7 +315,7 @@ void IndexedMatrixArrayT<MatrixType, Allocator>::readFromFile(const char * filen
                                                               Index cols,
                                                               bool withTimeStamp)
 {
-  reset();
+  this->reset();
 
   std::ifstream f;
 
@@ -549,7 +349,7 @@ void IndexedMatrixArrayT<MatrixType, Allocator>::readFromFile(const char * filen
           }
         }
 
-        setValue(m, k);
+        this->setValue(m, k);
         ++k;
       }
     }
@@ -565,7 +365,7 @@ void IndexedMatrixArrayT<MatrixType, Allocator>::readVectorsFromFile(const std::
 template<typename MatrixType, typename Allocator>
 void IndexedMatrixArrayT<MatrixType, Allocator>::readVectorsFromFile(const char * filename, bool withTimeStamp)
 {
-  reset();
+  this->reset();
 
   std::ifstream f;
 
@@ -615,7 +415,7 @@ void IndexedMatrixArrayT<MatrixType, Allocator>::readVectorsFromFile(const char 
         {
           v(i) = doublecontainer[size_t(i)];
         }
-        setValue(v, k);
+        this->setValue(v, k);
         ++k;
       }
     }
@@ -643,15 +443,15 @@ void IndexedMatrixArrayT<MatrixType, Allocator>::writeInFile(const char * filena
 
   if(f.is_open())
   {
-    if(size() > 0)
+    if(this->size() > 0)
     {
 
-      for(TimeIndex k = getFirstIndex(); k < getNextIndex(); ++k)
+      for(TimeIndex k = this->getFirstIndex(); k < this->getNextIndex(); ++k)
       {
 
         f << k;
 
-        MatrixType & m = operator[](k);
+        MatrixType & m = this->operator[](k);
 
         for(int i = 0; i < m.rows(); ++i)
         {
@@ -666,7 +466,7 @@ void IndexedMatrixArrayT<MatrixType, Allocator>::writeInFile(const char * filena
 
     if(clearLog)
     {
-      clear();
+      this->clear();
     }
   }
   else
@@ -678,28 +478,30 @@ void IndexedMatrixArrayT<MatrixType, Allocator>::writeInFile(const char * filena
   }
 }
 
-template<typename T>
-inline void IndexedAnyArray::setValue(T && v, TimeIndex k)
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::setValue(const ObjectType & v, TimeIndex k)
 {
   if(checkIndex(k))
   {
-    (*this)[k] = std::forward<T>(v);
+    (*this)[k] = v;
   }
   else
   {
     checkNext_(k);
     if(v_.size() == 0) k_ = k;
 
-    v_.emplace_back(std::forward<T>(v));
+    v_.emplace_back(v);
   }
 }
 
-inline void IndexedAnyArray::pushBack(const std::any & v)
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::pushBack(const ObjectType & v)
 {
   v_.push_back(v);
 }
 
-inline void IndexedAnyArray::popFront()
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::popFront()
 {
   check_();
   v_.pop_front();
@@ -707,105 +509,101 @@ inline void IndexedAnyArray::popFront()
 }
 
 /// Get the matrix value
-
-inline std::any IndexedAnyArray::operator[](TimeIndex time) const
+template<typename ObjectType, typename Allocator>
+inline ObjectType & IndexedObjectArrayT<ObjectType, Allocator>::operator[](TimeIndex time)
 {
   check_(time);
   return v_[size_t(time - k_)];
 }
 
-/// Get the matrix value
-
-inline std::any & IndexedAnyArray::operator[](TimeIndex time)
+template<typename ObjectType, typename Allocator>
+inline const ObjectType & IndexedObjectArrayT<ObjectType, Allocator>::operator[](TimeIndex time) const
 {
   check_(time);
   return v_[size_t(time - k_)];
 }
 
 /// gets the first value
-
-inline const std::any & IndexedAnyArray::front() const
+template<typename ObjectType, typename Allocator>
+inline const ObjectType & IndexedObjectArrayT<ObjectType, Allocator>::front() const
 {
   return v_.front();
 }
 
 /// gets the first value
-
-inline std::any & IndexedAnyArray::front()
+template<typename ObjectType, typename Allocator>
+inline ObjectType & IndexedObjectArrayT<ObjectType, Allocator>::front()
 {
   return v_.front();
 }
 
 /// gets the last value
-
-inline const std::any & IndexedAnyArray::back() const
+template<typename ObjectType, typename Allocator>
+inline const ObjectType & IndexedObjectArrayT<ObjectType, Allocator>::back() const
 {
   return v_.back();
 }
 
 /// gets the last value
-
-inline std::any & IndexedAnyArray::back()
+template<typename ObjectType, typename Allocator>
+inline ObjectType & IndexedObjectArrayT<ObjectType, Allocator>::back()
 {
   return v_.back();
 }
 
 /// Get the time index
-
-inline TimeIndex IndexedAnyArray::getLastIndex() const
+template<typename ObjectType, typename Allocator>
+inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::getLastIndex() const
 {
   return k_ + TimeIndex(v_.size()) - 1;
 }
 
 /// Get the time index
-
-inline TimeIndex IndexedAnyArray::getNextIndex() const
+template<typename ObjectType, typename Allocator>
+inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::getNextIndex() const
 {
   return k_ + TimeIndex(v_.size());
 }
 
 /// Get the time index
-
-inline TimeIndex IndexedAnyArray::getFirstIndex() const
+template<typename ObjectType, typename Allocator>
+inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::getFirstIndex() const
 {
   return k_;
 }
-
-inline TimeIndex IndexedAnyArray::setLastIndex(int index)
+template<typename ObjectType, typename Allocator>
+inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::setLastIndex(int index)
 {
   return k_ = index - (v_.size() + 1);
 }
-
-inline TimeIndex IndexedAnyArray::setFirstIndex(int index)
+template<typename ObjectType, typename Allocator>
+inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::setFirstIndex(int index)
 {
   return k_ = index;
 }
-
-inline TimeSize IndexedAnyArray::size() const
+template<typename ObjectType, typename Allocator>
+inline TimeSize IndexedObjectArrayT<ObjectType, Allocator>::size() const
 {
   return TimeSize(v_.size());
 }
 
 /// Switch off the initialization flag, the value is no longer accessible
-
-inline void IndexedAnyArray::reset()
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::reset()
 {
   k_ = 0;
   v_.clear();
 }
 
-inline void IndexedAnyArray::clear()
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::clear()
 {
   k_ = k_ + TimeIndex(v_.size());
   v_.clear();
 }
 
-inline const std::deque<std::any> & IndexedAnyArray::getArray()
-{
-  return v_;
-}
-
-inline bool IndexedAnyArray::checkIndex(TimeIndex time) const
+template<typename ObjectType, typename Allocator>
+inline bool IndexedObjectArrayT<ObjectType, Allocator>::checkIndex(TimeIndex time) const
 {
   return (v_.size() > 0 && k_ <= time && k_ + TimeIndex(v_.size()) > time);
 }
@@ -813,7 +611,8 @@ inline bool IndexedAnyArray::checkIndex(TimeIndex time) const
 /// Checks whether the matrix is set or not (assert)
 /// does nothing in release mode
 
-inline void IndexedAnyArray::check_(TimeIndex time) const
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::check_(TimeIndex time) const
 {
   (void)time; // avoid warning in release mode
   BOOST_ASSERT(checkIndex(time) && "Error: Time out of range");
@@ -822,19 +621,22 @@ inline void IndexedAnyArray::check_(TimeIndex time) const
 /// Checks whether the matrix is set or not (assert)
 /// does nothing in release mode
 
-inline void IndexedAnyArray::check_() const
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::check_() const
 {
   BOOST_ASSERT(v_.size() && "Error: Matrix array is empty");
 }
 
-inline void IndexedAnyArray::checkNext_(TimeIndex time) const
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::checkNext_(TimeIndex time) const
 {
   (void)time; // avoid warning
   BOOST_ASSERT((v_.size() == 0 || k_ + TimeIndex(v_.size()) == time)
                && "Error: New time instants must be consecutive to existing ones");
 }
 
-inline void IndexedAnyArray::truncateAfter(TimeIndex time)
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::truncateAfter(TimeIndex time)
 {
   if(v_.size() > 0)
   {
@@ -852,7 +654,8 @@ inline void IndexedAnyArray::truncateAfter(TimeIndex time)
   }
 }
 
-inline void IndexedAnyArray::truncateBefore(TimeIndex time)
+template<typename ObjectType, typename Allocator>
+inline void IndexedObjectArrayT<ObjectType, Allocator>::truncateBefore(TimeIndex time)
 {
   if(v_.size() > 0)
   {

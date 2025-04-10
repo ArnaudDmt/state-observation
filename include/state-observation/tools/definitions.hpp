@@ -524,58 +524,51 @@ typedef IndexedMatrixT<Matrix3> IndexedMatrix3;
  *
  */
 
-template<typename MatrixType = Matrix, typename Allocator = std::allocator<MatrixType>>
-class IndexedMatrixArrayT
+template<typename ObjectType, typename Allocator>
+class IndexedObjectArrayT
 {
 public:
   /// Default constructor
-  IndexedMatrixArrayT();
+  IndexedObjectArrayT() : k_(0) {}
 
-  /// @brief Construct a new Indexed Vector Array T with a predifined size
+  /// @brief Construct a new IndexedObjectArrayT
   ///
-  /// @param size is the size of the array
   /// @param initTime is the index of the initial time. It is zero by default
-  IndexedMatrixArrayT(TimeSize size, TimeIndex initTime = 0);
+  IndexedObjectArrayT(TimeIndex initTime) : k_(initTime) {}
 
-  typedef std::vector<MatrixType, Allocator> Array;
-
-  /// Sets the vector v at the time index k
-  /// It checks the time index, the array must have contiguous indexes
+  /// Sets the value v at the time index k
   /// It can be used to push a value into the back of the array
-  inline void setValue(const MatrixType & v, TimeIndex k);
+  inline void setValue(const ObjectType & value, TimeIndex k);
 
-  /// Pushes back the matrix to the array, the new value will take the next time
-  inline void pushBack(const MatrixType & v);
+  /// Pushes back the object to the array, the new value will take the next time
+  inline void pushBack(const ObjectType & v);
 
   /// removes the first (oldest) element of the array
   inline void popFront();
 
-  /// gets the value with the given time index
-  inline MatrixType operator[](TimeIndex index) const;
+  /// gets a constant reference to the given time index
+  inline const ObjectType & operator[](TimeIndex time) const;
 
   /// gets the value with the given time index, non const version
-  inline MatrixType & operator[](TimeIndex index);
+  inline ObjectType & operator[](TimeIndex index);
 
   /// gets the first value
-  inline const MatrixType & front() const;
+  inline const ObjectType & front() const;
 
   /// gets the first value
-  inline MatrixType & front();
+  inline ObjectType & front();
 
   /// gets the last value
-  inline const MatrixType & back() const;
+  inline const ObjectType & back() const;
 
   /// gets the last value
-  inline MatrixType & back();
+  inline ObjectType & back();
 
   /// removes all the elements with larger indexes than timeIndex
   void truncateAfter(TimeIndex timeIndex);
 
   /// removes all the elements with smaller indexes than timeIndex
   void truncateBefore(TimeIndex timeIndex);
-
-  /// resizes the array
-  inline void resize(TimeSize i, const MatrixType & m = MatrixType());
 
   /// Get the time index
   inline TimeIndex getLastIndex() const;
@@ -602,11 +595,49 @@ public:
   /// Clears the vector but keeps the last index
   inline void clear();
 
-  /// converts the array into a standard vector
-  Array getArray() const;
-
   /// checks whether the index is present in the array
   inline bool checkIndex(TimeIndex k) const;
+
+protected:
+  typedef std::deque<ObjectType> Deque;
+
+  /// Asserts that the index is present in the array
+  /// does nothing in release mode
+  inline void check_(TimeIndex time) const;
+
+  /// Asserts that the array is not empty
+  /// does nothing in release mode
+  inline void check_() const;
+
+  /// Asserts that the given time can be pushed at the back of the vector
+  /// does nothing in release mode
+  inline void checkNext_(TimeIndex time) const;
+
+  TimeIndex k_;
+
+  Deque v_;
+};
+
+template<typename MatrixType = Matrix, typename Allocator = std::allocator<MatrixType>>
+class IndexedMatrixArrayT : public IndexedObjectArrayT<MatrixType, Allocator>
+{
+public:
+  /// Default constructor
+  IndexedMatrixArrayT();
+
+  /// @brief Construct a new Indexed Vector Array T with a predifined size
+  ///
+  /// @param size is the size of the array
+  /// @param initTime is the index of the initial time. It is zero by default
+  IndexedMatrixArrayT(TimeSize size, TimeIndex initTime = 0);
+
+  typedef std::vector<MatrixType, Allocator> Array;
+
+  /// resizes the array
+  inline void resize(TimeSize i, const MatrixType & m = MatrixType());
+
+  /// converts the array into a standard vector
+  Array getArray() const;
 
   /// gets the array from a file
   /// the line starts with the time index and then the matrix is read
@@ -635,125 +666,21 @@ public:
   /// When clear is set, the array is cleared but the time index is conserved
   /// When append is set to true, the output is appended to file
   void writeInFile(const std::string & filename, bool clear = false, bool append = false);
-
-protected:
-  typedef std::deque<MatrixType, Allocator> Deque;
-
-  /// Asserts that the index is present in the array
-  /// does nothing in release mode
-  inline void check_(TimeIndex time) const;
-
-  /// Asserts that the array is not empty
-  /// does nothing in release mode
-  inline void check_() const;
-
-  /// Asserts that the given time can be pushed at the back of the vector
-  /// does nothing in release mode
-  inline void checkNext_(TimeIndex time) const;
-
-  TimeIndex k_;
-
-  Deque v_;
 };
 
 typedef IndexedMatrixArrayT<Matrix> IndexedMatrixArray;
 typedef IndexedMatrixArrayT<Vector> IndexedVectorArray;
 
-class IndexedAnyArray
+class IndexedAnyArray : public IndexedObjectArrayT<std::any, std::allocator<std::any>>
 {
 public:
   /// Default constructor
-  IndexedAnyArray() : k_(0) {}
+  IndexedAnyArray() : IndexedObjectArrayT<std::any, std::allocator<std::any>>() {}
 
   /// @brief Construct a new IndexedAnyArray
   ///
   /// @param initTime is the index of the initial time. It is zero by default
-  IndexedAnyArray(TimeIndex initTime) : k_(initTime) {}
-
-  /// Sets the value v at the time index k
-  /// It can be used to push a value into the back of the array
-  template<typename T>
-  inline void setValue(T && value, TimeIndex k);
-
-  /// Pushes back the std::any to the array, the new value will take the next time
-  inline void pushBack(const std::any & v);
-
-  /// removes the first (oldest) element of the array
-  inline void popFront();
-
-  /// gets the value with the given time index
-  inline std::any operator[](TimeIndex index) const;
-
-  /// gets the value with the given time index, non const version
-  inline std::any & operator[](TimeIndex index);
-
-  /// gets the first value
-  inline const std::any & front() const;
-
-  /// gets the first value
-  inline std::any & front();
-
-  /// gets the last value
-  inline const std::any & back() const;
-
-  /// gets the last value
-  inline std::any & back();
-
-  /// removes all the elements with larger indexes than timeIndex
-  void truncateAfter(TimeIndex timeIndex);
-
-  /// removes all the elements with smaller indexes than timeIndex
-  void truncateBefore(TimeIndex timeIndex);
-
-  /// Get the time index
-  inline TimeIndex getLastIndex() const;
-
-  /// Get the time index of the next value that will be pushed back
-  /// Can be used in for loops
-  inline TimeIndex getNextIndex() const;
-
-  /// Set the time index of the last element
-  inline TimeIndex setLastIndex(int index);
-
-  /// Get the time index
-  inline TimeIndex getFirstIndex() const;
-
-  /// set the time index of the first element
-  inline TimeIndex setFirstIndex(int index);
-
-  inline TimeSize size() const;
-
-  /// Resets the array to initial state
-  /// the value is no longer accessible
-  inline void reset();
-
-  /// Clears the vector but keeps the last index
-  inline void clear();
-
-  /// converts the array into a standard vector
-  const std::deque<std::any> & getArray();
-
-  /// checks whether the index is present in the array
-  inline bool checkIndex(TimeIndex k) const;
-
-protected:
-  typedef std::deque<std::any> Deque;
-
-  /// Asserts that the index is present in the array
-  /// does nothing in release mode
-  inline void check_(TimeIndex time) const;
-
-  /// Asserts that the array is not empty
-  /// does nothing in release mode
-  inline void check_() const;
-
-  /// Asserts that the given time can be pushed at the back of the vector
-  /// does nothing in release mode
-  inline void checkNext_(TimeIndex time) const;
-
-  TimeIndex k_;
-
-  Deque v_;
+  IndexedAnyArray(TimeIndex initTime) : IndexedObjectArrayT<std::any, std::allocator<std::any>>(initTime) {}
 };
 
 namespace cst

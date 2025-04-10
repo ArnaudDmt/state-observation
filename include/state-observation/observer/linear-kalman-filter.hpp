@@ -51,7 +51,7 @@ public:
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
   ///  \li p : size of the input vector
-  LinearKalmanFilter(Index n, Index m, Index p = 0) : KalmanFilterBase(n, m, p) {}
+  LinearKalmanFilter(Index n, Index m, Index p) : KalmanFilterBase(n, m), p_(p) {}
 
   /// Default constructor
   LinearKalmanFilter() {}
@@ -108,10 +108,13 @@ public:
   /// the containers for the matrices C, D, R
   virtual void setMeasureSize(Index m);
 
-  /// changes the dimension of the input vector:
-  /// resets the internal container for the input vectors and
-  /// the containers for the matrices B, D
+  /// Changes the size of the input vector
   virtual void setInputSize(Index p);
+
+  /// gets the size of the input vector
+  virtual Index getInputSize() const;
+
+  virtual bool checkInputVector(const StateVector & v) const;
 
 protected:
   /// The implementation of the (linear) prediction (state dynamics)
@@ -125,6 +128,9 @@ protected:
 
   /// The container of the Input-Measurement matrix
   Matrix b_;
+
+  // size of the input vector
+  Index p_;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

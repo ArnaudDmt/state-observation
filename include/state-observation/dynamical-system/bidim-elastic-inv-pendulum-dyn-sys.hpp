@@ -37,10 +37,10 @@ public:
   virtual ~BidimElasticInvPendulum();
 
   /// Description of the state dynamics
-  virtual Vector stateDynamics(const Vector & x, const Vector & u, TimeIndex k);
+  virtual Vector stateDynamics(const Vector & x, const std::any & u, TimeIndex k);
 
   /// Description of the sensor's dynamics
-  virtual Vector measureDynamics(const Vector & x, const Vector & u, TimeIndex k);
+  virtual Vector measureDynamics(const Vector & x, const std::any & u, TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);
@@ -74,6 +74,8 @@ public:
   void setElasticity(const double & k);
 
 protected:
+  typedef double inputType;
+
   double k_;
   double m_;
   double h_;

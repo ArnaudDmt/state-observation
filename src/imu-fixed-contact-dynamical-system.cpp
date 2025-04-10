@@ -21,7 +21,7 @@ IMUFixedContactDynamicalSystem::~IMUFixedContactDynamicalSystem()
   // dtor
 }
 
-Vector IMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const Vector &, TimeIndex)
+Vector IMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const std::any &, TimeIndex)
 {
   assertStateVector_(x);
 
@@ -67,7 +67,7 @@ Quaternion IMUFixedContactDynamicalSystem::computeQuaternion_(const Vector3 & x)
   return quaternion_;
 }
 
-Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const Vector & u, TimeIndex k)
+Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const std::any & u, TimeIndex k)
 {
   assertStateVector_(x);
 
@@ -82,14 +82,15 @@ Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const V
   Quaternion qFlex(computeQuaternion_(orientationFlexV));
   Matrix3 rFlex(qFlex.toRotationMatrix());
 
-  assertInputVector_(u);
+  const inputType & input = std::any_cast<inputType>(u);
+  assertInputVector_(input);
 
-  Vector3 positionControl(u.segment(indexes::pos, 3));
-  Vector3 velocityControl(u.segment(indexes::linVel, 3));
-  Vector3 accelerationControl(u.segment(indexes::linAcc, 3));
+  Vector3 positionControl(input.segment(indexes::pos, 3));
+  Vector3 velocityControl(input.segment(indexes::linVel, 3));
+  Vector3 accelerationControl(input.segment(indexes::linAcc, 3));
 
-  Vector3 orientationControlV(u.segment(indexes::ori, 3));
-  Vector3 angularVelocityControl(u.segment(indexes::angVel, 3));
+  Vector3 orientationControlV(input.segment(indexes::ori, 3));
+  Vector3 angularVelocityControl(input.segment(indexes::angVel, 3));
 
   Quaternion qControl(computeQuaternion_(orientationControlV));
 
@@ -157,6 +158,11 @@ Index IMUFixedContactDynamicalSystem::getStateSize() const
 Index IMUFixedContactDynamicalSystem::getInputSize() const
 {
   return inputSize_;
+}
+
+bool IMUFixedContactDynamicalSystem::checkInputvector(const Vector & v)
+{
+  return (v.rows() == getInputSize() && v.cols() == 1);
 }
 
 Index IMUFixedContactDynamicalSystem::getMeasurementSize() const

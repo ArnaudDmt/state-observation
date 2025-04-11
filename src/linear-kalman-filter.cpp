@@ -44,7 +44,7 @@ ObserverBase::StateVector LinearKalmanFilter::prediction_(TimeIndex k)
                     "if you don't need the input in the computation of state, you "
                     "must set B matrix to zero");
 
-    const Vector & u = std::any_cast<Vector>(u_[k - 1]);
+    const Vector & u = std::any_cast<Vector &>(u_[k - 1]);
     BOOST_ASSERT(checkInputVector(u) && "The size of the input vector is incorrect.");
 
     xbar_().noalias() += b_ * u;
@@ -66,7 +66,7 @@ ObserverBase::MeasureVector LinearKalmanFilter::simulateSensor_(const StateVecto
                     "if you don't need the input in the computation of measurement, you "
                     "must set D matrix to zero");
 
-    const Vector & u = std::any_cast<Vector>(u_[k]);
+    const Vector & u = std::any_cast<Vector &>(u_[k]);
     BOOST_ASSERT(checkInputVector(u) && "The size of the input vector is incorrect.");
 
     ybar_.set(c_ * x + d_ * u, k);

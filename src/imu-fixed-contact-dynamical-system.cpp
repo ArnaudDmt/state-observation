@@ -82,7 +82,7 @@ Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const s
   Quaternion qFlex(computeQuaternion_(orientationFlexV));
   Matrix3 rFlex(qFlex.toRotationMatrix());
 
-  const inputType & input = std::any_cast<inputType>(u);
+  const inputType & input = std::any_cast<inputType &>(u);
   assertInputVector_(input);
 
   Vector3 positionControl(input.segment(indexes::pos, 3));

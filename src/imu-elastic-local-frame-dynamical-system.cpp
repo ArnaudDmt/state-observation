@@ -134,7 +134,7 @@ void IMUElasticLocalFrameDynamicalSystem::setContactModel(unsigned nb)
 Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector & x, const std::any & input)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector>(input);
+  const Vector & u = std::any_cast<Vector &>(input);
   assertInputVector_(u);
 
   // Getting flexibility
@@ -184,7 +184,7 @@ Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector
 Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromKinematics(const Vector & x, const std::any & input)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector>(input);
+  const Vector & u = std::any_cast<Vector &>(input);
   assertInputVector_(u);
 
   op_.positionFlex = x.segment(state::pos, 3);
@@ -402,7 +402,7 @@ inline void IMUElasticLocalFrameDynamicalSystem::computeForcesAndMoments(const I
 
 inline void IMUElasticLocalFrameDynamicalSystem::computeForcesAndMoments(const Vector & x, const std::any & input)
 {
-  const Vector & u = std::any_cast<Vector>(input);
+  const Vector & u = std::any_cast<Vector &>(input);
   assertInputVector_(u);
 
   op_.positionFlex = x.segment(state::pos, 3);
@@ -469,7 +469,7 @@ stateObservation::Vector IMUElasticLocalFrameDynamicalSystem::computeAcceleratio
                                                                                    const std::any & input)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector>(input);
+  const Vector & u = std::any_cast<Vector &>(input);
   assertInputVector_(u);
 
   op_.positionFlex = x.segment(state::pos, 3);
@@ -807,7 +807,7 @@ void IMUElasticLocalFrameDynamicalSystem::iterateDynamicsRK4(const Vector3 & pos
 Vector IMUElasticLocalFrameDynamicalSystem::stateDynamics(const Vector & x, const std::any & input, TimeIndex)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector>(input);
+  const Vector & u = std::any_cast<Vector &>(input);
   assertInputVector_(u);
 
   xk_ = x;
@@ -917,7 +917,7 @@ inline Matrix3 & IMUElasticLocalFrameDynamicalSystem::computeRotation_(const Vec
 Vector IMUElasticLocalFrameDynamicalSystem::measureDynamics(const Vector & x, const std::any & input, TimeIndex k)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector>(input);
+  const Vector & u = std::any_cast<Vector &>(input);
   assertInputVector_(u);
 
   xk_fory_ = x;

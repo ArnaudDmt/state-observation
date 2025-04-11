@@ -27,7 +27,7 @@ IMUDynamicalSystem::~IMUDynamicalSystem()
 Vector IMUDynamicalSystem::stateDynamics(const Vector & x, const std::any & input, TimeIndex)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector>(input);
+  const Vector & u = std::any_cast<Vector &>(input);
   assertInputVector_(u);
 
   Vector3 position = x.segment<3>(indexes::pos);

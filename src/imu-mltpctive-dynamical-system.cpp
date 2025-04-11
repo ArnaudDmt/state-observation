@@ -22,7 +22,7 @@ IMUMltpctiveDynamicalSystem::~IMUMltpctiveDynamicalSystem()
 Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const std::any & u, TimeIndex)
 {
   assertStateVector_(x);
-  const inputType & input = std::any_cast<inputType>(u);
+  const inputType & input = std::any_cast<inputType &>(u);
   assertInputVector_(input);
 
   Vector3 position = x.segment(indexes::pos, 3);

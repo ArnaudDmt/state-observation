@@ -21,9 +21,6 @@ ExtendedKalmanFilter::ExtendedKalmanFilter(Index n,
 #ifdef STATEOBSERVATION_VERBOUS_CONSTRUCTORS
   std::cout << std::endl << "ExtendedKalmanFilter Constructor" << std::endl;
 #endif // STATEOBSERVATION_VERBOUS_CONSTRUCTOR
-
-  directInputOutputFeedthrough_ = false;
-  directInputStateProcessFeedthrough_ = false;
 }
 
 ExtendedKalmanFilter::ExtendedKalmanFilter(Index n,

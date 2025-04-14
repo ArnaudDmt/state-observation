@@ -19,11 +19,11 @@ IMUMltpctiveDynamicalSystem::~IMUMltpctiveDynamicalSystem()
   // dtor
 }
 
-Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const std::any & u, TimeIndex)
+Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const std::any & input, TimeIndex)
 {
   assertStateVector_(x);
-  const inputType & input = std::any_cast<inputType &>(u);
-  assertInputVector_(input);
+  const inputType & u = convert_input<inputType>(input);
+  assertInputVector_(u);
 
   Vector3 position = x.segment(indexes::pos, 3);
   Vector3 velocity = x.segment(indexes::linVel, 3);
@@ -53,8 +53,8 @@ Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const std::a
   xk1.segment(indexes::angVel, 3) = angularVelocity;
 
   // inputs
-  Vector3 jerkInput = input.head(3);
-  Vector3 angularjerkInput = input.tail(3);
+  Vector3 jerkInput = u.head(3);
+  Vector3 angularjerkInput = u.tail(3);
 
   xk1.segment<3>(indexes::linAcc) += jerkInput * dt_;
   xk1.segment<3>(indexes::angAcc) += angularjerkInput * dt_;

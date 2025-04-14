@@ -14,7 +14,7 @@
 #define DelayedMeasurementObserverHPP
 
 #include <boost/circular_buffer.hpp>
-#include <queue>
+#include <set>
 #include <state-observation/api.h>
 #include <state-observation/observer/observer-base.hpp>
 
@@ -26,6 +26,26 @@ struct AsynchronousMeasurement
   inline TimeIndex getTime() const
   {
     return k_;
+  }
+  inline bool operator<(const AsynchronousMeasurement & async_meas2) const noexcept
+  {
+    return (k_ < async_meas2.k_);
+  }
+
+protected:
+  TimeIndex k_;
+};
+
+struct AsynchronousInput
+{
+  AsynchronousInput(TimeIndex k) : k_(k) {}
+  inline TimeIndex getTime() const
+  {
+    return k_;
+  }
+  inline bool operator<(const AsynchronousInput & async_meas2) const noexcept
+  {
+    return (k_ < async_meas2.k_);
   }
 
 protected:
@@ -86,9 +106,7 @@ public:
   /// @param k the time index
   void setMeasurement(const Vector & y, TimeIndex k) override;
 
-  void pushInput(const std::any & u_k);
-
-  void setAsyncMeasurement(const AsynchronousMeasurement & asyncMeas);
+  void pushAsyncMeasurement(const AsynchronousMeasurement & asyncMeas);
 
   /// Get the measurement of the time index k
   Vector getMeasurement(TimeIndex k) const;
@@ -98,6 +116,10 @@ public:
 
   /// Remove all the given values of the measurements
   virtual void clearMeasurements() override;
+
+  void pushInput(const std::any & u_k);
+
+  void pushAsyncInput(const AsynchronousInput & asyncMeas);
 
   /// Set the value of the input vector at time index k. The
   /// inputs have to be inserted in chronological order without gaps.
@@ -144,14 +166,6 @@ public:
 protected:
   typedef boost::circular_buffer<IndexedVector>::iterator StateIterator;
 
-  struct GreaterIndexAM
-  {
-    bool operator()(const AsynchronousMeasurement & lhs, const AsynchronousMeasurement & rhs) const
-    {
-      return lhs.getTime() > rhs.getTime();
-    }
-  };
-
   /// @brief Runs one loop of the estimator.
   /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   virtual StateVector oneStepEstimation_(StateIterator it) = 0;
@@ -171,15 +185,13 @@ protected:
   boost::circular_buffer<IndexedVector> xBuffer_;
   /// Container for the measurements.
   IndexedVectorArray y_;
-
-  std::priority_queue<AsynchronousMeasurement, std::vector<AsynchronousMeasurement>, GreaterIndexAM> y_asynchronous_;
-
   /// Container for the inputs.
   IndexedAnyArray u_;
 
-  // TimeIndex k_est_ = 0; // time index of the last estimation
-  // TimeIndex k_meas_ = 0; // time index of the current measurements
-  // TimeIndex k_input_ = 0; // time index of the current measurements
+  /// Container for the asynchronous measurements.
+  std::set<AsynchronousMeasurement> y_asynchronous_;
+  /// Container for the asynchronous inputs.
+  std::set<AsynchronousInput> u_asynchronous_;
 };
 
 } // namespace stateObservation

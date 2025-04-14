@@ -144,7 +144,7 @@ const ObserverBase::StateVector & ZeroDelayObserver::getEstimatedState(TimeIndex
     oneStepEstimation_();
     if(y_.getFirstIndex() < k) y_.popFront();
 
-    if(u_.getFirstIndex() < k) u_.popFront();
+    if(u_.size() > 0 && u_.getFirstIndex() < k) u_.popFront();
   }
 
   return x_();

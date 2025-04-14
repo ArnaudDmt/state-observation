@@ -16,6 +16,7 @@
 #include <state-observation/api.h>
 #include <state-observation/dynamical-system/dynamical-system-functor-base.hpp>
 #include <state-observation/noise/noise-base.hpp>
+#include <state-observation/tools/definitions.hpp>
 
 namespace stateObservation
 {

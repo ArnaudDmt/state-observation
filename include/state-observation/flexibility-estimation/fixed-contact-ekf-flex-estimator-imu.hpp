@@ -106,7 +106,7 @@ protected:
   static const Index stateSizeConst_ = 18;
   static const Index measurementSizeConst_ = 6;
   static const Index inputSizeConst_ = 15;
-  typedef Eigen::Matrix<double, 15, 1> inputType;
+  typedef Vector inputType;
 
   double dt_; // sampling period
 

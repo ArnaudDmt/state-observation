@@ -25,7 +25,7 @@ inline Index KineticsObserver::gyroBiasIndex(Index numberOfIMU) const
   return angVelIndex() + sizeAngVel + sizeGyroBias * numberOfIMU;
 }
 
-inline Index KineticsObserver::gyroBiasIndex(VectorIMUConstIterator i) const
+inline Index KineticsObserver::gyroBiasIndex(Input::VectorIMUConstIterator i) const
 {
   BOOST_ASSERT(i->stateIndex > 0 && "The requested imu is not set yet. The iterator may be wrong");
 
@@ -51,8 +51,8 @@ inline Index KineticsObserver::contactsIndex() const
 inline Index KineticsObserver::contactIndex(Index contactNbr) const
 {
   BOOST_ASSERT(contactNbr < maxContacts_ && "The requested contact number is higher than the maximum");
-  BOOST_ASSERT(contacts_[contactNbr].isSet && "The requested contact is not set yet, please add it before");
-  return Index(contacts_[contactNbr].stateIndex);
+  BOOST_ASSERT(input_.contacts_[contactNbr].isSet && "The requested contact is not set yet, please add it before");
+  return Index(input_.contacts_[contactNbr].stateIndex);
 }
 inline Index KineticsObserver::contactKineIndex(Index contactNbr) const
 {
@@ -79,33 +79,33 @@ inline Index KineticsObserver::contactTorqueIndex(Index contactNbr) const
   return contactForceIndex(contactNbr) + sizeForce;
 }
 
-inline Index KineticsObserver::contactIndex(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactIndex(Input::VectorContactConstIterator i) const
 {
   BOOST_ASSERT(i->stateIndex > 0 && "The requested contact is not set yet. The iterator may be wrong");
 
   return Index(i->stateIndex);
 }
-inline Index KineticsObserver::contactKineIndex(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactKineIndex(Input::VectorContactConstIterator i) const
 {
   return contactIndex(i);
 }
-inline Index KineticsObserver::contactPosIndex(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactPosIndex(Input::VectorContactConstIterator i) const
 {
   return contactKineIndex(i);
 }
-inline Index KineticsObserver::contactOriIndex(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactOriIndex(Input::VectorContactConstIterator i) const
 {
   return contactPosIndex(i) + sizePos;
 }
-inline Index KineticsObserver::contactWrenchIndex(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactWrenchIndex(Input::VectorContactConstIterator i) const
 {
   return contactKineIndex(i) + sizeContactKine;
 }
-inline Index KineticsObserver::contactForceIndex(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactForceIndex(Input::VectorContactConstIterator i) const
 {
   return contactWrenchIndex(i);
 }
-inline Index KineticsObserver::contactTorqueIndex(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactTorqueIndex(Input::VectorContactConstIterator i) const
 {
   return contactForceIndex(i) + sizeForce;
 }
@@ -136,7 +136,7 @@ inline Index KineticsObserver::gyroBiasIndexTangent(Index numberOfIMU) const
   return angVelIndexTangent() + sizeAngVel + sizeGyroBias * numberOfIMU;
 }
 
-inline Index KineticsObserver::gyroBiasIndexTangent(VectorIMUConstIterator i) const
+inline Index KineticsObserver::gyroBiasIndexTangent(Input::VectorIMUConstIterator i) const
 {
   BOOST_ASSERT(i->stateIndexTangent > 0 && "The requested imu is not set yet. The iterator may be wrong");
 
@@ -162,7 +162,7 @@ inline Index KineticsObserver::unmodeledTorqueIndexTangent() const
 inline Index KineticsObserver::contactIndexTangent(Index contactNbr) const
 {
   BOOST_ASSERT(contactNbr < maxContacts_ && "The requested contact number is higher than the maximum");
-  return contacts_[contactNbr].stateIndexTangent;
+  return input_.contacts_[contactNbr].stateIndexTangent;
 }
 inline Index KineticsObserver::contactKineIndexTangent(Index contactNbr) const
 {
@@ -189,32 +189,32 @@ inline Index KineticsObserver::contactTorqueIndexTangent(Index contactNbr) const
   return contactForceIndexTangent(contactNbr) + sizeForce;
 }
 
-inline Index KineticsObserver::contactIndexTangent(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactIndexTangent(Input::VectorContactConstIterator i) const
 {
   BOOST_ASSERT(i->stateIndexTangent > 0 && "The requested contact is not set yet. The iteratot may be wrong");
   return i->stateIndexTangent;
 }
-inline Index KineticsObserver::contactKineIndexTangent(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactKineIndexTangent(Input::VectorContactConstIterator i) const
 {
   return contactIndexTangent(i);
 }
-inline Index KineticsObserver::contactPosIndexTangent(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactPosIndexTangent(Input::VectorContactConstIterator i) const
 {
   return contactKineIndexTangent(i);
 }
-inline Index KineticsObserver::contactOriIndexTangent(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactOriIndexTangent(Input::VectorContactConstIterator i) const
 {
   return contactPosIndexTangent(i) + sizePos;
 }
-inline Index KineticsObserver::contactWrenchIndexTangent(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactWrenchIndexTangent(Input::VectorContactConstIterator i) const
 {
   return contactKineIndexTangent(i) + sizeContactKineTangent;
 }
-inline Index KineticsObserver::contactForceIndexTangent(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactForceIndexTangent(Input::VectorContactConstIterator i) const
 {
   return contactWrenchIndexTangent(i);
 }
-inline Index KineticsObserver::contactTorqueIndexTangent(VectorContactConstIterator i) const
+inline Index KineticsObserver::contactTorqueIndexTangent(Input::VectorContactConstIterator i) const
 {
   return contactForceIndexTangent(i) + sizeForce;
 }

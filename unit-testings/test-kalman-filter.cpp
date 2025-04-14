@@ -24,7 +24,7 @@ double testExtendedKalmanFilter()
   typedef stateObservation::ExtendedKalmanFilter ekf;
 
   /// instanciation of the extended Kalman filter
-  static ekf f(4, 3, 1);
+  static ekf f(4, 3);
 
   /// The functor that describes the dynamics of the state
   /// and the measurement
@@ -45,21 +45,27 @@ double testExtendedKalmanFilter()
 
     /// The dynamics of the state xk1=f(xk,u,k)
     virtual ekf::StateVector stateDynamics(const ekf::StateVector & xk,
-                                           const ekf::InputVector & u,
+                                           const std::any & input,
                                            stateObservation::TimeIndex k)
     {
       (void)k; // unused
-      (void)u; // unused
+      (void)input; // unused
 
       ekf::StateVector xk1;
 
-      xk1 = a_ * xk + cos(10 * (xk.transpose() * xk)[0]) * s_ + t_ + (u.transpose() * u)(0, 0) * s_;
+      xk1 = a_ * xk + cos(10 * (xk.transpose() * xk)[0]) * s_ + t_;
+      if(input.has_value())
+      {
+        const Eigen::VectorXd & u = stateObservation::convert_input<Eigen::VectorXd>(input);
+        xk1 += (u.transpose() * u)(0, 0) * s_;
+      }
+
       return xk1;
     }
 
     /// The dynamics of the state yk=h(xk,u,k)
     virtual ekf::MeasureVector measureDynamics(const ekf::StateVector & xk,
-                                               const ekf::InputVector & u,
+                                               const std::any & u,
                                                stateObservation::TimeIndex k)
     {
       (void)k; // unused
@@ -73,11 +79,6 @@ double testExtendedKalmanFilter()
     virtual stateObservation::Index getStateSize() const
     {
       return f.getStateSize();
-    }
-
-    virtual stateObservation::Index getInputSize() const
-    {
-      return f.getInputSize();
     }
 
     virtual stateObservation::Index getMeasurementSize() const
@@ -99,7 +100,7 @@ double testExtendedKalmanFilter()
   /// containers for the state, the measurements and the input
   ekf::StateVector xk[kmax + 1];
   ekf::MeasureVector yk[kmax];
-  ekf::InputVector uk[kmax + 1];
+  Eigen::VectorXd uk[kmax + 1];
 
   /// the standard deviation matrix to generate the gaussian noise
   ekf::Rmatrix r1 = f.getRmatrixRandom() * 0.01;
@@ -113,12 +114,12 @@ double testExtendedKalmanFilter()
     /// initializations
     ekf::StateVector x = f.stateVectorZero();
     xk[0] = x;
-    uk[0] = f.inputVectorRandom();
+    uk[0].setRandom();
 
     for(stateObservation::Index k = 1; k <= kmax; ++k)
     {
       /// generation of random inputs
-      uk[k] = f.inputVectorRandom();
+      uk[k].setRandom();
 
       /// generation of Gaussian white noises
       ekf::StateVector v = stateObservation::tools::ProbabilityLawSimulation::getGaussianMatrix(f.stateVectorZero(), q1,
@@ -195,7 +196,7 @@ double testExtendedKalmanFilterLTV()
 
   typedef stateObservation::ExtendedKalmanFilter ekf;
 
-  static ekf f(4, 3, 1);
+  static ekf f(4, 3);
 
   struct KalmanFunctorLTV : public stateObservation::DynamicalSystemFunctorBase
   {
@@ -214,25 +215,32 @@ double testExtendedKalmanFilterLTV()
     }
 
     virtual ekf::StateVector stateDynamics(const ekf::StateVector & x,
-                                           const ekf::InputVector & u,
+                                           const std::any & input,
                                            stateObservation::TimeIndex k)
     {
       ekf::StateVector xk1;
       stateObservation::TimeIndex kk = std::min(k, kmax);
-      xk1 = a[kk] * x + (u.transpose() * u)(0, 0) * s_;
+
+      xk1 = a[kk] * x;
+      if(input.has_value())
+      {
+        const stateObservation::Vector & u = stateObservation::convert_input<stateObservation::Vector>(input);
+        xk1 += (u.transpose() * u)(0, 0) * s_;
+      }
 
       return xk1;
     }
 
     virtual ekf::MeasureVector measureDynamics(const ekf::StateVector & x,
-                                               const ekf::InputVector & u,
+                                               const std::any & input,
                                                stateObservation::TimeIndex k)
     {
       (void)k; // unused
-      (void)u; // unused
+      (void)input; // unused
 
       ekf::MeasureVector yk;
       stateObservation::TimeIndex kk = std::min(k, kmax);
+      const stateObservation::Vector & u = stateObservation::convert_input<stateObservation::Vector>(input);
       yk = c[kk] * x + (u.transpose() * u)(0, 0) * n_;
       return yk;
     }
@@ -240,11 +248,6 @@ double testExtendedKalmanFilterLTV()
     virtual stateObservation::Index getStateSize() const
     {
       return f.getStateSize();
-    }
-
-    virtual stateObservation::Index getInputSize() const
-    {
-      return f.getInputSize();
     }
 
     virtual stateObservation::Index getMeasurementSize() const
@@ -266,7 +269,7 @@ double testExtendedKalmanFilterLTV()
 
   ekf::StateVector xk[kmax + 1];
   ekf::MeasureVector yk[kmax];
-  ekf::InputVector uk[kmax + 1];
+  stateObservation::Vector uk[kmax + 1];
 
   ekf::StateVector x = f.stateVectorZero();
 
@@ -280,7 +283,7 @@ double testExtendedKalmanFilterLTV()
   ekf::Qmatrix q(q1 * q1.transpose());
 
   xk[0] = x;
-  uk[0] = f.inputVectorRandom();
+  uk[0].setRandom();
 
   for(stateObservation::Index k = 1; k <= kmax; ++k)
   {
@@ -300,7 +303,7 @@ double testExtendedKalmanFilterLTV()
     }
     w = r1 * w;
 
-    uk[k] = f.inputVectorRandom();
+    uk[k].setRandom();
 
     x = func.stateDynamics(x, uk[k - 1], k - 1) + v;
 
@@ -376,7 +379,7 @@ double testExtendedKalmanFilterZeroInput()
     }
 
     virtual ekf::StateVector stateDynamics(const ekf::StateVector & x,
-                                           const ekf::InputVector & u,
+                                           const std::any & u,
                                            stateObservation::TimeIndex k)
     {
       (void)k; // unused
@@ -388,7 +391,7 @@ double testExtendedKalmanFilterZeroInput()
     }
 
     virtual ekf::MeasureVector measureDynamics(const ekf::StateVector & x,
-                                               const ekf::InputVector & u,
+                                               const std::any & u,
                                                stateObservation::TimeIndex k)
     {
       (void)k; // unused
@@ -412,11 +415,6 @@ double testExtendedKalmanFilterZeroInput()
     virtual stateObservation::Index getStateSize() const
     {
       return f.getStateSize();
-    }
-
-    virtual stateObservation::Index getInputSize() const
-    {
-      return f.getInputSize();
     }
 
     virtual stateObservation::Index getMeasurementSize() const
@@ -443,7 +441,7 @@ double testExtendedKalmanFilterZeroInput()
 
   ekf::StateVector xk[kmax + 1];
   ekf::MeasureVector yk[kmax];
-  ekf::InputVector u = f.inputVectorZero();
+  stateObservation::Vector1 u = stateObservation::Vector1::Random();
 
   ekf::StateVector x = f.stateVectorZero();
 

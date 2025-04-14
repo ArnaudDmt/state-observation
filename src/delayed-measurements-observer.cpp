@@ -24,10 +24,10 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
   // if there are asynchronous measurements, the impacted previous iterations are re-computed until the current one.
   if(!y_asynchronous_.empty())
   {
-    TimeIndex k_asynchronousMeas = y_asynchronous_.top().getTime();
+    TimeIndex k_asynchronousMeas = y_asynchronous_.begin()->getTime();
     StateIterator it_x = xBuffer_.begin() + k0 - k_asynchronousMeas - 1;
 
-    BOOST_ASSERT_MSG(it_x->getTime() - 1 == y_asynchronous_.top().getTime(), "ERROR");
+    BOOST_ASSERT_MSG(it_x->getTime() - 1 == y_asynchronous_.begin()->getTime(), "ERROR");
 
     // we remove all the input and measurements from iterations before the oldest asynchronous measurement
     while(y_.size() > 0 && y_.getFirstIndex() < k_asynchronousMeas)
@@ -43,7 +43,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
     {
       oneStepEstimation_(it);
 
-      if(u_.checkIndex(it->getTime() - 1))
+      if(u_.size() > 0 && u_.checkIndex(it->getTime() - 1))
       {
         u_.popFront();
       }
@@ -56,7 +56,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
     xBuffer_.push_front(IndexedVector(xBuffer_.front()(), i + 1));
     oneStepEstimation_(xBuffer_.begin());
 
-    if(u_.checkIndex(i))
+    if(u_.size() > 0 && u_.checkIndex(i))
     {
       u_.popFront();
     }
@@ -95,6 +95,11 @@ bool DelayedMeasurementObserver::stateIsSet() const
   return xBuffer_.front().isSet();
 }
 
+void DelayedMeasurementObserver::pushAsyncMeasurement(const AsynchronousMeasurement & asyncMeas)
+{
+  y_asynchronous_.insert(asyncMeas);
+}
+
 void DelayedMeasurementObserver::setMeasurement(const ObserverBase::MeasureVector & y_k, TimeIndex k)
 {
 
@@ -125,9 +130,9 @@ void DelayedMeasurementObserver::pushInput(const std::any & u_k)
   }
 }
 
-void DelayedMeasurementObserver::setAsyncMeasurement(const AsynchronousMeasurement & asyncMeas)
+void DelayedMeasurementObserver::pushAsyncInput(const AsynchronousInput & asyncInput)
 {
-  y_asynchronous_.push(asyncMeas);
+  u_asynchronous_.insert(asyncInput);
 }
 
 void DelayedMeasurementObserver::setState(const ObserverBase::StateVector & x_k, TimeIndex k)

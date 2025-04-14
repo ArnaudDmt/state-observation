@@ -96,7 +96,7 @@ protected:
   typedef kine::indexes<kine::quaternion> indexes;
   typedef kine::indexes<kine::rotationVector> indexesTangent;
 
-  typedef Vector6 inputType;
+  typedef Vector inputType;
 
   struct opt
   {

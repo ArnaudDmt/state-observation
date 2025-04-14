@@ -358,11 +358,11 @@ protected:
 
   Vector xk1_;
   Vector xk_;
-  Vector uk_;
+  std::any uk_;
 
   Vector xk_fory_;
   Vector yk_;
-  Vector uk_fory_;
+  std::any uk_fory_;
 
   Index measurementSize_;
 

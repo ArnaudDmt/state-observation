@@ -51,10 +51,13 @@ public:
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
   ///  \li p : size of the input vector
-  LinearKalmanFilter(Index n, Index m, Index p) : KalmanFilterBase(n, m), p_(p) {}
+  LinearKalmanFilter(Index n, Index m, Index p = 0) : KalmanFilterBase(n, m), p_(p) {}
 
   /// Default constructor
   LinearKalmanFilter() {}
+
+  /// InputVector is the type of the input vector
+  typedef Vector InputVector;
 
   /// The type of the matrix linking the input to the state
   typedef Matrix Bmatrix;
@@ -115,6 +118,15 @@ public:
   virtual Index getInputSize() const;
 
   virtual bool checkInputVector(const StateVector & v) const;
+
+  /// Gives a vector of input vector size having duplicated "c" value
+  virtual InputVector inputVectorConstant(double c) const;
+
+  /// Gives a vector of input vector size having random values
+  virtual InputVector inputVectorRandom() const;
+
+  /// Gives a vector of input vector size having zero values
+  virtual InputVector inputVectorZero() const;
 
 protected:
   /// The implementation of the (linear) prediction (state dynamics)

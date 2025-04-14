@@ -67,7 +67,7 @@ Quaternion IMUFixedContactDynamicalSystem::computeQuaternion_(const Vector3 & x)
   return quaternion_;
 }
 
-Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const std::any & u, TimeIndex k)
+Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const std::any & input, TimeIndex k)
 {
   assertStateVector_(x);
 
@@ -82,15 +82,15 @@ Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const s
   Quaternion qFlex(computeQuaternion_(orientationFlexV));
   Matrix3 rFlex(qFlex.toRotationMatrix());
 
-  const inputType & input = std::any_cast<inputType &>(u);
-  assertInputVector_(input);
+  const inputType & u = convert_input<inputType>(input);
+  assertInputVector_(u);
 
-  Vector3 positionControl(input.segment(indexes::pos, 3));
-  Vector3 velocityControl(input.segment(indexes::linVel, 3));
-  Vector3 accelerationControl(input.segment(indexes::linAcc, 3));
+  Vector3 positionControl(u.segment(indexes::pos, 3));
+  Vector3 velocityControl(u.segment(indexes::linVel, 3));
+  Vector3 accelerationControl(u.segment(indexes::linAcc, 3));
 
-  Vector3 orientationControlV(input.segment(indexes::ori, 3));
-  Vector3 angularVelocityControl(input.segment(indexes::angVel, 3));
+  Vector3 orientationControlV(u.segment(indexes::ori, 3));
+  Vector3 angularVelocityControl(u.segment(indexes::angVel, 3));
 
   Quaternion qControl(computeQuaternion_(orientationControlV));
 

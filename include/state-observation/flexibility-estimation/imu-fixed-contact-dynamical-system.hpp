@@ -108,7 +108,7 @@ protected:
   static const Index inputSize_ = 15;
   static const Index measurementSizeBase_ = 6;
 
-  typedef Eigen::Matrix<double, 15, 1> inputType;
+  typedef Vector inputType;
 
   Index measurementSize_;
 

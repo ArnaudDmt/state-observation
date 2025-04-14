@@ -53,20 +53,11 @@ public:
   /// Gives a boolean answer on whether or not the vector is correctly sized to be a state vector
   virtual bool checkStateVector(const Vector &);
 
-  /// Gives a boolean answer on whether or not the vector is correctly sized to be an input vector
-  virtual bool checkInputvector(const Vector &);
-
 protected:
   inline void assertStateVector_(const Vector & v)
   {
     (void)v; // avoid warning
     BOOST_ASSERT(checkStateVector(v) && "ERROR: The state vector has the wrong size");
-  }
-
-  inline void assertInputVector_(const Vector & v)
-  {
-    (void)v; // avoid warning
-    BOOST_ASSERT(checkInputvector(v) && "ERROR: The input vector has the wrong size");
   }
 
 private:

@@ -27,7 +27,7 @@ Vector BidimElasticInvPendulum::stateDynamics(const Vector & x, const std::any &
 
   double p = x[0];
   double pdot = x[2];
-  double pdotdot = std::any_cast<inputType &>(u);
+  double pdotdot = convert_input<double>(u);
   double theta = x[1];
   double thetadot = x[3];
   double thetadotdot = (1 / (m_ * (p * p + h_ * h_)))

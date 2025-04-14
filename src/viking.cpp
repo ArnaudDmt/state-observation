@@ -45,7 +45,7 @@ void Viking::computeCorrectionTerms(StateIterator it)
   Matrix3 initOri_inv = initOri.toMatrix3().transpose().eval();
   const Eigen::Ref<Vector3> x2_hat_prime = (*prevIter)().segment<3>(3);
 
-  InputViking & input = std::any_cast<InputViking &>(u_[k - 1]);
+  InputViking & input = convert_input<InputViking>(u_[k - 1]);
 
   oriCorrection_.setZero();
 
@@ -86,7 +86,8 @@ void Viking::addContactPosMeasurement(const Vector3 & posMeasurement,
 {
   startNewIteration_();
 
-  InputViking & input = std::any_cast<InputViking &>(u_.back());
+  InputViking & input = convert_input<InputViking>(u_.back());
+  // InputViking & input = std::any_cast<InputViking &>(u_.back());
   Vector6 inputPos;
   inputPos << posMeasurement, imuContactPos;
 
@@ -98,7 +99,8 @@ void Viking::addOrientationMeasurement(const Matrix3 & oriMeasurement, double ga
 {
   startNewIteration_();
 
-  InputViking & input = std::any_cast<InputViking &>(u_.back());
+  // InputViking & input = std::any_cast<InputViking &>(u_.back());
+  InputViking & input = convert_input<InputViking>(u_.back());
   input.ori_measurements_.push_back(InputViking::OriMeas_Gain(oriMeasurement, gain));
 }
 

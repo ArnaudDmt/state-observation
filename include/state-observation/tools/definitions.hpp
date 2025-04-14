@@ -529,12 +529,13 @@ class IndexedObjectArrayT
 {
 public:
   /// Default constructor
-  IndexedObjectArrayT() : k_(0) {}
+  IndexedObjectArrayT();
 
-  /// @brief Construct a new IndexedObjectArrayT
+  /// @brief Construct a new IndexedObjectArrayT with a predifined size
   ///
+  /// @param size is the size of the array
   /// @param initTime is the index of the initial time. It is zero by default
-  IndexedObjectArrayT(TimeIndex initTime) : k_(initTime) {}
+  IndexedObjectArrayT(TimeSize size, TimeIndex initTime = 0);
 
   /// Sets the value v at the time index k
   /// It can be used to push a value into the back of the array
@@ -677,10 +678,14 @@ public:
   /// Default constructor
   IndexedAnyArray() : IndexedObjectArrayT<std::any, std::allocator<std::any>>() {}
 
-  /// @brief Construct a new IndexedAnyArray
+  /// @brief Construct a new IndexedAnyArray with a predifined size
   ///
+  /// @param size is the size of the array
   /// @param initTime is the index of the initial time. It is zero by default
-  IndexedAnyArray(TimeIndex initTime) : IndexedObjectArrayT<std::any, std::allocator<std::any>>(initTime) {}
+  IndexedAnyArray(TimeSize size, TimeIndex initTime = 0)
+  : IndexedObjectArrayT<std::any, std::allocator<std::any>>(size, initTime)
+  {
+  }
 };
 
 namespace cst
@@ -715,6 +720,12 @@ inline bool isApprox(double a, double b, double relativePrecision = cst::epsilon
 /// @return true they are equal
 /// @return false they are not
 inline bool isApproxAbs(double a, double b, double absolutePrecision = cst::epsilon1);
+
+template<typename InputType>
+inline InputType & convert_input(std::any & u);
+
+template<typename InputType>
+inline const InputType & convert_input(const std::any & u);
 
 typedef boost::timer::auto_cpu_timer auto_cpu_timer;
 typedef boost::timer::cpu_timer cpu_timer;

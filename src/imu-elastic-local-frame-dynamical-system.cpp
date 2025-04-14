@@ -134,8 +134,6 @@ void IMUElasticLocalFrameDynamicalSystem::setContactModel(unsigned nb)
 Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector & x, const std::any & input)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector &>(input);
-  assertInputVector_(u);
 
   // Getting flexibility
   op_.positionFlex = x.segment(state::pos, 3);
@@ -156,20 +154,26 @@ Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector
   // Getting CoM
   op_.positionComBias << x.segment(state::comBias, 2),
       0; // the bias of the com along the z axis is assumed 0.
-  op_.positionCom = u.segment<3>(input::posCom);
-  if(withComBias_) op_.positionCom -= op_.positionComBias;
 
-  // Getting contact positions
-  unsigned nbContacts(getContactsNumber());
-  for(unsigned i = 0; i < nbContacts; ++i)
+  if(input.has_value())
   {
-    // Positions
-    op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
-    op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
-  }
+    const Vector & u = convert_input<Vector>(input);
+    assertInputVector_(u);
+    op_.positionCom = u.segment<3>(input::posCom);
+    if(withComBias_) op_.positionCom -= op_.positionComBias;
 
-  op_.addForce = u.segment<3>(input::additionalForces);
-  op_.addMoment = u.segment<3>(input::additionalForces + 3);
+    // Getting contact positions
+    unsigned nbContacts(getContactsNumber());
+    for(unsigned i = 0; i < nbContacts; ++i)
+    {
+      // Positions
+      op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
+      op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+    }
+
+    op_.addForce = u.segment<3>(input::additionalForces);
+    op_.addMoment = u.segment<3>(input::additionalForces + 3);
+  }
 
   computeContactWrench(op_.rFlex, op_.positionFlex, op_.contactPosV, op_.contactOriV, fc_, tc_, op_.fm, op_.tm,
                        op_.addForce, op_.addMoment);
@@ -184,8 +188,6 @@ Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector
 Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromKinematics(const Vector & x, const std::any & input)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector &>(input);
-  assertInputVector_(u);
 
   op_.positionFlex = x.segment(state::pos, 3);
   op_.orientationFlexV = x.segment(state::ori, 3);
@@ -203,36 +205,43 @@ Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromKinematics(const Ve
   op_.fm = x.segment(state::unmodeledForces, 3);
   op_.tm = x.segment(state::unmodeledForces + 3, 3);
 
-  op_.positionCom = u.segment<3>(input::posCom);
-  op_.velocityCom = u.segment<3>(input::velCom);
-  op_.accelerationCom = u.segment<3>(input::accCom);
+  if(input.has_value())
+  {
+    const Vector & u = convert_input<Vector>(input);
+    assertInputVector_(u);
+
+    op_.positionCom = u.segment<3>(input::posCom);
+    op_.velocityCom = u.segment<3>(input::velCom);
+    op_.accelerationCom = u.segment<3>(input::accCom);
+
+    buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
+    buildInertiaTensor(u.segment<6>(input::dotInertia), op_.dotInertia);
+    op_.AngMomentum = u.segment<3>(input::angMoment);
+    op_.dotAngMomentum = u.segment<3>(input::dotAngMoment);
+
+    unsigned nbContacts(getContactsNumber());
+
+    for(unsigned i = 0; i < nbContacts; ++i)
+    {
+      // Positions
+      op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
+      op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+
+      // Velocities
+      op_.contactVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 6), i);
+      op_.contactAngVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 9), i);
+    }
+
+    op_.addForce = u.segment<3>(input::additionalForces);
+    op_.addMoment = u.segment<3>(input::additionalForces + 3);
+  }
+
   if(withComBias_)
   {
     op_.positionComBias << x.segment(state::comBias, 2),
         0; // the bias of the com along the z axis is assumed 0.
     op_.positionCom -= op_.positionComBias;
   }
-
-  buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
-  buildInertiaTensor(u.segment<6>(input::dotInertia), op_.dotInertia);
-  op_.AngMomentum = u.segment<3>(input::angMoment);
-  op_.dotAngMomentum = u.segment<3>(input::dotAngMoment);
-
-  unsigned nbContacts(getContactsNumber());
-
-  for(unsigned i = 0; i < nbContacts; ++i)
-  {
-    // Positions
-    op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
-    op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
-
-    // Velocities
-    op_.contactVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 6), i);
-    op_.contactAngVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 9), i);
-  }
-
-  op_.addForce = u.segment<3>(input::additionalForces);
-  op_.addMoment = u.segment<3>(input::additionalForces + 3);
 
   computeAccelerations(op_.positionCom, op_.velocityCom, op_.accelerationCom, op_.AngMomentum, op_.dotAngMomentum,
                        op_.inertia, op_.dotInertia, op_.contactPosV, op_.contactOriV, op_.positionFlex,
@@ -402,26 +411,29 @@ inline void IMUElasticLocalFrameDynamicalSystem::computeForcesAndMoments(const I
 
 inline void IMUElasticLocalFrameDynamicalSystem::computeForcesAndMoments(const Vector & x, const std::any & input)
 {
-  const Vector & u = std::any_cast<Vector &>(input);
-  assertInputVector_(u);
-
   op_.positionFlex = x.segment(state::pos, 3);
   op_.velocityFlex = x.segment(state::linVel, 3);
   op_.orientationFlexV = x.segment(state::ori, 3);
   op_.angularVelocityFlex = x.segment(state::angVel, 3);
   op_.rFlex = computeRotation_(op_.orientationFlexV, 0);
 
-  unsigned nbContacts(getContactsNumber());
-
-  for(unsigned i = 0; i < nbContacts; ++i)
+  if(input.has_value())
   {
-    // Positions
-    op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
-    op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+    const Vector & u = convert_input<Vector>(input);
+    assertInputVector_(u);
 
-    // Velocities
-    op_.contactVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 6), i);
-    op_.contactAngVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 9), i);
+    unsigned nbContacts(getContactsNumber());
+
+    for(unsigned i = 0; i < nbContacts; ++i)
+    {
+      // Positions
+      op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
+      op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+
+      // Velocities
+      op_.contactVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 6), i);
+      op_.contactAngVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 9), i);
+    }
   }
 
   computeForcesAndMoments(op_.contactPosV, op_.contactOriV, op_.contactVelArray, op_.contactAngVelArray,
@@ -469,8 +481,6 @@ stateObservation::Vector IMUElasticLocalFrameDynamicalSystem::computeAcceleratio
                                                                                    const std::any & input)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector &>(input);
-  assertInputVector_(u);
 
   op_.positionFlex = x.segment(state::pos, 3);
   op_.orientationFlexV = x.segment(state::ori, 3);
@@ -490,31 +500,37 @@ stateObservation::Vector IMUElasticLocalFrameDynamicalSystem::computeAcceleratio
   op_.fm = x.segment(state::unmodeledForces, 3);
   op_.tm = x.segment(state::unmodeledForces + 3, 3);
 
-  buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
-  buildInertiaTensor(u.segment<6>(input::dotInertia), op_.dotInertia);
-
-  unsigned nbContacts(getContactsNumber());
-
-  for(unsigned i = 0; i < nbContacts; ++i)
+  if(input.has_value())
   {
-    // Positions
-    op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
-    op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+    const Vector & u = convert_input<Vector>(input);
+    assertInputVector_(u);
 
-    // Velocities
-    op_.contactVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 6), i);
-    op_.contactAngVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 9), i);
+    buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
+    buildInertiaTensor(u.segment<6>(input::dotInertia), op_.dotInertia);
+
+    unsigned nbContacts(getContactsNumber());
+
+    for(unsigned i = 0; i < nbContacts; ++i)
+    {
+      // Positions
+      op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
+      op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+
+      // Velocities
+      op_.contactVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 6), i);
+      op_.contactAngVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 9), i);
+    }
+
+    op_.positionCom = u.segment<3>(input::posCom);
+    if(withComBias_) op_.positionCom -= op_.positionComBias;
+    op_.velocityCom = u.segment<3>(input::velCom);
+    op_.accelerationCom = u.segment<3>(input::accCom);
+    op_.AngMomentum = u.segment<3>(input::angMoment);
+    op_.dotAngMomentum = u.segment<3>(input::dotAngMoment);
+
+    op_.addForce = u.segment<3>(input::additionalForces);
+    op_.addMoment = u.segment<3>(input::additionalForces + 3);
   }
-
-  op_.positionCom = u.segment<3>(input::posCom);
-  if(withComBias_) op_.positionCom -= op_.positionComBias;
-  op_.velocityCom = u.segment<3>(input::velCom);
-  op_.accelerationCom = u.segment<3>(input::accCom);
-  op_.AngMomentum = u.segment<3>(input::angMoment);
-  op_.dotAngMomentum = u.segment<3>(input::dotAngMoment);
-
-  op_.addForce = u.segment<3>(input::additionalForces);
-  op_.addMoment = u.segment<3>(input::additionalForces + 3);
 
   computeAccelerations(op_.positionCom, op_.velocityCom, op_.accelerationCom, op_.AngMomentum, op_.dotAngMomentum,
                        op_.inertia, op_.dotInertia, op_.contactPosV, op_.contactOriV, op_.positionFlex,
@@ -807,11 +823,9 @@ void IMUElasticLocalFrameDynamicalSystem::iterateDynamicsRK4(const Vector3 & pos
 Vector IMUElasticLocalFrameDynamicalSystem::stateDynamics(const Vector & x, const std::any & input, TimeIndex)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector &>(input);
-  assertInputVector_(u);
 
   xk_ = x;
-  uk_ = u;
+  uk_ = input;
 
   op_.positionFlex = x.segment(state::pos, 3);
   op_.orientationFlexV = x.segment(state::ori, 3);
@@ -825,28 +839,46 @@ Vector IMUElasticLocalFrameDynamicalSystem::stateDynamics(const Vector & x, cons
   op_.fm = x.segment(state::unmodeledForces, 3);
   op_.tm = x.segment(state::unmodeledForces + 3, 3);
 
-  buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
-  buildInertiaTensor(u.segment<6>(input::dotInertia), op_.dotInertia);
-
-  unsigned nbContacts(getContactsNumber());
-
-  for(unsigned i = 0; i < nbContacts; ++i)
+  if(input.has_value())
   {
-    // Positions
-    op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
-    op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+    const Vector & u = convert_input<Vector>(input);
+    assertInputVector_(u);
 
-    // Velocities
-    op_.contactVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 6), i);
-    op_.contactAngVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 9), i);
+    buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
+    buildInertiaTensor(u.segment<6>(input::dotInertia), op_.dotInertia);
+
+    unsigned nbContacts(getContactsNumber());
+
+    for(unsigned i = 0; i < nbContacts; ++i)
+    {
+      // Positions
+      op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
+      op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+
+      // Velocities
+      op_.contactVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 6), i);
+      op_.contactAngVelArray.setValue(u.segment<3>(input::contacts + 12 * i + 9), i);
+    }
+
+    op_.positionCom = u.segment<3>(input::posCom);
+    if(withComBias_) op_.positionCom -= op_.positionComBias;
+    op_.velocityCom = u.segment<3>(input::velCom);
+    op_.accelerationCom = u.segment<3>(input::accCom);
+    op_.AngMomentum = u.segment<3>(input::angMoment);
+    op_.dotAngMomentum = u.segment<3>(input::dotAngMoment);
+
+    op_.addForce = u.segment<3>(input::additionalForces);
+    op_.addMoment = u.segment<3>(input::additionalForces + 3);
+
+    const int subsample = 1;
+    for(int i = 0; i < subsample; ++i)
+    {
+      iterateDynamicsEuler(op_.positionCom, op_.velocityCom, op_.accelerationCom, op_.AngMomentum, op_.dotAngMomentum,
+                           op_.inertia, op_.dotInertia, op_.contactPosV, op_.contactOriV, op_.positionFlex,
+                           op_.velocityFlex, fc_, op_.orientationFlexV, op_.angularVelocityFlex, tc_, op_.fm, op_.tm,
+                           op_.addForce, op_.addMoment, dt_ / subsample);
+    }
   }
-
-  op_.positionCom = u.segment<3>(input::posCom);
-  if(withComBias_) op_.positionCom -= op_.positionComBias;
-  op_.velocityCom = u.segment<3>(input::velCom);
-  op_.accelerationCom = u.segment<3>(input::accCom);
-  op_.AngMomentum = u.segment<3>(input::angMoment);
-  op_.dotAngMomentum = u.segment<3>(input::dotAngMoment);
 
   for(unsigned i = 0; i < hrp2::contact::nbModeledMax; ++i)
   {
@@ -854,17 +886,6 @@ Vector IMUElasticLocalFrameDynamicalSystem::stateDynamics(const Vector & x, cons
     tc_.segment<3>(3 * i) = op_.efforts[i].block<3, 1>(3, 0);
   }
 
-  op_.addForce = u.segment<3>(input::additionalForces);
-  op_.addMoment = u.segment<3>(input::additionalForces + 3);
-
-  const int subsample = 1;
-  for(int i = 0; i < subsample; ++i)
-  {
-    iterateDynamicsEuler(op_.positionCom, op_.velocityCom, op_.accelerationCom, op_.AngMomentum, op_.dotAngMomentum,
-                         op_.inertia, op_.dotInertia, op_.contactPosV, op_.contactOriV, op_.positionFlex,
-                         op_.velocityFlex, fc_, op_.orientationFlexV, op_.angularVelocityFlex, tc_, op_.fm, op_.tm,
-                         op_.addForce, op_.addMoment, dt_ / subsample);
-  }
   // x_{k+1}
 
   for(unsigned i = 0; i < hrp2::contact::nbModeledMax; ++i)
@@ -875,11 +896,14 @@ Vector IMUElasticLocalFrameDynamicalSystem::stateDynamics(const Vector & x, cons
 
   xk1_ = x;
 
-  xk1_.segment<3>(state::pos) = op_.positionFlex;
-  xk1_.segment<3>(state::ori) = op_.orientationFlexV;
+  if(input.has_value())
+  {
+    xk1_.segment<3>(state::pos) = op_.positionFlex;
+    xk1_.segment<3>(state::ori) = op_.orientationFlexV;
 
-  xk1_.segment<3>(state::linVel) = op_.velocityFlex;
-  xk1_.segment<3>(state::angVel) = op_.angularVelocityFlex;
+    xk1_.segment<3>(state::linVel) = op_.velocityFlex;
+    xk1_.segment<3>(state::angVel) = op_.angularVelocityFlex;
+  }
 
   for(unsigned i = 0; i < hrp2::contact::nbModeledMax; ++i) xk1_.segment(state::fc + 6 * i, 6) = op_.efforts[i].col(0);
 
@@ -917,11 +941,9 @@ inline Matrix3 & IMUElasticLocalFrameDynamicalSystem::computeRotation_(const Vec
 Vector IMUElasticLocalFrameDynamicalSystem::measureDynamics(const Vector & x, const std::any & input, TimeIndex k)
 {
   assertStateVector_(x);
-  const Vector & u = std::any_cast<Vector &>(input);
-  assertInputVector_(u);
 
   xk_fory_ = x;
-  uk_fory_ = u;
+  uk_fory_ = input;
   op_.k_fory = k;
 
   op_.positionFlex = x.segment(state::pos, 3);
@@ -937,16 +959,36 @@ Vector IMUElasticLocalFrameDynamicalSystem::measureDynamics(const Vector & x, co
 
   op_.rFlex = computeRotation_(op_.orientationFlexV, 0);
 
-  buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
-  buildInertiaTensor(u.segment<6>(input::dotInertia), op_.dotInertia);
-  unsigned nbContacts(getContactsNumber());
-  for(unsigned i = 0; i < nbContacts; ++i)
+  if(input.has_value())
   {
-    // Positions
-    op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
-    op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+    const Vector & u = convert_input<Vector>(input);
+    assertInputVector_(u);
+
+    buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
+    buildInertiaTensor(u.segment<6>(input::dotInertia), op_.dotInertia);
+    unsigned nbContacts(getContactsNumber());
+    for(unsigned i = 0; i < nbContacts; ++i)
+    {
+      // Positions
+      op_.contactPosV.setValue(u.segment<3>(input::contacts + 12 * i), i);
+      op_.contactOriV.setValue(u.segment<3>(input::contacts + 12 * i + 3), i);
+    }
+    op_.positionCom = u.segment<3>(input::posCom);
+
+    op_.velocityCom = u.segment<3>(input::velCom);
+    op_.accelerationCom = u.segment<3>(input::accCom);
+    op_.AngMomentum = u.segment<3>(input::angMoment);
+    op_.dotAngMomentum = u.segment<3>(input::dotAngMoment);
+
+    op_.positionControl = u.segment(input::posIMU, 3);
+    op_.velocityControl = u.segment(input::linVelIMU, 3);
+    op_.accelerationControl = u.segment(input::linAccIMU, 3);
+    op_.orientationControlV = u.segment(input::oriIMU, 3);
+    op_.angularVelocityControl = u.segment(input::angVelIMU, 3);
+
+    op_.addForce = u.segment<3>(input::additionalForces);
+    op_.addMoment = u.segment<3>(input::additionalForces + 3);
   }
-  op_.positionCom = u.segment<3>(input::posCom);
 
   if(withComBias_)
   {
@@ -954,17 +996,6 @@ Vector IMUElasticLocalFrameDynamicalSystem::measureDynamics(const Vector & x, co
         0; // the bias of the com along the z axis is assumed 0.
     op_.positionCom -= op_.positionComBias;
   }
-
-  op_.velocityCom = u.segment<3>(input::velCom);
-  op_.accelerationCom = u.segment<3>(input::accCom);
-  op_.AngMomentum = u.segment<3>(input::angMoment);
-  op_.dotAngMomentum = u.segment<3>(input::dotAngMoment);
-
-  op_.positionControl = u.segment(input::posIMU, 3);
-  op_.velocityControl = u.segment(input::linVelIMU, 3);
-  op_.accelerationControl = u.segment(input::linAccIMU, 3);
-  op_.orientationControlV = u.segment(input::oriIMU, 3);
-  op_.angularVelocityControl = u.segment(input::angVelIMU, 3);
 
   op_.rControl = computeRotation_(op_.orientationControlV, 1);
 
@@ -975,9 +1006,6 @@ Vector IMUElasticLocalFrameDynamicalSystem::measureDynamics(const Vector & x, co
     fc_.segment<3>(3 * i) = op_.efforts[i].block<3, 1>(0, 0);
     tc_.segment<3>(3 * i) = op_.efforts[i].block<3, 1>(3, 0);
   }
-
-  op_.addForce = u.segment<3>(input::additionalForces);
-  op_.addMoment = u.segment<3>(input::additionalForces + 3);
 
   // Get acceleration
   computeAccelerations(op_.positionCom, op_.velocityCom, op_.accelerationCom, op_.AngMomentum, op_.dotAngMomentum,

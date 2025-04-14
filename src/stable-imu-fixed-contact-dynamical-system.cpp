@@ -36,7 +36,7 @@ Vector3 StableIMUFixedContactDynamicalSystem::stabilizeAccelerationAngular(Vecto
   return -WAngular.cwiseProduct(WAngular.cwiseProduct(x)) - 2 * EAngular.cwiseProduct(WAngular.cwiseProduct(xdot));
 }
 
-Vector StableIMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const Vector &, TimeIndex)
+Vector StableIMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const std::any &, TimeIndex)
 {
   assertStateVector_(x);
 
@@ -86,7 +86,7 @@ Quaternion StableIMUFixedContactDynamicalSystem::computeQuaternion_(const Vector
   return quaternion_;
 }
 
-Vector StableIMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const Vector & u, TimeIndex k)
+Vector StableIMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const std::any & input, TimeIndex k)
 {
   assertStateVector_(x);
 
@@ -101,6 +101,7 @@ Vector StableIMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, c
   Quaternion qFlex(computeQuaternion_(orientationFlexV));
   Matrix3 rFlex(qFlex.toRotationMatrix());
 
+  const Vector & u = convert_input<Vector>(input);
   assertInputVector_(u);
 
   Vector3 positionControl(u.segment(indexes::pos, 3));
@@ -179,6 +180,11 @@ Index StableIMUFixedContactDynamicalSystem::getInputSize() const
   return inputSize_;
 }
 
+bool StableIMUFixedContactDynamicalSystem::checkInputvector(const Vector & v)
+{
+  return (v.rows() == getInputSize() && v.cols() == 1);
+}
+
 Index StableIMUFixedContactDynamicalSystem::getMeasurementSize() const
 {
   return measurementSize_;
@@ -206,5 +212,6 @@ void StableIMUFixedContactDynamicalSystem::setContactPosition(unsigned i, const 
 
   contactPositions_[i] = position;
 }
+
 } // namespace flexibilityEstimation
 } // namespace stateObservation

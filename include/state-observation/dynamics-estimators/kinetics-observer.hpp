@@ -1050,104 +1050,115 @@ public:
   /// @}
 
 protected:
-  struct Sensor
+  struct Input
   {
-    Sensor(Index signalSize) : measIndex(-1), measIndexTangent(-1), size(signalSize), time(0) {}
-    ~Sensor() {}
-    Index measIndex;
-    Index measIndexTangent;
-    Index size;
-    TimeIndex time;
-
-    inline Vector extractFromVector(const Vector & v)
+    Input(unsigned maxContacts, unsigned maxNumberOfIMU) : contacts_(maxContacts), imuSensors_(maxNumberOfIMU) {}
+    struct Sensor
     {
-      return v.segment(size, measIndex);
-    }
-  };
+      Sensor(Index signalSize) : measIndex(-1), measIndexTangent(-1), size(signalSize), time(0) {}
+      ~Sensor() {}
+      Index measIndex;
+      Index measIndexTangent;
+      Index size;
+      TimeIndex time;
 
-  struct IMU : public Sensor
-  {
-    ~IMU() {}
-    IMU() : Sensor(sizeIMUSignal) {}
+      inline Vector extractFromVector(const Vector & v)
+      {
+        return v.segment(size, measIndex);
+      }
+    };
 
-    Kinematics userImuKinematics; // the kinematics of the IMU in the user's frame
-    LocalKinematics centroidImuKinematics; // the kinematics of the IMU in the IMU's frame
-    Vector6 acceleroGyro;
-    Matrix3 covMatrixAccelero;
-    Matrix3 covMatrixGyro;
-
-    Index stateIndex;
-    Index stateIndexTangent;
-
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  };
-
-  typedef std::vector<IMU, Eigen::aligned_allocator<IMU>> VectorIMU;
-  typedef VectorIMU::iterator VectorIMUIterator;
-  typedef VectorIMU::const_iterator VectorIMUConstIterator;
-
-  struct Contact : public Sensor
-  {
-    Contact() : Sensor(sizeWrench), isSet(false), withRealSensor(false), stateIndex(-1), stateIndexTangent(-1)
+    struct IMU : public Sensor
     {
-      worldRestPose.angVel = worldRestPose.linVel = Vector3::Zero();
-    }
-    ~Contact() {}
+      ~IMU() {}
+      IMU() : Sensor(sizeIMUSignal) {}
 
-    /// State ///
-    Kinematics worldRestPose; // the rest pose of the contact in the world frame
+      Kinematics userImuKinematics; // the kinematics of the IMU in the user's frame
+      LocalKinematics centroidImuKinematics; // the kinematics of the IMU in the IMU's frame
+      Vector6 acceleroGyro;
+      Matrix3 covMatrixAccelero;
+      Matrix3 covMatrixGyro;
 
-    /// Measurements ///
-    Vector6 wrenchMeasurement; /// Describes the measured wrench (forces + torques) at the contact in the sensor's frame
+      Index stateIndex;
+      Index stateIndexTangent;
 
-    /// Input ///
-    Kinematics userContactKine; /// Describes the kinematics of the contact point in the centroid's frame.
-    Kinematics centroidContactKine; /// Describes the kinematics of the contact point in the centroid's frame.
-    CheckedMatrix6 sensorCovMatrix; /// measurement covariance matrix of the wrench sensor attached to the contact.
+      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    };
 
-    // process covariance associated to the rest position of the contact.
-    Matrix3 restPosProcessCovMat;
-    // process covariance associated to the rest orientation of the contact.
-    Matrix3 restOriProcessCovMat;
+    typedef std::vector<IMU, Eigen::aligned_allocator<IMU>> VectorIMU;
+    typedef VectorIMU::iterator VectorIMUIterator;
+    typedef VectorIMU::const_iterator VectorIMUConstIterator;
 
-    Matrix3 linearStiffness; /// linear stiffness associated to the contact, used in the visco-elastic model
-    Matrix3 linearDamping; /// linear damping associated to the contact, used in the visco-elastic model
-    Matrix3 angularStiffness; /// angular stiffness associated to the contact, used in the visco-elastic model
-    Matrix3 angularDamping; /// angular damping associated to the contact, used in the visco-elastic model
+    struct Contact : public Sensor
+    {
+      Contact() : Sensor(sizeWrench), isSet(false), withRealSensor(false), stateIndex(-1), stateIndexTangent(-1)
+      {
+        worldRestPose.angVel = worldRestPose.linVel = Vector3::Zero();
+      }
+      ~Contact() {}
 
-    /// Status ///
+      /// State ///
+      Kinematics worldRestPose; // the rest pose of the contact in the world frame
 
-    bool isSet;
-    bool withRealSensor;
-    Index stateIndex;
-    Index stateIndexTangent;
+      /// Measurements ///
+      Vector6
+          wrenchMeasurement; /// Describes the measured wrench (forces + torques) at the contact in the sensor's frame
 
-    static const Kinematics::Flags::Byte contactKineFlags = /// flags for the components of the kinematics
-        Kinematics::Flags::position | Kinematics::Flags::orientation | Kinematics::Flags::linVel
-        | Kinematics::Flags::angVel;
+      /// Input ///
+      Kinematics userContactKine; /// Describes the kinematics of the contact point in the centroid's frame.
+      Kinematics centroidContactKine; /// Describes the kinematics of the contact point in the centroid's frame.
+      CheckedMatrix6 sensorCovMatrix; /// measurement covariance matrix of the wrench sensor attached to the contact.
 
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  };
+      // process covariance associated to the rest position of the contact.
+      Matrix3 restPosProcessCovMat;
+      // process covariance associated to the rest orientation of the contact.
+      Matrix3 restOriProcessCovMat;
 
-  typedef std::vector<Contact, Eigen::aligned_allocator<Contact>> VectorContact;
-  typedef VectorContact::iterator VectorContactIterator;
-  typedef VectorContact::const_iterator VectorContactConstIterator;
+      Matrix3 linearStiffness; /// linear stiffness associated to the contact, used in the visco-elastic model
+      Matrix3 linearDamping; /// linear damping associated to the contact, used in the visco-elastic model
+      Matrix3 angularStiffness; /// angular stiffness associated to the contact, used in the visco-elastic model
+      Matrix3 angularDamping; /// angular damping associated to the contact, used in the visco-elastic model
 
-  struct AbsolutePoseSensor : public Sensor
-  {
-    AbsolutePoseSensor() : Sensor(sizePose) {}
+      /// Status ///
 
-    Kinematics pose;
-    static const Kinematics::Flags::Byte poseFlags = Kinematics::Flags::position | Kinematics::Flags::orientation;
-    CheckedMatrix6 covMatrix;
-  };
+      bool isSet;
+      bool withRealSensor;
+      Index stateIndex;
+      Index stateIndexTangent;
 
-  struct AbsoluteOriSensor : public Sensor
-  {
-    AbsoluteOriSensor() : Sensor(sizePose) {}
+      static const Kinematics::Flags::Byte contactKineFlags = /// flags for the components of the kinematics
+          Kinematics::Flags::position | Kinematics::Flags::orientation | Kinematics::Flags::linVel
+          | Kinematics::Flags::angVel;
 
-    Orientation ori;
-    CheckedMatrix3 covMatrix;
+      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    };
+
+    typedef std::vector<Contact, Eigen::aligned_allocator<Contact>> VectorContact;
+    typedef VectorContact::iterator VectorContactIterator;
+    typedef VectorContact::const_iterator VectorContactConstIterator;
+
+    struct AbsolutePoseSensor : public Sensor
+    {
+      AbsolutePoseSensor() : Sensor(sizePose) {}
+
+      Kinematics pose;
+      static const Kinematics::Flags::Byte poseFlags = Kinematics::Flags::position | Kinematics::Flags::orientation;
+      CheckedMatrix6 covMatrix;
+    };
+
+    struct AbsoluteOriSensor : public Sensor
+    {
+      AbsoluteOriSensor() : Sensor(sizePose) {}
+
+      Orientation ori;
+      CheckedMatrix3 covMatrix;
+    };
+
+  public:
+    AbsolutePoseSensor absPoseSensor_;
+    AbsoluteOriSensor absOriSensor_;
+    VectorContact contacts_;
+    VectorIMU imuSensors_;
   };
 
 protected:
@@ -1217,7 +1228,7 @@ protected:
   /// @param worldRestContactPose Rest pose of the contact
   /// @param contactForce Empty vector of the contact force to estimate
   /// @param contactTorque Empty vector of the contact force to estimate
-  void computeContactWrench_(const Contact & contact,
+  void computeContactWrench_(const Input::Contact & contact,
                              Kinematics & worldCentroidStateKinematics,
                              Kinematics & worldRestContactPose,
                              Vector6 & contactWrench);
@@ -1387,10 +1398,7 @@ protected:
   unsigned maxContacts_;
   unsigned maxImuNumber_;
 
-  AbsolutePoseSensor absPoseSensor_;
-  AbsoluteOriSensor absOriSensor_;
-  VectorContact contacts_;
-  VectorIMU imuSensors_;
+  Input input_;
 
   std::set<Index> removedContacts_;
 
@@ -1408,9 +1416,6 @@ protected:
 
   Vector3 additionalForce_;
   Vector3 additionalTorque_;
-
-  Vector3 initTotalCentroidForce_; // Initial total force used in the state prediction
-  Vector3 initTotalCentroidTorque_; // Initial total torque used in the state prediction
 
   Vector measurementVector_;
   Matrix measurementCovMatrix_;
@@ -1476,25 +1481,25 @@ protected:
 
   /// Getters for the indexes of the state Vector using private types
 
-  inline Index gyroBiasIndex(VectorIMUConstIterator i) const;
-  inline Index gyroBiasIndexTangent(VectorIMUConstIterator i) const;
+  inline Index gyroBiasIndex(Input::VectorIMUConstIterator i) const;
+  inline Index gyroBiasIndexTangent(Input::VectorIMUConstIterator i) const;
 
-  inline Index contactIndex(VectorContactConstIterator i) const;
-  inline Index contactKineIndex(VectorContactConstIterator i) const;
-  inline Index contactPosIndex(VectorContactConstIterator i) const;
-  inline Index contactOriIndex(VectorContactConstIterator i) const;
-  inline Index contactForceIndex(VectorContactConstIterator i) const;
-  inline Index contactTorqueIndex(VectorContactConstIterator i) const;
-  inline Index contactWrenchIndex(VectorContactConstIterator i) const;
+  inline Index contactIndex(Input::VectorContactConstIterator i) const;
+  inline Index contactKineIndex(Input::VectorContactConstIterator i) const;
+  inline Index contactPosIndex(Input::VectorContactConstIterator i) const;
+  inline Index contactOriIndex(Input::VectorContactConstIterator i) const;
+  inline Index contactForceIndex(Input::VectorContactConstIterator i) const;
+  inline Index contactTorqueIndex(Input::VectorContactConstIterator i) const;
+  inline Index contactWrenchIndex(Input::VectorContactConstIterator i) const;
 
   /// Getters for the indexes of the state Vector using private types
-  inline Index contactIndexTangent(VectorContactConstIterator i) const;
-  inline Index contactKineIndexTangent(VectorContactConstIterator i) const;
-  inline Index contactPosIndexTangent(VectorContactConstIterator i) const;
-  inline Index contactOriIndexTangent(VectorContactConstIterator i) const;
-  inline Index contactForceIndexTangent(VectorContactConstIterator i) const;
-  inline Index contactTorqueIndexTangent(VectorContactConstIterator i) const;
-  inline Index contactWrenchIndexTangent(VectorContactConstIterator i) const;
+  inline Index contactIndexTangent(Input::VectorContactConstIterator i) const;
+  inline Index contactKineIndexTangent(Input::VectorContactConstIterator i) const;
+  inline Index contactPosIndexTangent(Input::VectorContactConstIterator i) const;
+  inline Index contactOriIndexTangent(Input::VectorContactConstIterator i) const;
+  inline Index contactForceIndexTangent(Input::VectorContactConstIterator i) const;
+  inline Index contactTorqueIndexTangent(Input::VectorContactConstIterator i) const;
+  inline Index contactWrenchIndexTangent(Input::VectorContactConstIterator i) const;
 
 public: ///////////SIZE OF VECTORS
   inline static constexpr Index sizeAcceleroSignal = 3;

@@ -1,7 +1,6 @@
 #include <state-observation/observer/waiko.hpp>
 #include <state-observation/tools/definitions.hpp>
 
-
 namespace stateObservation
 {
 
@@ -46,7 +45,7 @@ void Waiko::computeCorrectionTerms(StateIterator it)
   Matrix3 initOri_inv = initOri.toMatrix3().transpose().eval();
   const Eigen::Ref<Vector3> x2_hat_prime = (*prevIter)().segment<3>(3);
 
-  InputWaiko & input = std::any_cast<InputWaiko &>(u_[k - 1]);
+  InputWaiko & input = convert_input<InputWaiko>(u_[k - 1]);
 
   oriCorrection_.setZero();
 

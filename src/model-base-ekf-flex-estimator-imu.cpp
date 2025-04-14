@@ -301,6 +301,11 @@ Index ModelBaseEKFFlexEstimatorIMU::getStateSize() const
   return stateSize;
 }
 
+Index ModelBaseEKFFlexEstimatorIMU::getInputSize() const
+{
+  return inputSize_;
+}
+
 Index ModelBaseEKFFlexEstimatorIMU::getMeasurementSize() const
 {
   return functor_.getMeasurementSize();

@@ -1,6 +1,3 @@
-#pragma once
-#include <state-observation/tools/definitions.hpp>
-
 namespace stateObservation
 {
 
@@ -267,6 +264,19 @@ TimeIndex IndexedMatrixT<MatrixType, lazy>::getTime() const
   return k_;
 }
 
+/// Default constructor
+template<typename ObjectType, typename Allocator>
+IndexedObjectArrayT<ObjectType, Allocator>::IndexedObjectArrayT() : k_(0)
+{
+}
+
+/// size based constructor
+template<typename ObjectType, typename Allocator>
+IndexedObjectArrayT<ObjectType, Allocator>::IndexedObjectArrayT(TimeSize size, TimeIndex initial)
+: k_(initial), v_(size)
+{
+}
+
 /// resizes the array
 template<typename MatrixType, typename Allocator>
 inline void IndexedMatrixArrayT<MatrixType, Allocator>::resize(TimeSize i, const MatrixType & m)
@@ -282,8 +292,8 @@ IndexedMatrixArrayT<MatrixType, Allocator>::IndexedMatrixArrayT() : IndexedObjec
 
 /// size based constructor
 template<typename MatrixType, typename Allocator>
-IndexedMatrixArrayT<MatrixType, Allocator>::IndexedMatrixArrayT(TimeSize size, TimeIndex initial)
-: IndexedObjectArrayT<MatrixType, Allocator>(size, initial)
+IndexedMatrixArrayT<MatrixType, Allocator>::IndexedMatrixArrayT(TimeSize size, TimeIndex initTime)
+: IndexedObjectArrayT<MatrixType, Allocator>(size, initTime)
 {
 }
 
@@ -673,6 +683,29 @@ inline void IndexedObjectArrayT<ObjectType, Allocator>::truncateBefore(TimeIndex
       v_.clear();
     }
   }
+}
+
+template<typename InputType>
+inline InputType & convert_input(std::any & u)
+{
+
+#ifdef NDEBUG
+  BOOST_ASSERT_MSG(u.type() == typeid(InputType) && "Bad any cast!");
+  return *std::launder(reinterpret_cast<InputType *>(&u));
+#else
+  return std::any_cast<InputType &>(u);
+#endif
+}
+
+template<typename InputType>
+inline const InputType & convert_input(const std::any & u)
+{
+  // #ifdef NDEBUG
+  //   BOOST_ASSERT_MSG(u.type() == typeid(InputType) && "Bad any cast!");
+  //   return *std::launder(reinterpret_cast<InputType *>(&u));
+  // #else
+  return std::any_cast<const InputType &>(u);
+  // #endif
 }
 
 inline bool isApprox(double a, double b, double relativePrecision)

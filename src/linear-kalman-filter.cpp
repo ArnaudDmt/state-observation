@@ -44,7 +44,7 @@ ObserverBase::StateVector LinearKalmanFilter::prediction_(TimeIndex k)
                     "if you don't need the input in the computation of state, you "
                     "must set B matrix to zero");
 
-    const Vector & u = std::any_cast<Vector &>(u_[k - 1]);
+    const Vector & u = convert_input<Vector>(u_[k - 1]);
     BOOST_ASSERT(checkInputVector(u) && "The size of the input vector is incorrect.");
 
     xbar_().noalias() += b_ * u;
@@ -148,12 +148,27 @@ void LinearKalmanFilter::setInputSize(Index p)
 
 bool LinearKalmanFilter::checkInputVector(const StateVector & v) const
 {
-  return (v.rows() == n_ && v.cols() == 1);
+  return (v.rows() == p_ && v.cols() == 1);
 }
 
 Index LinearKalmanFilter::getInputSize() const
 {
   return p_;
+}
+
+LinearKalmanFilter::InputVector LinearKalmanFilter::inputVectorConstant(double c) const
+{
+  return InputVector::Constant(p_, 1, c);
+}
+
+LinearKalmanFilter::InputVector LinearKalmanFilter::inputVectorRandom() const
+{
+  return tools::ProbabilityLawSimulation::getUniformMatrix<InputVector>(p_);
+}
+
+LinearKalmanFilter::InputVector LinearKalmanFilter::inputVectorZero() const
+{
+  return InputVector::Zero(p_, 1);
 }
 
 } // namespace stateObservation

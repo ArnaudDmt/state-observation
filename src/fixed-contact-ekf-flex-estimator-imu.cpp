@@ -178,6 +178,11 @@ Index FixedContactEKFFlexEstimatorIMU::getStateSize() const
   return stateSizeConst_;
 }
 
+Index FixedContactEKFFlexEstimatorIMU::getInputSize() const
+{
+  return inputSizeConst_;
+}
+
 Index FixedContactEKFFlexEstimatorIMU::getMeasurementSize() const
 {
   return measurementSizeConst_;

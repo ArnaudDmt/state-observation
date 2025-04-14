@@ -23,7 +23,7 @@ IndexedVectorArray imuAttitudeTrajectoryReconstruction(const IndexedVectorArray 
   typedef kine::indexes<kine::rotationVector> indexes;
 
   /// initialization of the extended Kalman filter
-  ExtendedKalmanFilter filter(stateSize, measurementSize, inputSize, false);
+  ExtendedKalmanFilter filter(stateSize, measurementSize, false, true);
 
   /// initalization of the functor
   IMUDynamicalSystem imuFunctor(withGyroBias);

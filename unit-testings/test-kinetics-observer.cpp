@@ -467,10 +467,10 @@ int testContactRestPoseCovariance_2contacts(int errorcode)
   contact2_Q_temp_ori.block(0, 3, 3, 3) =
       ko_2_.getEKF().getQ().block(ko_2_.contactOriIndexTangent(1), ko_2_.contactOriIndexTangent(1), 3, 3);
 
-  std::cout << std::endl << "Contact1 pos: " << std::endl << contact1_Q_temp_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 pos: " << std::endl << contact2_Q_temp_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact1 ori: " << std::endl << contact1_Q_temp_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 ori: " << std::endl << contact2_Q_temp_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 pos: " << std::endl << contact1_Q_temp_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 pos: " << std::endl << contact2_Q_temp_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 ori: " << std::endl << contact1_Q_temp_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 ori: " << std::endl << contact2_Q_temp_ori.format(CleanFmt_) << std::endl;
 
   if(!(ko_2_.getEKF().getQ().eigenvalues().real().array() > -1e-8).all())
   {
@@ -565,10 +565,10 @@ int testContactRestPoseCovariance_2contacts(int errorcode)
   contacts_Q_ori_analytic(5, 2) = -0.25 * processPos1(2, 2) - 0.25 * processPos2(2, 2);
   contacts_Q_ori_analytic(5, 5) = 0.25 * processPos1(2, 2) + 0.25 * processPos2(2, 2);
 
-  std::cout << std::endl << "Contact1 pos: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 pos: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact1 ori: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 ori: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 pos: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 pos: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 ori: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 ori: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
 
   if((contacts_Q_pos - contacts_Q_pos_analytic).norm() > 1e-16)
   {
@@ -656,10 +656,10 @@ int testContactRestPoseCovariance_2contacts(int errorcode)
       ko_2_.getEKF().getQ().block(contact2OriIndex, ko_2_.contactOriIndexTangent(0), 3, 3);
   contact2_Q_ori.block(0, 3, 3, 3) = ko_2_.getEKF().getQ().block(contact2OriIndex, contact2OriIndex, 3, 3);
 
-  std::cout << std::endl << "Contact1: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact1: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
 
   // This process must be zero as there is only one contact left
   Eigen::MatrixXd contact1_Q_pos_analytic = Eigen::MatrixXd::Zero(3, 3);
@@ -824,13 +824,13 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   contact3_Q_ori.block(0, 6, 3, 3) =
       ko_3_.getEKF().getQ().block(ko_3_.contactOriIndexTangent(2), ko_3_.contactOriIndexTangent(2), 3, 3);
 
-  std::cout << std::endl << "Contact1 pos process: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 pos process: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact3 pos process: " << std::endl << contact3_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 pos process: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 pos process: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact3 pos process: " << std::endl << contact3_Q_pos.format(CleanFmt_) << std::endl;
 
-  std::cout << std::endl << "Contact1 ori process: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 ori process: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact3 ori process: " << std::endl << contact3_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 ori process: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 ori process: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact3 ori process: " << std::endl << contact3_Q_ori.format(CleanFmt_) << std::endl;
 
   std::cout << std::endl
             << "################################################### New iter (changing the variances) "
@@ -855,7 +855,23 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   ko_3_.setContactProcessCovMat(1, &processPos2, &processPos2);
   ko_3_.setContactProcessCovMat(2, &processPos3, &processPos3);
 
+  if(!(ko_3_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
+  {
+    std::cout << std::endl << "123: The state covariance matrix is no longer positive definite" << std::endl;
+    std::cout << std::endl
+              << "eigen values: " << ko_3_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
+    return errorcode;
+  }
+
   ko_3_.update();
+
+  if(!(ko_3_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
+  {
+    std::cout << std::endl << "345: The state covariance matrix is no longer positive definite" << std::endl;
+    std::cout << std::endl
+              << "eigen values: " << ko_3_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
+    return errorcode;
+  }
 
   contact1_Q_pos.setZero();
   contact1_Q_pos.block(0, 0, 3, 3) =
@@ -905,13 +921,13 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   contact3_Q_ori.block(0, 6, 3, 3) =
       ko_3_.getEKF().getQ().block(ko_3_.contactOriIndexTangent(2), ko_3_.contactOriIndexTangent(2), 3, 3);
 
-  std::cout << std::endl << "Contact1 pos process: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 pos process: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact3 pos process: " << std::endl << contact3_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 pos process: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 pos process: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact3 pos process: " << std::endl << contact3_Q_pos.format(CleanFmt_) << std::endl;
 
-  std::cout << std::endl << "Contact1 ori process: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 ori process: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact3 ori process: " << std::endl << contact3_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 ori process: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 ori process: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact3 ori process: " << std::endl << contact3_Q_ori.format(CleanFmt_) << std::endl;
 
   Eigen::MatrixXd contacts_Q_pos = Eigen::MatrixXd::Zero(9, 9);
   contacts_Q_pos.block<3, 9>(0, 0) = contact1_Q_pos;
@@ -1048,7 +1064,7 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
                "###################################################"
             << std::endl;
 
-  /* We remove the last contact to verify that we will have the same result that when we had two contacts */
+  /* We remove the last contact to verify that we will have the same result as when we had two contacts */
 
   // we save this index as it cannot be accessed once the contact is removed
   Index contact2IndexPos = ko_3_.contactPosIndexTangent(2);
@@ -1065,7 +1081,11 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
 
   std::cout << std::endl
             << "eigenvalues before removing: " << ko_3_.getStateCovarianceMat().eigenvalues().transpose() << std::endl;
-
+  if(!(ko_3_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
+  {
+    std::cout << std::endl << "The state covariance matrix is not positive definite at the beginning!" << std::endl;
+    return errorcode;
+  }
   // we remove the contact 2
   ko_3_.removeContact(2);
   ko_3_.update();
@@ -1116,13 +1136,13 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
       ko_3_.getEKF().getQ().block(contact2IndexOri, ko_3_.contactOriIndexTangent(1), 3, 3);
   contact3_Q_ori.block(0, 6, 3, 3) = ko_3_.getEKF().getQ().block(contact2IndexOri, contact2IndexOri, 3, 3);
 
-  std::cout << std::endl << "Contact1 pos process: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 pos process: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact3 pos process: " << std::endl << contact3_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 pos process: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 pos process: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact3 pos process: " << std::endl << contact3_Q_pos.format(CleanFmt_) << std::endl;
 
-  std::cout << std::endl << "Contact1 ori process: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact2 ori process: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
-  std::cout << std::endl << "Contact3 ori process: " << std::endl << contact3_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact1 ori process: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact2 ori process: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
+  //   std::cout << std::endl << "Contact3 ori process: " << std::endl << contact3_Q_ori.format(CleanFmt_) << std::endl;
 
   Eigen::MatrixXd contacts_Q_pos_bis = Eigen::MatrixXd::Zero(6, 6);
   contacts_Q_pos_bis.block<3, 6>(0, 0) = contact1_Q_pos.block(0, 0, 3, 6);

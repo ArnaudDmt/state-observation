@@ -91,6 +91,15 @@ public:
   };
 
 protected:
+  /// Gives a boolean answer on whether or not the vector is correctly sized to be an input vector
+  virtual bool checkInputvector(const Vector &);
+
+  inline void assertInputVector_(const Vector & v)
+  {
+    (void)v; // avoid warning
+    BOOST_ASSERT(checkInputvector(v) && "ERROR: The input vector has the wrong size");
+  }
+
   AccelerometerGyrometer sensor_;
 
   NoiseBase * processNoise_;
@@ -107,7 +116,7 @@ protected:
   static const Index inputSize_ = 6;
   static const Index measurementSize_ = 6;
 
-  typedef Vector6 inputType;
+  typedef Vector inputType;
 
   bool withGyroBias_;
 

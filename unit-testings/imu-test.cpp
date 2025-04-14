@@ -124,7 +124,7 @@ int test(bool withGyroBias)
   }
 
   /// initialization of the extended Kalman filter
-  ExtendedKalmanFilter filter(stateSize, measurementSize, measurementSize, false);
+  ExtendedKalmanFilter filter(stateSize, measurementSize, false, true);
 
   /// the initalization of a random estimation of the initial state
   Vector xh0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector>(stateSize) * 3.14;

@@ -688,24 +688,13 @@ inline void IndexedObjectArrayT<ObjectType, Allocator>::truncateBefore(TimeIndex
 template<typename InputType>
 inline InputType & convert_input(std::any & u)
 {
-
-#ifdef NDEBUG
-  BOOST_ASSERT_MSG(u.type() == typeid(InputType) && "Bad any cast!");
-  return *std::launder(reinterpret_cast<InputType *>(&u));
-#else
   return std::any_cast<InputType &>(u);
-#endif
 }
 
 template<typename InputType>
 inline const InputType & convert_input(const std::any & u)
 {
-  // #ifdef NDEBUG
-  //   BOOST_ASSERT_MSG(u.type() == typeid(InputType) && "Bad any cast!");
-  //   return *std::launder(reinterpret_cast<InputType *>(&u));
-  // #else
   return std::any_cast<const InputType &>(u);
-  // #endif
 }
 
 inline bool isApprox(double a, double b, double relativePrecision)

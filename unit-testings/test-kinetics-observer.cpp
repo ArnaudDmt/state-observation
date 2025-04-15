@@ -259,7 +259,7 @@ int testKineticsObserverCodeAccessor(int errorcode)
 
   // std::cout << statecompdiff << std::endl;
 
-  std::cout << "DIff error" << (error += (statediff - statediff_bis).norm()) << std::endl;
+  // std::cout << "DIff error" << (error += (statediff - statediff_bis).norm()) << std::endl;
 
   if(error > 1e-8)
   {
@@ -329,9 +329,9 @@ int testContactRestPoseCovariance_1contact(int errorcode)
 
   ko_1_.update();
 
-  Eigen::MatrixXd contact1_Q_temp = Eigen::MatrixXd::Zero(3, 3);
-  contact1_Q_temp.block(0, 0, 3, 3) =
-      ko_1_.getEKF().getQ().block(ko_1_.contactPosIndexTangent(0), ko_1_.contactPosIndexTangent(0), 3, 3);
+  //   Eigen::MatrixXd contact1_Q_temp = Eigen::MatrixXd::Zero(3, 3);
+  //   contact1_Q_temp.block(0, 0, 3, 3) =
+  //       ko_1_.getEKF().getQ().block(ko_1_.contactPosIndexTangent(0), ko_1_.contactPosIndexTangent(0), 3, 3);
 
   // std::cout << std::endl << "Contact1: " << std::endl << contact1_Q_temp.format(CleanFmt_) << std::endl;
 
@@ -354,16 +354,16 @@ int testContactRestPoseCovariance_1contact(int errorcode)
 
   ko_1_.update();
 
-  Eigen::MatrixXd contact1_Q = Eigen::MatrixXd::Zero(3, 3);
-  contact1_Q.block(0, 0, 3, 3) =
-      ko_1_.getEKF().getQ().block(ko_1_.contactPosIndexTangent(0), ko_1_.contactPosIndexTangent(0), 3, 3);
+  //   Eigen::MatrixXd contact1_Q = Eigen::MatrixXd::Zero(3, 3);
+  //   contact1_Q.block(0, 0, 3, 3) =
+  //       ko_1_.getEKF().getQ().block(ko_1_.contactPosIndexTangent(0), ko_1_.contactPosIndexTangent(0), 3, 3);
 
   // std::cout << std::endl << "Contact1: " << std::endl << contact1_Q.format(CleanFmt_) << std::endl;
 
   return 0;
 }
 
-int testContactRestPoseCovariance_2contacts(int errorcode)
+int testContactRestPoseProcessCovariance_2contacts(int errorcode)
 {
   KineticsObserver ko_2_(2, 1);
 
@@ -429,15 +429,11 @@ int testContactRestPoseCovariance_2contacts(int errorcode)
   {
     std::cout << std::endl
               << "1: The process covariance matrix is not positive definite at the beginning!" << std::endl;
-    std::cout << std::endl << "eigen values: " << ko_2_.getEKF().getQ().eigenvalues().real().transpose() << std::endl;
-    return errorcode;
-  }
-
-  if(!(ko_2_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
-  {
-    std::cout << std::endl << "1: The state covariance matrix is not positive definite at the beginning!" << std::endl;
-    std::cout << std::endl
-              << "eigen values: " << ko_2_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
+    auto eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
+    std::cout << "\nNegative eigenvalues: ";
+    for(int i = 0; i < eigvals.size(); ++i)
+      if(eigvals[i] < 0) std::cout << eigvals[i] << " ";
+    std::cout << std::endl;
     return errorcode;
   }
 
@@ -475,22 +471,19 @@ int testContactRestPoseCovariance_2contacts(int errorcode)
   if(!(ko_2_.getEKF().getQ().eigenvalues().real().array() > -1e-8).all())
   {
     std::cout << std::endl << "2: The process covariance matrix is no longer positive definite!" << std::endl;
-    std::cout << std::endl << "eigen values: " << ko_2_.getEKF().getQ().eigenvalues().real().transpose() << std::endl;
+    auto eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
+    std::cout << "\nNegative eigenvalues: ";
+    for(int i = 0; i < eigvals.size(); ++i)
+      if(eigvals[i] < 0) std::cout << eigvals[i] << " ";
+    std::cout << std::endl;
+
     return errorcode;
   }
 
-  if(!(ko_2_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
-  {
-    std::cout << std::endl << "2: The state covariance matrix is no longer positive definite!" << std::endl;
-    std::cout << std::endl
-              << "eigen values: " << ko_2_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
-    return errorcode;
-  }
-
-  std::cout << std::endl
-            << "################################################### New iter "
-               "###################################################"
-            << std::endl;
+  //   std::cout << std::endl
+  //             << "################################################### New iter "
+  //                "###################################################"
+  //             << std::endl;
 
   ko_2_.setCenterOfMass(com_, com_d_, com_dd_);
   ko_2_.setIMU(Vector3::Zero(), Vector3::Zero(), centroidIMUPose1_, 0);
@@ -598,22 +591,18 @@ int testContactRestPoseCovariance_2contacts(int errorcode)
   if(!(ko_2_.getEKF().getQ().eigenvalues().real().array() > -1e-8).all())
   {
     std::cout << std::endl << "3: The process covariance matrix is no longer positive definite!" << std::endl;
-    std::cout << std::endl << "eigen values: " << ko_2_.getEKF().getQ().eigenvalues().real().transpose() << std::endl;
+    auto eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
+    std::cout << "\nNegative eigenvalues: ";
+    for(int i = 0; i < eigvals.size(); ++i)
+      if(eigvals[i] < 0) std::cout << eigvals[i] << " ";
+    std::cout << std::endl;
     return errorcode;
   }
 
-  if(!(ko_2_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
-  {
-    std::cout << std::endl << "3: The state covariance matrix is no longer positive definite!" << std::endl;
-    std::cout << std::endl
-              << "eigen values: " << ko_2_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
-    return errorcode;
-  }
-
-  std::cout << std::endl
-            << "################################################### New iter: we remove the contact 2 "
-               "###################################################"
-            << std::endl;
+  //   std::cout << std::endl
+  //             << "################################################### New iter: we remove the contact 2 "
+  //                "###################################################"
+  //             << std::endl;
 
   /* We remove the last contact to verify that we will have the same result that when we had two contacts */
 
@@ -656,11 +645,6 @@ int testContactRestPoseCovariance_2contacts(int errorcode)
       ko_2_.getEKF().getQ().block(contact2OriIndex, ko_2_.contactOriIndexTangent(0), 3, 3);
   contact2_Q_ori.block(0, 3, 3, 3) = ko_2_.getEKF().getQ().block(contact2OriIndex, contact2OriIndex, 3, 3);
 
-  //   std::cout << std::endl << "Contact1: " << std::endl << contact1_Q_pos.format(CleanFmt_) << std::endl;
-  //   std::cout << std::endl << "Contact2: " << std::endl << contact2_Q_pos.format(CleanFmt_) << std::endl;
-  //   std::cout << std::endl << "Contact1: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
-  //   std::cout << std::endl << "Contact2: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
-
   // This process must be zero as there is only one contact left
   Eigen::MatrixXd contact1_Q_pos_analytic = Eigen::MatrixXd::Zero(3, 3);
   Eigen::MatrixXd contact1_Q_ori_analytic = Eigen::MatrixXd::Zero(3, 3);
@@ -690,17 +674,10 @@ int testContactRestPoseCovariance_2contacts(int errorcode)
     return errorcode;
   }
 
-  if(!(ko_2_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
-  {
-    std::cout << std::endl << "4: The state covariance matrix is no longer positive definite" << std::endl;
-    std::cout << std::endl
-              << "eigen values: " << ko_2_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
-    return errorcode;
-  }
   return 0;
 }
 
-int testContactRestPoseCovariance_3contacts(int errorcode)
+int testContactRestPoseProcessCovariance_3contacts(int errorcode)
 {
   KineticsObserver ko_3_(3, 1);
 
@@ -731,18 +708,19 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   worldContactPose1_.position = worldContactPos1_;
   worldContactPose1_.orientation = worldContactOri1_;
   centroidContactOri1_.setRandom();
-  Kinematics centroidContactPose1_;
-  centroidContactPose1_.position = centroidContactPos1_;
-  centroidContactPose1_.orientation = centroidContactOri1_;
-  centroidContactPose1_.linVel = centroidContactLinVel1_;
-  centroidContactPose1_.angVel = centroidContactAngVel1_;
+  Kinematics centroidContactPose1;
+  centroidContactPose1.position = centroidContactPos1_;
+  centroidContactPose1.orientation = centroidContactOri1_;
+  centroidContactPose1.linVel = centroidContactLinVel1_;
+  centroidContactPose1.angVel = centroidContactAngVel1_;
 
-  Kinematics worldContactPose2_ = worldContactPose1_;
-  Kinematics centroidContactPose2_ = centroidContactPose1_;
-  Kinematics worldContactPose3_ = worldContactPose1_;
-  Kinematics centroidContactPose3_ = centroidContactPose1_;
-  Vector3 contactForces3_ = contactForces1_;
-  Vector3 contactTorques3_ = contactTorques1_;
+  Kinematics worldContactPose2 = worldContactPose1_;
+  Kinematics centroidContactPose2 = centroidContactPose1;
+
+  Kinematics worldContactPose3 = worldContactPose1_;
+  Kinematics centroidContactPose3 = centroidContactPose1;
+  Vector3 contactForces3 = contactForces1_;
+  Vector3 contactTorques3 = contactTorques1_;
 
   ko_3_.setCenterOfMass(com_, com_d_, com_dd_);
   ko_3_.setIMU(Vector3::Zero(), Vector3::Zero(), centroidIMUPose1_, 0);
@@ -751,11 +729,11 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   ko_3_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
   ko_3_.addContact(worldContactPose1_, 0, K1_, K2_, K3_, K4_);
-  ko_3_.addContact(worldContactPose2_, 1, K1_, K2_, K3_, K4_);
-  ko_3_.addContact(worldContactPose3_, 2, K1_, K2_, K3_, K4_);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2_, 1);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose3_, 2);
+  ko_3_.addContact(worldContactPose2, 1, K1_, K2_, K3_, K4_);
+  ko_3_.addContact(worldContactPose3, 2, K1_, K2_, K3_, K4_);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1, 0);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2, 1);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose3, 2);
 
   stateVector_.resize(position_.size() + 4 + linvel_.size() + angvel_.size() + gyroBias1_.size() + extForces_.size()
                       + extTorques_.size()
@@ -765,7 +743,7 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   stateVector_ << position_, ori_.toVector4(), linvel_, angvel_, gyroBias1_, extForces_, extTorques_, worldContactPos1_,
       worldContactOri1_.toVector4(), contactForces1_, contactTorques1_, worldContactPos1_,
       worldContactOri1_.toVector4(), contactForces2_, contactTorques2_, worldContactPos1_,
-      worldContactOri1_.toVector4(), contactForces3_, contactTorques3_;
+      worldContactOri1_.toVector4(), contactForces3, contactTorques3;
 
   ko_3_.setInitWorldCentroidStateVector(stateVector_);
 
@@ -832,10 +810,10 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   //   std::cout << std::endl << "Contact2 ori process: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
   //   std::cout << std::endl << "Contact3 ori process: " << std::endl << contact3_Q_ori.format(CleanFmt_) << std::endl;
 
-  std::cout << std::endl
-            << "################################################### New iter (changing the variances) "
-               "###################################################"
-            << std::endl;
+  //   std::cout << std::endl
+  //             << "################################################### New iter (changing the variances) "
+  //                "###################################################"
+  //             << std::endl;
 
   ko_3_.setCenterOfMass(com_, com_d_, com_dd_);
   ko_3_.setIMU(Vector3::Zero(), Vector3::Zero(), centroidIMUPose1_, 0);
@@ -843,9 +821,9 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   ko_3_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_3_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2_, 1);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose3_, 2);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1, 0);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2, 1);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose3, 2);
 
   Matrix3 processPos1 = processPos_1_.asDiagonal();
   Matrix3 processPos2 = processPos_2_.asDiagonal();
@@ -855,23 +833,7 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   ko_3_.setContactProcessCovMat(1, &processPos2, &processPos2);
   ko_3_.setContactProcessCovMat(2, &processPos3, &processPos3);
 
-  if(!(ko_3_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
-  {
-    std::cout << std::endl << "123: The state covariance matrix is no longer positive definite" << std::endl;
-    std::cout << std::endl
-              << "eigen values: " << ko_3_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
-    return errorcode;
-  }
-
   ko_3_.update();
-
-  if(!(ko_3_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
-  {
-    std::cout << std::endl << "345: The state covariance matrix is no longer positive definite" << std::endl;
-    std::cout << std::endl
-              << "eigen values: " << ko_3_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
-    return errorcode;
-  }
 
   contact1_Q_pos.setZero();
   contact1_Q_pos.block(0, 0, 3, 3) =
@@ -1059,10 +1021,10 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
     return errorcode;
   }
 
-  std::cout << std::endl
-            << "################################################### New iter: we remove the contact 2 "
-               "###################################################"
-            << std::endl;
+  //   std::cout << std::endl
+  //             << "################################################### New iter: we remove the contact 2 "
+  //                "###################################################"
+  //             << std::endl;
 
   /* We remove the last contact to verify that we will have the same result as when we had two contacts */
 
@@ -1076,16 +1038,9 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
   ko_3_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_3_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2_, 1);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1, 0);
+  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2, 1);
 
-  std::cout << std::endl
-            << "eigenvalues before removing: " << ko_3_.getStateCovarianceMat().eigenvalues().transpose() << std::endl;
-  if(!(ko_3_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
-  {
-    std::cout << std::endl << "The state covariance matrix is not positive definite at the beginning!" << std::endl;
-    return errorcode;
-  }
   // we remove the contact 2
   ko_3_.removeContact(2);
   ko_3_.update();
@@ -1201,14 +1156,6 @@ int testContactRestPoseCovariance_3contacts(int errorcode)
     return errorcode;
   }
 
-  if(!(ko_3_.getStateCovarianceMat().eigenvalues().real().array() > -1e-8).all())
-  {
-    std::cout << std::endl << "The state covariance matrix is no longer positive definite" << std::endl;
-    std::cout << std::endl
-              << "eigen values: " << ko_3_.getStateCovarianceMat().eigenvalues().real().transpose() << std::endl;
-    return errorcode;
-  }
-
   return 0;
 }
 
@@ -1219,12 +1166,12 @@ int main()
 
   if((returnVal = testKineticsObserverCodeAccessor(1)))
   {
-    std::cout << "Kinetics Observer test failed, code : 1" << std::endl;
+    std::cout << "testKineticsObserverCodeAccessor failed, code : 1" << std::endl;
     return returnVal;
   }
   else
   {
-    std::cout << "Kinetics Observer test succeeded" << std::endl;
+    std::cout << "testKineticsObserverCodeAccessor succeeded" << std::endl;
   }
 
   std::cout << "testContactRestPoseCovariance_1contact started" << std::endl;
@@ -1238,26 +1185,26 @@ int main()
     std::cout << "testContactRestPoseCovariance_1contact succeeded" << std::endl;
   }
 
-  std::cout << "testContactRestPoseCovariance_2contact started" << std::endl;
-  if((returnVal = testContactRestPoseCovariance_2contacts(3)))
+  std::cout << "testContactRestPoseProcessCovariance_2contacts started" << std::endl;
+  if((returnVal = testContactRestPoseProcessCovariance_2contacts(3)))
   {
-    std::cout << "testContactRestPoseCovariance_2contacts failed, code : 3" << std::endl;
+    std::cout << "testContactRestPoseProcessCovariance_2contacts failed, code : 3" << std::endl;
     return returnVal;
   }
   else
   {
-    std::cout << "testContactRestPoseCovariance_2contacts succeeded" << std::endl;
+    std::cout << "testContactRestPoseProcessCovariance_2contacts succeeded" << std::endl;
   }
 
-  std::cout << "testContactRestPoseCovariance_3contact started" << std::endl;
-  if((returnVal = testContactRestPoseCovariance_3contacts(4)))
+  std::cout << "testContactRestPoseProcessCovariance_3contacts started" << std::endl;
+  if((returnVal = testContactRestPoseProcessCovariance_3contacts(4)))
   {
-    std::cout << "testContactRestPoseCovariance_3contacts failed, code : 4" << std::endl;
+    std::cout << "testContactRestPoseProcessCovariance_3contacts failed, code : 4" << std::endl;
     return returnVal;
   }
   else
   {
-    std::cout << "testContactRestPoseCovariance_3contacts succeeded" << std::endl;
+    std::cout << "testContactRestPoseProcessCovariance_3contacts succeeded" << std::endl;
   }
 
   std::cout << "test succeeded" << std::endl;

@@ -24,7 +24,7 @@ double testExtendedKalmanFilter()
   typedef stateObservation::ExtendedKalmanFilter ekf;
 
   /// instanciation of the extended Kalman filter
-  static ekf f(4, 3);
+  static ekf f(4, 3, true, true);
 
   /// The functor that describes the dynamics of the state
   /// and the measurement
@@ -196,7 +196,7 @@ double testExtendedKalmanFilterLTV()
 
   typedef stateObservation::ExtendedKalmanFilter ekf;
 
-  static ekf f(4, 3);
+  static ekf f(4, 3, true, true);
 
   struct KalmanFunctorLTV : public stateObservation::DynamicalSystemFunctorBase
   {
@@ -364,7 +364,7 @@ double testExtendedKalmanFilterZeroInput()
 
   typedef stateObservation::ExtendedKalmanFilter ekf;
 
-  static ekf f(4, 3);
+  static ekf f(4, 3, false, false);
 
   class KalmanFunctor : public stateObservation::DynamicalSystemFunctorBase
   {

@@ -168,7 +168,7 @@ void UnidimLipmDcmEstimator::setDcmMeasureErrorStd(double std)
 
 void UnidimLipmDcmEstimator::setInputs(double dcm, double zmp)
 {
-  Vector1 u;
+  Vector u = Vector::Zero(1);
   Vector1 y;
 
   y(0) = dcm;

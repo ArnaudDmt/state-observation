@@ -130,12 +130,6 @@ public:
                                                  const std::any & input,
                                                  TimeIndex k);
 
-  /// compute the jacobien of the state dynamics at the last computed value
-  stateObservation::Matrix stateDynamicsJacobian();
-
-  /// compute the jacobien of the state dynamics at a given state
-  stateObservation::Matrix stateDynamicsJacobian(const stateObservation::Vector & x, const std::any & u, TimeIndex k);
-
   /// sets the finite differences derivation step vector
   void setFDstep(const stateObservation::Vector & dx);
 
@@ -143,12 +137,6 @@ public:
   virtual stateObservation::Vector measureDynamics(const stateObservation::Vector & x,
                                                    const std::any & input,
                                                    TimeIndex k);
-
-  /// compute the Jacobien of the measurements dynamics at the last computed value
-  stateObservation::Matrix measureDynamicsJacobian();
-
-  /// compute the Jacobien of the measurements dynamics at a given state value
-  stateObservation::Matrix measureDynamicsJacobian(const stateObservation::Vector & x, const std::any & u, TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(stateObservation::NoiseBase *);
@@ -355,10 +343,6 @@ protected:
   Vector tc_;
 
   Vector dx_;
-
-  Vector xk1_;
-  Vector xk_;
-  std::any uk_;
 
   Vector xk_fory_;
   Vector yk_;

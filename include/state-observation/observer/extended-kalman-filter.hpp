@@ -46,12 +46,6 @@ public:
   /// The constructor.
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
-
-  ExtendedKalmanFilter(Index n, Index m);
-
-  /// The constructor.
-  ///  \li n : size of the state vector
-  ///  \li m : size of the measurements vector
   ///  \li The parameter directInputOutputFeedthrough defines whether (true) or not (false) the measurement y_k requires
   ///  the input u_k \li The parameter directInputStateProcessFeedthrough defines whether (true) or not (false) the
   ///  state x_{k+1} requires the input u_k

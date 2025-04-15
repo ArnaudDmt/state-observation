@@ -110,7 +110,7 @@ public:
   virtual Index getMeasurementSize() const = 0;
 
   /// Gets the input size
-  /// this method is pure virtual and reauires to be overloaded in implementation
+  /// this method is pure virtual and requires to be overloaded in implementation
   virtual Index getInputSize() const = 0;
 
   /// Gets a simulation of the

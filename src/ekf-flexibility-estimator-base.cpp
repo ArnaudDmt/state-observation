@@ -4,7 +4,8 @@ namespace stateObservation
 namespace flexibilityEstimation
 {
 EKFFlexibilityEstimatorBase::EKFFlexibilityEstimatorBase(Index stateSize, Index measurementSize, const Vector & dx)
-: FlexibilityEstimatorBase(), ekf_(stateSize, measurementSize), finiteDifferencesJacobians_(true), dx_(dx), k_(0)
+: FlexibilityEstimatorBase(), ekf_(stateSize, measurementSize, true, true), finiteDifferencesJacobians_(true), dx_(dx),
+  k_(0)
 {
   // ctor
 }

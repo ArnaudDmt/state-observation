@@ -128,7 +128,7 @@ void ModelBaseEKFFlexEstimatorIMU::setContactsNumber(unsigned i)
 {
   functor_.setContactsNumber(i);
 
-  inputSize_ = functor_.getInputSize();
+  setInputSize(functor_.getInputSize());
 
   if(useFTSensors_)
   {
@@ -306,6 +306,15 @@ Index ModelBaseEKFFlexEstimatorIMU::getInputSize() const
   return inputSize_;
 }
 
+void ModelBaseEKFFlexEstimatorIMU::setInputSize(Index p)
+{
+  if(p != getInputSize())
+  {
+    inputSize_ = p;
+    ekf_.clearInputs();
+  }
+}
+
 Index ModelBaseEKFFlexEstimatorIMU::getMeasurementSize() const
 {
   return functor_.getMeasurementSize();
@@ -357,10 +366,8 @@ const Vector & ModelBaseEKFFlexEstimatorIMU::getFlexibilityVector()
         {
           ekf_.updateStateAndMeasurementPrediction();
 
-          // ekf_.setA(ekf_.getAMatrixFD(dx_));
-          // ekf_.setC(ekf_.getCMatrixFD(dx_));
-          ekf_.setA(functor_.stateDynamicsJacobian());
-          ekf_.setC(functor_.measureDynamicsJacobian());
+          ekf_.setA(ekf_.getAMatrixFD(dx_));
+          ekf_.setC(ekf_.getCMatrixFD(dx_));
         }
 
         ekf_.getEstimatedState(i);

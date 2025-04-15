@@ -2,15 +2,6 @@
 
 namespace stateObservation
 {
-ExtendedKalmanFilter::ExtendedKalmanFilter(Index n, Index m)
-: KalmanFilterBase(n, m), directInputOutputFeedthrough_(false), directInputStateProcessFeedthrough_(false), f_(0x0)
-
-{
-#ifdef STATEOBSERVATION_VERBOUS_CONSTRUCTORS
-  std::cout << std::endl << "ExtendedKalmanFilter Constructor" << std::endl;
-#endif // STATEOBSERVATION_VERBOUS_CONSTRUCTOR
-}
-
 ExtendedKalmanFilter::ExtendedKalmanFilter(Index n,
                                            Index m,
                                            bool directInputOutputFeedthrough,

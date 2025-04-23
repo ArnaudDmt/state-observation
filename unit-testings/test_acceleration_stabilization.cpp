@@ -44,10 +44,10 @@ int test()
 
     sim.setState(x0, 0);
 
-    std::shared_ptr<VectorInput> uk = std::make_shared<VectorInput>(Vector::Zero(imu.getInputSize(), 1));
-
     for(Index k = 0; k < kmax; ++k)
     {
+      std::shared_ptr<VectorInput> uk = std::make_shared<VectorInput>(Vector::Zero(imu.getInputSize(), 1));
+
       u.setValue(*uk, k);
 
       /// give the input to the simulator

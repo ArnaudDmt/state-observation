@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <deque>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 
@@ -517,14 +518,380 @@ typedef IndexedMatrixT<Vector3> IndexedVector3;
 typedef IndexedMatrixT<Matrix3> IndexedMatrix3;
 
 /**
- * \class    IndexedMatrixArrayT
- * \brief    This class describes a structure that enables to store array of matrices
+ * \class    IndexedObjectArrayT
+ * \brief    This class describes a structure that enables to store array of objects
  *           with time indexation.
  *
  */
 
+class InputBase
+{
+protected:
+  InputBase(){};
+
+public:
+  virtual ~InputBase() = default;
+};
+
+template<typename InputType = Vector>
+class InputT : public InputBase
+{
+public:
+  ~InputT() {}
+  InputType v;
+};
+
+class VectorInput : public Vector, public InputBase
+{
+  using Vector::Vector;
+};
+
+class IndexedObjectArrayBase
+{
+protected:
+  /// Default constructor
+  IndexedObjectArrayBase() : k_(0) {}
+
+  /// @brief Construct a new IndexedObjectArrayT with a predifined size
+  ///
+  /// @param size is the size of the array
+  /// @param initTime is the index of the initial time. It is zero by default
+  IndexedObjectArrayBase(TimeIndex initTime) : k_(initTime) {}
+
+  virtual ~IndexedObjectArrayBase() {}
+
+  /// removes all the elements with larger indexes than timeIndex
+  virtual void truncateAfter(TimeIndex timeIndex) = 0;
+
+  /// removes all the elements with smaller indexes than timeIndex
+  virtual void truncateBefore(TimeIndex timeIndex) = 0;
+
+  /// Get the time index
+  virtual TimeIndex getLastIndex() const = 0;
+
+  /// Get the time index of the next value that will be pushed back
+  /// Can be used in for loops
+  virtual TimeIndex getNextIndex() const = 0;
+
+  /// Set the time index of the last element
+  virtual TimeIndex setLastIndex(int index) = 0;
+
+  /// Get the time index
+  virtual TimeIndex getFirstIndex() const = 0;
+
+  /// set the time index of the first element
+  virtual TimeIndex setFirstIndex(int index) = 0;
+
+  virtual TimeSize size() const = 0;
+
+  /// Resets the array to initial state
+  /// the value is no longer accessible
+  virtual void reset() = 0;
+
+  /// Clears the vector but keeps the last index
+  virtual void clear() = 0;
+
+  /// checks whether the index is present in the array
+  virtual bool checkIndex(TimeIndex k) const = 0;
+
+  /// Asserts that the index is present in the array
+  /// does nothing in release mode
+  virtual void check_(TimeIndex time) const = 0;
+
+  /// Asserts that the array is not empty
+  /// does nothing in release mode
+  virtual void check_() const = 0;
+
+  /// Asserts that the given time can be pushed at the back of the vector
+  /// does nothing in release mode
+  virtual void checkNext_(TimeIndex time) const = 0;
+
+  TimeIndex k_;
+};
+
+template<typename ObjectType, typename Allocator>
+class IndexedObjectArrayT : public IndexedObjectArrayBase
+{
+public:
+  /// Default constructor
+  IndexedObjectArrayT();
+
+  /// @brief Construct a new IndexedObjectArrayT with a predifined size
+  ///
+  /// @param size is the size of the array
+  /// @param initTime is the index of the initial time. It is zero by default
+  IndexedObjectArrayT(TimeSize size, TimeIndex initTime = 0);
+
+  void truncateAfter(TimeIndex timeIndex) override;
+
+  /// removes all the elements with smaller indexes than timeIndex
+  void truncateBefore(TimeIndex timeIndex) override;
+
+  /// Get the time index
+  inline TimeIndex getLastIndex() const override;
+
+  /// Get the time index of the next value that will be pushed back
+  /// Can be used in for loops
+  inline TimeIndex getNextIndex() const override;
+
+  /// Set the time index of the last element
+  inline TimeIndex setLastIndex(int index) override;
+
+  /// Get the time index
+  inline TimeIndex getFirstIndex() const override;
+
+  /// set the time index of the first element
+  inline TimeIndex setFirstIndex(int index) override;
+
+  inline TimeSize size() const override;
+
+  /// Resets the array to initial state
+  /// the value is no longer accessible
+  inline void reset() override;
+
+  /// Clears the vector but keeps the last index
+  inline void clear() override;
+
+  /// checks whether the index is present in the array
+  inline bool checkIndex(TimeIndex k) const override;
+
+  /// Sets the value v at the time index k
+  /// It can be used to push a value into the back of the array
+  inline void setValue(const ObjectType & value, TimeIndex k);
+
+  /// Pushes back the object to the array, the new value will take the next time
+  inline void pushBack(const ObjectType & v);
+
+  /// removes the first (oldest) element of the array
+  inline void popFront();
+
+  /// gets a constant reference to the given time index
+  inline const ObjectType & operator[](TimeIndex time) const;
+
+  /// gets the value with the given time index, non const version
+  inline ObjectType & operator[](TimeIndex index);
+
+  /// gets the first value
+  inline const ObjectType & front() const;
+
+  /// gets the first value
+  inline ObjectType & front();
+
+  /// gets the last value
+  inline const ObjectType & back() const;
+
+  /// gets the last value
+  inline ObjectType & back();
+
+protected:
+  /// Asserts that the index is present in the array
+  /// does nothing in release mode
+  inline void check_(TimeIndex time) const override;
+
+  /// Asserts that the array is not empty
+  /// does nothing in release mode
+  inline void check_() const override;
+
+  /// Asserts that the given time can be pushed at the back of the vector
+  /// does nothing in release mode
+  inline void checkNext_(TimeIndex time) const override;
+
+  typedef std::deque<ObjectType> Deque;
+  Deque v_;
+};
+
+/// @brief Class that DECLARES all the neccessary functions for the handling of an array of index inputs.
+/// @details Functions are not defined here since they will be in \ref IndexInputArrayT, which inherits from this class.
+/// Allows to call functions on the array for any type of input, while avoiding to template all the code. Here, only
+/// \ref IndexInputArrayT is templated within estimators, and not the estimators themselves.
+class IndexedInputArrayInterface : public IndexedObjectArrayBase
+{
+public:
+  /// Default constructor
+  IndexedInputArrayInterface() : IndexedObjectArrayBase() {}
+
+  /// @brief Construct a new IndexedInputArrayInterface with a predifined size
+  ///
+  /// @param size is the size of the array
+  /// @param initTime is the index of the initial time. It is zero by default
+  IndexedInputArrayInterface(TimeIndex initTime) : IndexedObjectArrayBase(initTime) {}
+
+  virtual void truncateAfter(TimeIndex timeIndex) override = 0;
+
+  /// removes all the elements with smaller indexes than timeIndex
+  virtual void truncateBefore(TimeIndex timeIndex) override = 0;
+
+  /// Get the time index
+  virtual TimeIndex getLastIndex() const override = 0;
+
+  /// Get the time index of the next value that will be pushed back
+  /// Can be used in for loops
+  virtual TimeIndex getNextIndex() const override = 0;
+
+  /// Set the time index of the last element
+  virtual TimeIndex setLastIndex(int index) override = 0;
+
+  /// Get the time index
+  virtual TimeIndex getFirstIndex() const override = 0;
+
+  /// set the time index of the first element
+  virtual TimeIndex setFirstIndex(int index) override = 0;
+
+  virtual TimeSize size() const override = 0;
+
+  /// Resets the array to initial state
+  /// the value is no longer accessible
+  virtual void reset() override = 0;
+
+  /// Clears the vector but keeps the last index
+  virtual void clear() override = 0;
+
+  /// checks whether the index is present in the array
+  virtual bool checkIndex(TimeIndex k) const override = 0;
+
+  /// Sets the value v at the time index k
+  /// It can be used to push a value into the back of the array
+  virtual void setValue(const InputBase & value, TimeIndex k) = 0;
+
+  /// Pushes back the object to the array, the new value will take the next time
+  virtual void pushBack(const InputBase & v) = 0;
+
+  /// removes the first (oldest) element of the array
+  virtual void popFront() = 0;
+
+  /// gets a constant reference to the given time index
+  virtual const InputBase & operator[](TimeIndex time) const = 0;
+
+  /// gets the value with the given time index, non const version
+  virtual InputBase & operator[](TimeIndex index) = 0;
+
+  /// gets a pointer to the input at time index. Unsafe since this is not a shared pointer, use with care.
+  // virtual const InputBase * getInputPtrUnsafe(TimeIndex index) const = 0;
+
+  /// gets the first value
+  virtual const InputBase & front() const = 0;
+
+  /// gets the first value
+  virtual InputBase & front() = 0;
+
+  /// gets the last value
+  virtual const InputBase & back() const = 0;
+
+  /// gets the last value
+  virtual InputBase & back() = 0;
+
+protected:
+  /// Asserts that the index is present in the array
+  /// does nothing in release mode
+  void check_(TimeIndex time) const override = 0;
+
+  /// Asserts that the array is not empty
+  /// does nothing in release mode
+  void check_() const override = 0;
+
+  /// Asserts that the given time can be pushed at the back of the vector
+  /// does nothing in release mode
+  void checkNext_(TimeIndex time) const override = 0;
+};
+
+template<typename InputType = InputT<>, typename Allocator = std::allocator<InputT<>>>
+class IndexedInputArrayT : public IndexedInputArrayInterface
+{
+public:
+  /// Default constructor
+  IndexedInputArrayT();
+
+  /// @brief Construct a new IndexedInputArrayT with a predifined size
+  ///
+  /// @param size is the size of the array
+  /// @param initTime is the index of the initial time. It is zero by default
+  IndexedInputArrayT(TimeIndex initTime);
+
+  void truncateAfter(TimeIndex timeIndex) override;
+
+  /// removes all the elements with smaller indexes than timeIndex
+  void truncateBefore(TimeIndex timeIndex) override;
+
+  /// Get the time index
+  inline TimeIndex getLastIndex() const override;
+
+  /// Get the time index of the next value that will be pushed back
+  /// Can be used in for loops
+  inline TimeIndex getNextIndex() const override;
+
+  /// Set the time index of the last element
+  inline TimeIndex setLastIndex(int index) override;
+
+  /// Get the time index
+  inline TimeIndex getFirstIndex() const override;
+
+  /// set the time index of the first element
+  inline TimeIndex setFirstIndex(int index) override;
+
+  inline TimeSize size() const override;
+
+  /// Resets the array to initial state
+  /// the value is no longer accessible
+  inline void reset() override;
+
+  /// Clears the vector but keeps the last index
+  inline void clear() override;
+
+  /// checks whether the index is present in the array
+  inline bool checkIndex(TimeIndex k) const override;
+
+  /// Sets the value v at the time index k
+  /// It can be used to push a value into the back of the array
+  inline void setValue(const InputBase & value, TimeIndex k) override;
+
+  /// Pushes back the object to the array, the new value will take the next time
+  inline void pushBack(const InputBase & v) override;
+
+  /// removes the first (oldest) element of the array
+  inline void popFront() override;
+
+  /// gets a constant reference to the given time index
+  inline const InputType & operator[](TimeIndex time) const override;
+
+  /// gets the value with the given time index, non const version
+  inline InputType & operator[](TimeIndex index) override;
+
+  // virtual const InputBase * getInputPtrUnsafe(TimeIndex index) const override;
+
+  /// gets the first value
+  inline const InputType & front() const override;
+
+  /// gets the first value
+  inline InputType & front() override;
+
+  /// gets the last value
+  inline const InputType & back() const override;
+
+  /// gets the last value
+  inline InputType & back() override;
+
+protected:
+  /// Asserts that the index is present in the array
+  /// does nothing in release mode
+  inline void check_(TimeIndex time) const override;
+
+  /// Asserts that the array is not empty
+  /// does nothing in release mode
+  inline void check_() const override;
+
+  /// Asserts that the given time can be pushed at the back of the vector
+  /// does nothing in release mode
+  inline void checkNext_(TimeIndex time) const override;
+
+protected:
+  typedef std::deque<InputType> Deque;
+  Deque v_;
+};
+
+typedef IndexedInputArrayT<VectorInput> IndexedInputVectorArray;
+
 template<typename MatrixType = Matrix, typename Allocator = std::allocator<MatrixType>>
-class IndexedMatrixArrayT
+class IndexedMatrixArrayT : public IndexedObjectArrayT<MatrixType, Allocator>
 {
 public:
   /// Default constructor
@@ -538,74 +905,11 @@ public:
 
   typedef std::vector<MatrixType, Allocator> Array;
 
-  /// Sets the vector v at the time index k
-  /// It checks the time index, the array must have contiguous indexes
-  /// It can be used to push a value into the back of the array
-  inline void setValue(const MatrixType & v, TimeIndex k);
-
-  /// Pushes back the matrix to the array, the new value will take the next time
-  inline void pushBack(const MatrixType & v);
-
-  /// removes the first (oldest) element of the array
-  inline void popFront();
-
-  /// gets the value with the given time index
-  inline MatrixType operator[](TimeIndex index) const;
-
-  /// gets the value with the given time index, non const version
-  inline MatrixType & operator[](TimeIndex index);
-
-  /// gets the first value
-  inline const MatrixType & front() const;
-
-  /// gets the first value
-  inline MatrixType & front();
-
-  /// gets the last value
-  inline const MatrixType & back() const;
-
-  /// gets the last value
-  inline MatrixType & back();
-
-  /// removes all the elements with larger indexes than timeIndex
-  void truncateAfter(TimeIndex timeIndex);
-
-  /// removes all the elements with smaller indexes than timeIndex
-  void truncateBefore(TimeIndex timeIndex);
-
   /// resizes the array
   inline void resize(TimeSize i, const MatrixType & m = MatrixType());
 
-  /// Get the time index
-  inline TimeIndex getLastIndex() const;
-
-  /// Get the time index of the next value that will be pushed back
-  /// Can be used in for loops
-  inline TimeIndex getNextIndex() const;
-
-  /// Set the time index of the last element
-  inline TimeIndex setLastIndex(int index);
-
-  /// Get the time index
-  inline TimeIndex getFirstIndex() const;
-
-  /// set the time index of the first element
-  inline TimeIndex setFirstIndex(int index);
-
-  inline TimeSize size() const;
-
-  /// Resets the array to initial state
-  /// the value is no longer accessible
-  inline void reset();
-
-  /// Clears the vector but keeps the last index
-  inline void clear();
-
   /// converts the array into a standard vector
   Array getArray() const;
-
-  /// checks whether the index is present in the array
-  inline bool checkIndex(TimeIndex k) const;
 
   /// gets the array from a file
   /// the line starts with the time index and then the matrix is read
@@ -634,25 +938,6 @@ public:
   /// When clear is set, the array is cleared but the time index is conserved
   /// When append is set to true, the output is appended to file
   void writeInFile(const std::string & filename, bool clear = false, bool append = false);
-
-protected:
-  typedef std::deque<MatrixType, Allocator> Deque;
-
-  /// Asserts that the index is present in the array
-  /// does nothing in release mode
-  inline void check_(TimeIndex time) const;
-
-  /// Asserts that the array is not empty
-  /// does nothing in release mode
-  inline void check_() const;
-
-  /// Asserts that the given time can be pushed at the back of the vector
-  /// does nothing in release mode
-  inline void checkNext_(TimeIndex time) const;
-
-  TimeIndex k_;
-
-  Deque v_;
 };
 
 typedef IndexedMatrixArrayT<Matrix> IndexedMatrixArray;
@@ -690,6 +975,12 @@ inline bool isApprox(double a, double b, double relativePrecision = cst::epsilon
 /// @return true they are equal
 /// @return false they are not
 inline bool isApproxAbs(double a, double b, double absolutePrecision = cst::epsilon1);
+
+template<typename InputType>
+inline InputType & convert_input(InputBase & u);
+
+template<typename InputType>
+inline const InputType & convert_input(const InputBase & u);
 
 typedef boost::timer::auto_cpu_timer auto_cpu_timer;
 typedef boost::timer::cpu_timer cpu_timer;
@@ -731,7 +1022,7 @@ Vector STATE_OBSERVATION_DLLAPI stringToVector(const std::string & str, Index le
 Vector STATE_OBSERVATION_DLLAPI stringToVector(const std::string & str);
 } // namespace tools
 
-#include <state-observation/tools/definitions.hxx>
 } // namespace stateObservation
+#include <state-observation/tools/definitions.hxx>
 
 #endif // STATEOBSERVATIONDEFINITIONSHPP

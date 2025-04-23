@@ -43,7 +43,7 @@ public:
 
   EKFFlexibilityEstimatorBase(Index stateSize,
                               Index measurementSize,
-                              Index inputSize,
+                              const std::shared_ptr<IndexedInputArrayInterface> input,
                               const Vector & dx = Vector::Zero(0));
 
   /// virtual destructor
@@ -82,15 +82,15 @@ public:
 
   /// Sets the value of the next input for the state process dynamics
   /// i.e. : gives u_k such that x_{k+1} = f(x_k,u_k)
-  virtual void setInput(const Vector & u);
+  virtual void setInput(const InputBase & u);
 
   /// Sets the value of the next  measurement
   /// i.e. : gives u_{k+1} such that y_{k+1}=h(x_{k+1},u_{k+1})
-  virtual void setMeasurementInput(const Vector & u);
+  virtual void setMeasurementInput(const InputBase & u);
 
-  virtual Vector getInput();
+  virtual const InputBase & getInput();
 
-  virtual Vector getMeasurementInput();
+  virtual const InputBase & getMeasurementInput();
 
   /// Gets an estimation of the flexibility in the form of a state vector \hat{x_{k+1}}
   virtual const Vector & getFlexibilityVector();
@@ -113,7 +113,7 @@ public:
   virtual Index getMeasurementSize() const = 0;
 
   /// Gets the input size
-  /// this method is pure virtual and reauires to be overloaded in implementation
+  /// this method is pure virtual and requires to be overloaded in implementation
   virtual Index getInputSize() const = 0;
 
   /// Gets a simulation of the

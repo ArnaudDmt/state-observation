@@ -129,6 +129,8 @@ public:
 
   virtual Index getInputSize() const;
 
+  virtual void setInputSize(Index p);
+
   /// sets to whether or not the force mesurements are taken into account
   virtual void setWithForcesMeasurements(bool);
 

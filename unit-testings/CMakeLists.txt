@@ -25,6 +25,8 @@ add_so_test(test-dcm-bias-estimation)
 add_so_test(test-kinematics)
 add_so_test(test-local-kinematics)
 add_so_test(test-analytical-jacobians)
+add_so_test(test-viking)
+#add_so_test(test-waiko)
 
 add_custom_command(
   TARGET test_model-base-ekf-flex-estimator-imu

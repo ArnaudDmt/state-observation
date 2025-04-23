@@ -1,14 +1,4 @@
-/**
- * \file      tilt-estimator.hpp
- * \author    Rafael Cisneros, Mehdi Benallegue
- * \date       2018
- * \brief      Version of the Tilt Estimator that implements all the necessary functions to perform the estimation for
- * humanoid robots.
- *
- * \details
- *
- *
- */
+
 
 #ifndef TiltVisualHumanoidHPP
 #define TiltVisualHumanoidHPP

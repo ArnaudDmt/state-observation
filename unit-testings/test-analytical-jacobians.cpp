@@ -177,7 +177,8 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
          + kine::skewSymmetric(ko_.getAngularMomentum()()));
 
   // Jacobians with respect to the contacts
-  for(KineticsObserver::VectorContactConstIterator i = ko_.contacts_.begin(); i != ko_.contacts_.end(); ++i)
+  for(KineticsObserver::Input::VectorContactConstIterator i = ko_.input_.contacts_.begin();
+      i != ko_.input_.contacts_.end(); ++i)
   {
     if(i->isSet)
     {

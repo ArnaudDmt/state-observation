@@ -15,8 +15,10 @@
 set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME})
 
 set(HEADERS
+    ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-observer.hpp
+    ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-complem-filter.hpp
     ${PROJECT_INCLUDE_DIR}/observer/waiko.hpp
-    #${PROJECT_INCLUDE_DIR}/observer/viking.hpp
+    ${PROJECT_INCLUDE_DIR}/observer/viking.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-visual-humanoid.hpp
@@ -43,6 +45,11 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/tools/rigid-body-kinematics.hxx
     ${PROJECT_INCLUDE_DIR}/tools/logger.hpp
     ${PROJECT_INCLUDE_DIR}/tools/logger.hxx
+    ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/Contact.hpp
+    ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/ContactsManager.hpp
+    ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/ContactsManager.hxx
+    ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/IMU.hpp
+    ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/Sensor.hpp
     ${PROJECT_INCLUDE_DIR}/tools/state-vector-arithmetics.hpp
     ${PROJECT_INCLUDE_DIR}/dynamical-system/dynamical-system-functor-base.hpp
     ${PROJECT_INCLUDE_DIR}/dynamical-system/dynamical-system-simulator.hpp
@@ -73,7 +80,8 @@ set(HEADERS
 
 set(SRC
     waiko.cpp
-    #viking.cpp
+    viking.cpp
+    delayed-measurements-observer.cpp
     tilt-estimator.cpp
     tilt-estimator-humanoid.cpp
     tilt-visual-humanoid.cpp

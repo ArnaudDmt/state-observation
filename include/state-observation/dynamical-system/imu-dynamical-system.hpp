@@ -41,10 +41,10 @@ public:
   virtual ~IMUDynamicalSystem();
 
   /// Description of the state dynamics
-  virtual Vector stateDynamics(const Vector & x, const Vector & u, TimeIndex k);
+  virtual Vector stateDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// Description of the sensor's dynamics
-  virtual Vector measureDynamics(const Vector & x, const Vector & u, TimeIndex k);
+  virtual Vector measureDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);
@@ -91,6 +91,15 @@ public:
   };
 
 protected:
+  /// Gives a boolean answer on whether or not the vector is correctly sized to be an input vector
+  virtual bool checkInputvector(const Vector &);
+
+  inline void assertInputVector_(const Vector & v)
+  {
+    (void)v; // avoid warning
+    BOOST_ASSERT(checkInputvector(v) && "ERROR: The input vector has the wrong size");
+  }
+
   AccelerometerGyrometer sensor_;
 
   NoiseBase * processNoise_;

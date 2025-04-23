@@ -115,7 +115,7 @@ int test()
   const Index inputSize = est.getInputSize();
 
   // Input initialization
-  Vector u0 = Vector::Zero(inputSize - 6 * contactNbr, 1);
+  VectorInput u0 = Vector::Zero(inputSize - 6 * contactNbr, 1);
   u0 << 0.0135672, 0.001536, 0.80771, -2.50425e-06, -1.03787e-08, 5.4317e-08, -2.50434e-06, -1.03944e-08, 5.45321e-08,
       48.1348, 46.9498, 1.76068, -0.0863332, -0.59487, -0.0402246, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.098,
       -1.21619e-10, 1.1174, 3.06752e-22, -1.06094e-20, 7.75345e-22, -2.84609e-06, -1.18496e-08, -4.52691e-18,
@@ -231,7 +231,7 @@ int test()
   for(unsigned long k = kinit + 2; k < kmax; ++k)
   {
     est.setMeasurement(y[k].transpose());
-    est.setMeasurementInput(u[k].transpose());
+    est.setMeasurementInput(VectorInput(u[k].transpose()));
 
     flexibility = est.getFlexibilityVector();
 

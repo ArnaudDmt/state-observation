@@ -11,8 +11,11 @@ namespace flexibilityEstimation
 typedef IMUElasticLocalFrameDynamicalSystem::state state;
 
 ModelBaseEKFFlexEstimatorIMU::ModelBaseEKFFlexEstimatorIMU(double dt)
-: EKFFlexibilityEstimatorBase(stateSize, measurementSizeBase_, Matrix::Constant(stateSize, 1, dxFactor)), functor_(dt),
-  stateSize_(stateSize), unmodeledForceVariance_(1e-6), forceVariance_(Matrix::Identity(6, 6) * 1e-4),
+: EKFFlexibilityEstimatorBase(stateSize,
+                              measurementSizeBase_,
+                              std::make_shared<IndexedInputVectorArray>(),
+                              Matrix::Constant(stateSize, 1, dxFactor)),
+  functor_(dt), stateSize_(stateSize), unmodeledForceVariance_(1e-6), forceVariance_(Matrix::Identity(6, 6) * 1e-4),
   absPosVariance_(1e-4), useFTSensors_(false), withAbsolutePos_(false), withComBias_(false),
   withUnmodeledForces_(false), limitOn_(true)
 {

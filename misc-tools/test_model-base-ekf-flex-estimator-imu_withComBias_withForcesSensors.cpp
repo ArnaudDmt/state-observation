@@ -249,7 +249,8 @@ int test()
   est.setProcessNoiseCovariance(Q_);
 
   // Temporary variables
-  stateObservation::Vector input, measurement;
+  stateObservation::Vector measurement;
+  VectorInput input;
   Vector x;
   x.resize(stateSize);
   Vector xPredicted;
@@ -284,7 +285,8 @@ int test()
     input = (u[k + 1].block(0, 0, 1, inputSize)).transpose();
     est.setMeasurementInput(input);
 
-    xPredicted = est.getEKF().getFunctor()->stateDynamics(x, (u[k - 1].block(0, 0, 1, inputSize)).transpose(), 0);
+    xPredicted =
+        est.getEKF().getFunctor()->stateDynamics(x, VectorInput(u[k - 1].block(0, 0, 1, inputSize).transpose()), 0);
     xPredicted.segment(stateObservation::flexibilityEstimation::IMUElasticLocalFrameDynamicalSystem::state::fc, 12) =
         x.segment(stateObservation::flexibilityEstimation::IMUElasticLocalFrameDynamicalSystem::state::fc, 12);
 

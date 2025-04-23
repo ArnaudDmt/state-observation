@@ -36,7 +36,7 @@ Vector3 StableIMUFixedContactDynamicalSystem::stabilizeAccelerationAngular(Vecto
   return -WAngular.cwiseProduct(WAngular.cwiseProduct(x)) - 2 * EAngular.cwiseProduct(WAngular.cwiseProduct(xdot));
 }
 
-Vector StableIMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const std::any &, TimeIndex)
+Vector StableIMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const InputBase &, TimeIndex)
 {
   assertStateVector_(x);
 
@@ -86,7 +86,7 @@ Quaternion StableIMUFixedContactDynamicalSystem::computeQuaternion_(const Vector
   return quaternion_;
 }
 
-Vector StableIMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const std::any & input, TimeIndex k)
+Vector StableIMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const InputBase & input, TimeIndex k)
 {
   assertStateVector_(x);
 
@@ -101,7 +101,7 @@ Vector StableIMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, c
   Quaternion qFlex(computeQuaternion_(orientationFlexV));
   Matrix3 rFlex(qFlex.toRotationMatrix());
 
-  const Vector & u = convert_input<Vector>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   Vector3 positionControl(u.segment(indexes::pos, 3));

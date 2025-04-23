@@ -19,7 +19,7 @@ IMUMagnetometerDynamicalSystem::~IMUMagnetometerDynamicalSystem()
   // dtor
 }
 
-Vector IMUMagnetometerDynamicalSystem::stateDynamics(const Vector & x, const std::any &, TimeIndex)
+Vector IMUMagnetometerDynamicalSystem::stateDynamics(const Vector & x, const InputBase &, TimeIndex)
 {
   assertStateVector_(x);
 
@@ -68,7 +68,7 @@ Quaternion IMUMagnetometerDynamicalSystem::computeQuaternion_(const Vector3 & x)
   return quaternion_;
 }
 
-Vector IMUMagnetometerDynamicalSystem::measureDynamics(const Vector & x, const std::any &, TimeIndex k)
+Vector IMUMagnetometerDynamicalSystem::measureDynamics(const Vector & x, const InputBase &, TimeIndex k)
 {
   assertStateVector_(x);
 

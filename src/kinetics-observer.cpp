@@ -91,7 +91,7 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
   measurementSize_(0), measurementTangentSize_(0), worldCentroidStateVector_(stateSize_),
   worldCentroidStateVectorDx_(stateTangentSize_), oldWorldCentroidStateVector_(stateSize_),
   additionalForce_(Vector3::Zero()), additionalTorque_(Vector3::Zero()),
-  ekf_(stateSize_, stateTangentSize_, measurementSizeBase, measurementSizeBase, false, false),
+  ekf_(stateSize_, stateTangentSize_, measurementSizeBase, measurementSizeBase, false, false, nullptr),
   finiteDifferencesJacobians_(false), withGyroBias_(true), withUnmodeledWrench_(true),
   withAccelerationEstimation_(false), withDampingInMatrixA_(true), withAdaptativeContactProcessCov_(true), k_est_(0),
   k_data_(0), mass_(defaultMass), dt_(defaultdx), processNoise_(0x0), measurementNoise_(0x0),
@@ -2719,7 +2719,7 @@ void KineticsObserver::measurementDifference(const Vector & measureVector1,
   }
 }
 
-Vector KineticsObserver::stateDynamics(const Vector & xInput, const std::any & /*unused*/, TimeIndex)
+Vector KineticsObserver::stateDynamics(const Vector & xInput, const InputBase & /*unused*/, TimeIndex)
 {
   Vector x = xInput;
   // initialization of the total force at the centroid with the input additional forces.
@@ -2806,7 +2806,7 @@ Vector6 KineticsObserver::getCurrentViscoElasticWrench(Index numContact)
   return contactWrench;
 }
 
-Vector KineticsObserver::measureDynamics(const Vector & x_bar, const std::any & /*unused*/, TimeIndex k)
+Vector KineticsObserver::measureDynamics(const Vector & x_bar, const InputBase & /*unused*/, TimeIndex k)
 {
   Vector y(getMeasurementSize());
 

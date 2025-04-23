@@ -5,7 +5,7 @@ namespace stateObservation
 {
 
 Viking::Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity)
-: DelayedMeasurementComplemFilter(dt, 13, 9, bufferCapacity)
+: DelayedMeasurementComplemFilter(dt, 13, 9, bufferCapacity, std::make_shared<IndexedInputArrayT<InputViking>>())
 {
   setAlpha(alpha);
   setBeta(beta);
@@ -35,7 +35,7 @@ void Viking::computeCorrectionTerms(StateIterator it)
 {
   TimeIndex k = it->getTime();
 
-  BOOST_ASSERT(this->u_.size() > 0 && this->u_.checkIndex(k - 1) && "ERROR: The input is not set");
+  BOOST_ASSERT(this->u_->size() > 0 && this->u_->checkIndex(k - 1) && "ERROR: The input is not set");
 
   StateIterator prevIter = it + 1;
   const Eigen::Ref<Vector3> initPos = (*prevIter)().segment<3>(6);
@@ -45,7 +45,7 @@ void Viking::computeCorrectionTerms(StateIterator it)
   Matrix3 initOri_inv = initOri.toMatrix3().transpose().eval();
   const Eigen::Ref<Vector3> x2_hat_prime = (*prevIter)().segment<3>(3);
 
-  InputViking & input = convert_input<InputViking>(u_[k - 1]);
+  InputViking & input = convert_input<InputViking>((*u_)[k - 1]);
 
   oriCorrection_.setZero();
 
@@ -73,7 +73,7 @@ void Viking::startNewIteration_()
 {
   TimeIndex k = getCurrentTime();
 
-  if(!u_.checkIndex(k))
+  if(!u_->checkIndex(k))
   {
     pushInput(InputViking());
   }
@@ -86,7 +86,7 @@ void Viking::addContactPosMeasurement(const Vector3 & posMeasurement,
 {
   startNewIteration_();
 
-  InputViking & input = convert_input<InputViking>(u_.back());
+  InputViking & input = convert_input<InputViking>(u_->back());
   // InputViking & input = std::any_cast<InputViking &>(u_.back());
   Vector6 inputPos;
   inputPos << posMeasurement, imuContactPos;
@@ -100,7 +100,7 @@ void Viking::addOrientationMeasurement(const Matrix3 & oriMeasurement, double ga
   startNewIteration_();
 
   // InputViking & input = std::any_cast<InputViking &>(u_.back());
-  InputViking & input = convert_input<InputViking>(u_.back());
+  InputViking & input = convert_input<InputViking>(u_->back());
   input.ori_measurements_.push_back(InputViking::OriMeas_Gain(oriMeasurement, gain));
 }
 

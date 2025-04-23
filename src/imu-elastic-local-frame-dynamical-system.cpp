@@ -131,7 +131,7 @@ void IMUElasticLocalFrameDynamicalSystem::setContactModel(unsigned nb)
   contactModel_ = nb;
 }
 
-Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector & x, const std::any & input)
+Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector & x, const InputBase & input)
 {
   assertStateVector_(x);
 
@@ -155,7 +155,7 @@ Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector
   op_.positionComBias << x.segment(state::comBias, 2),
       0; // the bias of the com along the z axis is assumed 0.
 
-  const Vector & u = convert_input<Vector>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
   op_.positionCom = u.segment<3>(input::posCom);
   if(withComBias_) op_.positionCom -= op_.positionComBias;
@@ -182,7 +182,7 @@ Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromForces(const Vector
   return op_.momentaDot;
 }
 
-Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromKinematics(const Vector & x, const std::any & input)
+Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromKinematics(const Vector & x, const InputBase & input)
 {
   assertStateVector_(x);
 
@@ -202,7 +202,7 @@ Vector IMUElasticLocalFrameDynamicalSystem::getMomentaDotFromKinematics(const Ve
   op_.fm = x.segment(state::unmodeledForces, 3);
   op_.tm = x.segment(state::unmodeledForces + 3, 3);
 
-  const Vector & u = convert_input<Vector>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   op_.positionCom = u.segment<3>(input::posCom);
@@ -273,7 +273,7 @@ Vector IMUElasticLocalFrameDynamicalSystem::getForcesAndMoments()
   return x;
 }
 
-Vector IMUElasticLocalFrameDynamicalSystem::getForcesAndMoments(const Vector & x, const std::any & u)
+Vector IMUElasticLocalFrameDynamicalSystem::getForcesAndMoments(const Vector & x, const InputBase & u)
 {
   computeForcesAndMoments(x, u);
   return getForcesAndMoments();
@@ -403,7 +403,7 @@ inline void IMUElasticLocalFrameDynamicalSystem::computeForcesAndMoments(const I
   }
 }
 
-inline void IMUElasticLocalFrameDynamicalSystem::computeForcesAndMoments(const Vector & x, const std::any & input)
+inline void IMUElasticLocalFrameDynamicalSystem::computeForcesAndMoments(const Vector & x, const InputBase & input)
 {
   op_.positionFlex = x.segment(state::pos, 3);
   op_.velocityFlex = x.segment(state::linVel, 3);
@@ -411,7 +411,7 @@ inline void IMUElasticLocalFrameDynamicalSystem::computeForcesAndMoments(const V
   op_.angularVelocityFlex = x.segment(state::angVel, 3);
   op_.rFlex = computeRotation_(op_.orientationFlexV, 0);
 
-  const Vector & u = convert_input<Vector>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   unsigned nbContacts(getContactsNumber());
@@ -469,7 +469,7 @@ void IMUElasticLocalFrameDynamicalSystem::computeContactWrench(const Matrix3 & o
 }
 
 stateObservation::Vector IMUElasticLocalFrameDynamicalSystem::computeAccelerations(const Vector & x,
-                                                                                   const std::any & input)
+                                                                                   const InputBase & input)
 {
   assertStateVector_(x);
 
@@ -491,7 +491,7 @@ stateObservation::Vector IMUElasticLocalFrameDynamicalSystem::computeAcceleratio
   op_.fm = x.segment(state::unmodeledForces, 3);
   op_.tm = x.segment(state::unmodeledForces + 3, 3);
 
-  const Vector & u = convert_input<Vector>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);
@@ -808,12 +808,12 @@ void IMUElasticLocalFrameDynamicalSystem::iterateDynamicsRK4(const Vector3 & pos
                           oriVector, op_.rFlex, angularVel, fc, tc);
 }
 
-Vector IMUElasticLocalFrameDynamicalSystem::stateDynamics(const Vector & x, const std::any & input, TimeIndex)
+Vector IMUElasticLocalFrameDynamicalSystem::stateDynamics(const Vector & x, const InputBase & input, TimeIndex)
 {
   Vector xk1;
 
   assertStateVector_(x);
-  const Vector & u = convert_input<Vector>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   op_.positionFlex = x.segment(state::pos, 3);
@@ -917,12 +917,11 @@ inline Matrix3 & IMUElasticLocalFrameDynamicalSystem::computeRotation_(const Vec
   return oriR;
 }
 
-Vector IMUElasticLocalFrameDynamicalSystem::measureDynamics(const Vector & x, const std::any & input, TimeIndex k)
+Vector IMUElasticLocalFrameDynamicalSystem::measureDynamics(const Vector & x, const InputBase & input, TimeIndex k)
 {
   assertStateVector_(x);
 
   xk_fory_ = x;
-  uk_fory_ = input;
   op_.k_fory = k;
 
   op_.positionFlex = x.segment(state::pos, 3);
@@ -938,7 +937,7 @@ Vector IMUElasticLocalFrameDynamicalSystem::measureDynamics(const Vector & x, co
 
   op_.rFlex = computeRotation_(op_.orientationFlexV, 0);
 
-  const Vector & u = convert_input<Vector>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   buildInertiaTensor(u.segment<6>(input::inertia), op_.inertia);

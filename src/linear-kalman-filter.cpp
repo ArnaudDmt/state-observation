@@ -38,13 +38,13 @@ ObserverBase::StateVector LinearKalmanFilter::prediction_(TimeIndex k)
 
   if(p_ > 0 && b_ != getBmatrixZero())
   {
-    BOOST_ASSERT(u_.checkIndex(k - 1)
+    BOOST_ASSERT(u_->checkIndex(k - 1)
                  && "ERROR: The input feedthrough of the state dynamics is not set "
                     "(the state at time k+1 needs the input at time k which was not given) "
                     "if you don't need the input in the computation of state, you "
                     "must set B matrix to zero");
 
-    const Vector & u = convert_input<Vector>(u_[k - 1]);
+    const VectorInput & u = convert_input<VectorInput>((*u_)[k - 1]);
     BOOST_ASSERT(checkInputVector(u) && "The size of the input vector is incorrect.");
 
     xbar_().noalias() += b_ * u;
@@ -60,13 +60,13 @@ ObserverBase::MeasureVector LinearKalmanFilter::simulateSensor_(const StateVecto
 
   if(p_ > 0 && checkDmatrix(d_) && d_ != getDmatrixZero())
   {
-    BOOST_ASSERT(u_.checkIndex(k)
+    BOOST_ASSERT(u_->checkIndex(k)
                  && "ERROR: The input feedthrough of the measurements is not set "
                     "(the measurement at time k needs the input at time k which was not given) "
                     "if you don't need the input in the computation of measurement, you "
                     "must set D matrix to zero");
 
-    const Vector & u = std::any_cast<Vector &>(u_[k]);
+    const VectorInput & u = convert_input<VectorInput>((*u_)[k]);
     BOOST_ASSERT(checkInputVector(u) && "The size of the input vector is incorrect.");
 
     ybar_.set(c_ * x + d_ * u, k);
@@ -163,7 +163,7 @@ LinearKalmanFilter::InputVector LinearKalmanFilter::inputVectorConstant(double c
 
 LinearKalmanFilter::InputVector LinearKalmanFilter::inputVectorRandom() const
 {
-  return tools::ProbabilityLawSimulation::getUniformMatrix<InputVector>(p_);
+  return tools::ProbabilityLawSimulation::getUniformMatrix<Vector>(p_);
 }
 
 LinearKalmanFilter::InputVector LinearKalmanFilter::inputVectorZero() const

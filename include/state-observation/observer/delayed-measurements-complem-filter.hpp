@@ -15,8 +15,12 @@ public:
   ///  \li p : size of the input vector
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer
-  DelayedMeasurementComplemFilter(double dt, Index n, Index m, unsigned long bufferCapacity)
-  : DelayedMeasurementObserver(dt, n, m, bufferCapacity)
+  DelayedMeasurementComplemFilter(double dt,
+                                  Index n,
+                                  Index m,
+                                  unsigned long bufferCapacity,
+                                  const std::shared_ptr<IndexedInputArrayInterface> input)
+  : DelayedMeasurementObserver(dt, n, m, bufferCapacity, input)
   {
   }
 

@@ -13,13 +13,15 @@
 namespace stateObservation
 {
 
-KalmanFilterBase::KalmanFilterBase() : nt_(0), arithm_(this)
+KalmanFilterBase::KalmanFilterBase(const std::shared_ptr<IndexedInputArrayInterface> input)
+: ZeroDelayObserver(input), nt_(0), arithm_(this)
 {
   oc_.pbar.resize(nt_, nt_);
   pr_.resize(nt_, nt_);
 }
 
-KalmanFilterBase::KalmanFilterBase(Index n, Index m) : ZeroDelayObserver(n, m), nt_(n), mt_(m), arithm_(this)
+KalmanFilterBase::KalmanFilterBase(Index n, Index m, const std::shared_ptr<IndexedInputArrayInterface> input)
+: ZeroDelayObserver(n, m, input), nt_(n), mt_(m), arithm_(this)
 {
   oc_.pbar.resize(nt_, nt_);
   pr_.resize(nt_, nt_);
@@ -27,8 +29,12 @@ KalmanFilterBase::KalmanFilterBase(Index n, Index m) : ZeroDelayObserver(n, m), 
   oc_.inoMeasCovInverse.resize(mt_, mt_);
 }
 
-KalmanFilterBase::KalmanFilterBase(Index n, Index nt, Index m, Index mt)
-: ZeroDelayObserver(n, m), nt_(nt), mt_(mt), arithm_(this)
+KalmanFilterBase::KalmanFilterBase(Index n,
+                                   Index nt,
+                                   Index m,
+                                   Index mt,
+                                   const std::shared_ptr<IndexedInputArrayInterface> input)
+: ZeroDelayObserver(n, m, input), nt_(nt), mt_(mt), arithm_(this)
 {
   oc_.pbar.resize(nt_, nt_);
   pr_.resize(nt_, nt_);

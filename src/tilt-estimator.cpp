@@ -3,7 +3,7 @@
 namespace stateObservation
 {
 
-TiltEstimator::TiltEstimator() : ZeroDelayObserver(9, 9) {}
+TiltEstimator::TiltEstimator() : ZeroDelayObserver(9, 9, std::make_shared<IndexedInputArrayT<>>()) {}
 
 TiltEstimator::TiltEstimator(double alpha, double beta, double gamma, double dt)
 : TiltEstimator(alpha, beta, gamma, 9, 9, dt)
@@ -11,7 +11,7 @@ TiltEstimator::TiltEstimator(double alpha, double beta, double gamma, double dt)
 }
 
 TiltEstimator::TiltEstimator(double alpha, double beta, double gamma, int n, int m, double dt)
-: ZeroDelayObserver(n, m), alpha_(alpha), beta_(beta), gamma_(gamma), dt_(dt)
+: ZeroDelayObserver(n, m, std::make_shared<IndexedInputArrayT<>>()), alpha_(alpha), beta_(beta), gamma_(gamma), dt_(dt)
 {
 }
 

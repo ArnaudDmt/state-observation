@@ -66,7 +66,11 @@ public:
   ///  \li m : size of the measurements vector
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer. Given in seconds, as the buffer's duration.
-  DelayedMeasurementObserver(double dt, Index n, Index m, unsigned long bufferCapacity);
+  DelayedMeasurementObserver(double dt,
+                             Index n,
+                             Index m,
+                             unsigned long bufferCapacity,
+                             const std::shared_ptr<IndexedInputArrayInterface> input = nullptr);
 
   /// Default constructor
   DelayedMeasurementObserver() = delete;
@@ -117,13 +121,13 @@ public:
   /// Remove all the given values of the measurements
   virtual void clearMeasurements() override;
 
-  void pushInput(const std::any & u_k);
+  void pushInput(const InputBase & u_k);
 
   void pushAsyncInput(const AsynchronousInput & asyncMeas);
 
   /// Set the value of the input vector at time index k. The
   /// inputs have to be inserted in chronological order without gaps.
-  virtual void setInput(const std::any & u_k, TimeIndex k) override;
+  virtual void setInput(const InputBase & u_k, TimeIndex k) override;
 
   /// Remove all the given values of the inputs
   /// If there is no input, this instruction has no effect
@@ -186,7 +190,7 @@ protected:
   /// Container for the measurements.
   IndexedVectorArray y_;
   /// Container for the inputs.
-  IndexedAnyArray u_;
+  std::shared_ptr<IndexedInputArrayInterface> u_;
 
   /// Container for the asynchronous measurements.
   std::set<AsynchronousMeasurement> y_asynchronous_;

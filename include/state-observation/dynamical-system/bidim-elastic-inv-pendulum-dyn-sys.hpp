@@ -31,6 +31,9 @@ namespace stateObservation
 class STATE_OBSERVATION_DLLAPI BidimElasticInvPendulum : public DynamicalSystemFunctorBase
 {
 public:
+  class BidimElasticInvPendulumInput : public InputBase, public Vector1
+  {
+  };
   /// The constructor
   BidimElasticInvPendulum();
 
@@ -38,10 +41,10 @@ public:
   virtual ~BidimElasticInvPendulum();
 
   /// Description of the state dynamics
-  virtual Vector stateDynamics(const Vector & x, const std::any & u, TimeIndex k);
+  virtual Vector stateDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// Description of the sensor's dynamics
-  virtual Vector measureDynamics(const Vector & x, const std::any & u, TimeIndex k);
+  virtual Vector measureDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);
@@ -75,8 +78,6 @@ public:
   void setElasticity(const double & k);
 
 protected:
-  typedef double inputType;
-
   double k_;
   double m_;
   double h_;

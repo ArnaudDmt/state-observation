@@ -24,7 +24,7 @@ int testConstant()
 
   /// The array containing all the states, the measurements and the inputs
   IndexedVectorArray y;
-  IndexedVectorArray u;
+  IndexedInputVectorArray u;
 
   Vector3 contact(Vector3::Zero());
 
@@ -35,7 +35,7 @@ int testConstant()
   Vector yConstant = Vector::Zero(measurementSize, 1);
   yConstant[1] = 9.8;
 
-  Vector uConstant = Vector::Zero(inputSize, 1);
+  VectorInput uConstant = VectorInput::Zero(inputSize, 1);
   uConstant[2] = 1.8;
 
   {
@@ -99,7 +99,7 @@ int test()
   /// The array containing all the states, the measurements and the inputs
   IndexedVectorArray x;
   IndexedVectorArray y;
-  IndexedVectorArray u;
+  IndexedInputVectorArray u;
 
   /// The covariance matrix of the process noise and the measurement noise
   Matrix q;
@@ -148,37 +148,37 @@ int test()
 
     sim.setState(x0, 0);
 
-    Vector uk = Vector::Zero(imu.getInputSize(), 1);
+    std::shared_ptr<VectorInput> uk = std::make_shared<VectorInput>(VectorInput::Zero(imu.getInputSize(), 1));
 
     int i;
     /// construction of the input
     /// the input is constant over 10 time samples
     for(i = 0; i < kmax / 10.0; ++i)
     {
-      uk[indexes::pos] = 0.4 * sin(M_PI / 10 * i);
-      uk[indexes::pos + 1] = 0.6 * sin(M_PI / 12 * i);
-      uk[indexes::pos + 2] = 0.2 * sin(M_PI / 5 * i);
+      (*uk)[indexes::pos] = 0.4 * sin(M_PI / 10 * i);
+      (*uk)[indexes::pos + 1] = 0.6 * sin(M_PI / 12 * i);
+      (*uk)[indexes::pos + 2] = 0.2 * sin(M_PI / 5 * i);
 
-      uk[indexes::linVel] = 0.1 * sin(M_PI / 12 * i);
-      uk[indexes::linVel + 1] = 0.07 * sin(M_PI / 15 * i);
-      uk[indexes::linVel + 2] = 0.05 * sin(M_PI / 5 * i);
+      (*uk)[indexes::linVel] = 0.1 * sin(M_PI / 12 * i);
+      (*uk)[indexes::linVel + 1] = 0.07 * sin(M_PI / 15 * i);
+      (*uk)[indexes::linVel + 2] = 0.05 * sin(M_PI / 5 * i);
 
-      uk[indexes::linAcc] = 1 * sin(M_PI / 12 * i);
-      uk[indexes::linAcc + 1] = 0.07 * sin(M_PI / 15 * i);
-      uk[indexes::linAcc + 2] = 0.05 * sin(M_PI / 10 * i);
+      (*uk)[indexes::linAcc] = 1 * sin(M_PI / 12 * i);
+      (*uk)[indexes::linAcc + 1] = 0.07 * sin(M_PI / 15 * i);
+      (*uk)[indexes::linAcc + 2] = 0.05 * sin(M_PI / 10 * i);
 
-      uk[indexes::ori] = 2 * sin(M_PI / 12 * i);
-      uk[indexes::ori + 1] = 1.5 * sin(M_PI / 18 * i);
-      uk[indexes::ori + 2] = 0.8 * sin(M_PI / 6 * i);
+      (*uk)[indexes::ori] = 2 * sin(M_PI / 12 * i);
+      (*uk)[indexes::ori + 1] = 1.5 * sin(M_PI / 18 * i);
+      (*uk)[indexes::ori + 2] = 0.8 * sin(M_PI / 6 * i);
 
-      uk[indexes::angVel] = 0.2 * sin(M_PI / 12 * i);
-      uk[indexes::angVel + 1] = 0.07 * sin(M_PI / 12 * i);
-      uk[indexes::angVel + 2] = 0.05 * sin(M_PI / 5 * i);
+      (*uk)[indexes::angVel] = 0.2 * sin(M_PI / 12 * i);
+      (*uk)[indexes::angVel + 1] = 0.07 * sin(M_PI / 12 * i);
+      (*uk)[indexes::angVel + 2] = 0.05 * sin(M_PI / 5 * i);
 
       /// filling the 10 time samples of the constant input
       for(int j = 0; j < 10; ++j)
       {
-        u.setValue(uk, i * 10 + j);
+        u.setValue(*uk, i * 10 + j);
       }
 
       /// give the input to the simulator
@@ -188,7 +188,7 @@ int test()
     }
 
     /// Last sample needed
-    u.setValue(uk, i * 10);
+    u.setValue(*uk, i * 10);
 
     /// set the sampling perdiod to the functor
     imu.setSamplingPeriod(dt);
@@ -294,6 +294,5 @@ int test()
 
 int main()
 {
-
   return test();
 }

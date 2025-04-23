@@ -6,13 +6,14 @@ namespace stateObservation
 void ZeroDelayObserver::setState(const ObserverBase::StateVector & x_k, TimeIndex k)
 {
   BOOST_ASSERT(checkStateVector(x_k) && "The size of the state vector is incorrect");
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
 
   x_.set(x_k, k);
 
   if(k < getCurrentTime())
   {
     y_.clear();
-    u_.clear();
+    u_->clear();
   }
   else
   {
@@ -21,9 +22,9 @@ void ZeroDelayObserver::setState(const ObserverBase::StateVector & x_k, TimeInde
       y_.popFront();
     }
 
-    while(u_.size() > 0 && u_.getFirstIndex() < k)
+    while(u_->size() > 0 && u_->getFirstIndex() < k)
     {
-      u_.popFront();
+      u_->popFront();
     }
   }
 } // namespace stateObservation
@@ -31,6 +32,7 @@ void ZeroDelayObserver::setState(const ObserverBase::StateVector & x_k, TimeInde
 void ZeroDelayObserver::setCurrentState(const ObserverBase::StateVector & x_k)
 {
   BOOST_ASSERT(x_.isSet() && "The state vector has not been set");
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
   BOOST_ASSERT(checkStateVector(x_k) && "The size of the state vector is incorrect");
 
   x_() = x_k;
@@ -48,7 +50,6 @@ bool ZeroDelayObserver::stateIsSet() const
 
 void ZeroDelayObserver::setMeasurement(const ObserverBase::MeasureVector & y_k, TimeIndex k)
 {
-
   BOOST_ASSERT(checkMeasureVector(y_k) && "The size of the measure vector is incorrect");
   if(y_.size() > 0)
     BOOST_ASSERT((y_.getNextIndex() == k || y_.checkIndex(k)) && "ERROR: The time is set incorrectly for \
@@ -82,10 +83,11 @@ void ZeroDelayObserver::clearMeasurements()
   y_.reset();
 }
 
-void ZeroDelayObserver::setInput(const std::any & u_k, TimeIndex k)
+void ZeroDelayObserver::setInput(const InputBase & u_k, TimeIndex k)
 {
-  if(u_.size() > 0)
-    BOOST_ASSERT((u_.getNextIndex() == k || u_.checkIndex(k)) && "ERROR: The time is set incorrectly \
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
+  if(u_->size() > 0)
+    BOOST_ASSERT((u_->getNextIndex() == k || u_->checkIndex(k)) && "ERROR: The time is set incorrectly \
                                 for the inputs (order or gap)");
   else
   {
@@ -94,31 +96,34 @@ void ZeroDelayObserver::setInput(const std::any & u_k, TimeIndex k)
                           inputs (must be [current_time] or [current_time+1])");
   }
 
-  u_.setValue(u_k, k);
+  u_->setValue(u_k, k);
 }
 
-void ZeroDelayObserver::pushInput(const std::any & u_k)
+void ZeroDelayObserver::pushInput(const InputBase & u_k)
 {
-  if(u_.size() > 0)
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
+  if(u_->size() > 0)
   {
-    u_.pushBack(u_k);
+    u_->pushBack(u_k);
   }
   else
   {
     BOOST_ASSERT(x_.isSet() && "Unable to initialize input without time index, the state vector has not been set.");
     /// we need the input at the time of the state vector to predict the next one
-    u_.setValue(u_k, x_.getTime());
+    u_->setValue(u_k, x_.getTime());
   }
 }
 
 void ZeroDelayObserver::clearInputs()
 {
-  u_.reset();
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
+  u_->reset();
 }
 
 void ZeroDelayObserver::clearInputsAndMeasurements()
 {
-  u_.reset();
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
+  u_->reset();
   y_.reset();
 }
 
@@ -134,6 +139,7 @@ TimeIndex ZeroDelayObserver::estimateState()
 const ObserverBase::StateVector & ZeroDelayObserver::getEstimatedState(TimeIndex k)
 {
   BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
 
   TimeIndex k0 = getCurrentTime();
 
@@ -144,7 +150,7 @@ const ObserverBase::StateVector & ZeroDelayObserver::getEstimatedState(TimeIndex
     oneStepEstimation_();
     if(y_.getFirstIndex() < k) y_.popFront();
 
-    if(u_.size() > 0 && u_.getFirstIndex() < k) u_.popFront();
+    if(u_->size() > 0 && u_->getFirstIndex() < k) u_->popFront();
   }
 
   return x_();
@@ -162,21 +168,23 @@ TimeIndex ZeroDelayObserver::getCurrentTime() const
   return x_.getTime();
 }
 
-const std::any & ZeroDelayObserver::getInput(TimeIndex k) const
+const InputBase & ZeroDelayObserver::getInput(TimeIndex k) const
 {
-  return u_[k];
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
+  return (*u_)[k];
 }
 
 TimeSize ZeroDelayObserver::getInputsNumber() const
 {
-  return u_.size();
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
+  return u_->size();
 }
 
 TimeIndex ZeroDelayObserver::getInputTime() const
 {
-
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
   BOOST_ASSERT(y_.size() > 0 && "ERROR: There is no measurements registered (past measurements are erased)");
-  return u_.getLastIndex();
+  return u_->getLastIndex();
 }
 
 const Vector & ZeroDelayObserver::getMeasurement(TimeIndex k) const

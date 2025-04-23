@@ -24,10 +24,10 @@ IMUDynamicalSystem::~IMUDynamicalSystem()
   // dtor
 }
 
-Vector IMUDynamicalSystem::stateDynamics(const Vector & x, const std::any & input, TimeIndex)
+Vector IMUDynamicalSystem::stateDynamics(const Vector & x, const InputBase & input, TimeIndex)
 {
   assertStateVector_(x);
-  const Vector & u = convert_input<Vector>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
 
   Vector3 position = x.segment<3>(indexes::pos);
   Vector3 velocity = x.segment<3>(indexes::linVel);
@@ -100,7 +100,7 @@ Quaternion IMUDynamicalSystem::computeQuaternion_(const Vector3 & x)
   return quaternion_;
 }
 
-Vector IMUDynamicalSystem::measureDynamics(const Vector & x, const std::any &, TimeIndex k)
+Vector IMUDynamicalSystem::measureDynamics(const Vector & x, const InputBase &, TimeIndex k)
 {
   assertStateVector_(x);
 

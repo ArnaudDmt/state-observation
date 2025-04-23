@@ -36,10 +36,10 @@ public:
   virtual ~DynamicalSystemFunctorBase();
 
   /// The function to overload to describe the dynamics of the state
-  virtual Vector stateDynamics(const Vector & x, const std::any & u, TimeIndex k) = 0;
+  virtual Vector stateDynamics(const Vector & x, const InputBase & u, TimeIndex k) = 0;
 
   /// The function to overload to describe the dynamics of the sensor (measurements)
-  virtual Vector measureDynamics(const Vector & x, const std::any & u, TimeIndex k) = 0;
+  virtual Vector measureDynamics(const Vector & x, const InputBase & u, TimeIndex k) = 0;
 
   /// The method to overload if the functor needs to be reset when the
   /// Exteded Kalman filter is reset itself

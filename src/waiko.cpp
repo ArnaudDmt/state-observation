@@ -3,9 +3,8 @@
 
 namespace stateObservation
 {
-
 Waiko::Waiko(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity)
-: DelayedMeasurementComplemFilter(dt, 13, 9, bufferCapacity)
+: DelayedMeasurementComplemFilter(dt, 13, 9, bufferCapacity, u_ = std::make_shared<IndexedInputArrayT<InputWaiko>>())
 {
   setAlpha(alpha);
   setBeta(beta);
@@ -35,7 +34,7 @@ void Waiko::computeCorrectionTerms(StateIterator it)
 {
   TimeIndex k = it->getTime();
 
-  BOOST_ASSERT(this->u_.size() > 0 && this->u_.checkIndex(k - 1) && "ERROR: The input is not set");
+  BOOST_ASSERT(this->u_->size() > 0 && this->u_->checkIndex(k - 1) && "ERROR: The input is not set");
 
   StateIterator prevIter = it + 1;
   const Eigen::Ref<Vector3> initPos = (*prevIter)().segment<3>(6);
@@ -45,7 +44,7 @@ void Waiko::computeCorrectionTerms(StateIterator it)
   Matrix3 initOri_inv = initOri.toMatrix3().transpose().eval();
   const Eigen::Ref<Vector3> x2_hat_prime = (*prevIter)().segment<3>(3);
 
-  InputWaiko & input = convert_input<InputWaiko>(u_[k - 1]);
+  InputWaiko & input = convert_input<InputWaiko>((*u_)[k - 1]);
 
   oriCorrection_.setZero();
 
@@ -73,7 +72,7 @@ void Waiko::startNewIteration_()
 {
   TimeIndex k = getCurrentTime();
 
-  if(!u_.checkIndex(k))
+  if(!u_->checkIndex(k))
   {
     pushInput(InputWaiko());
   }
@@ -86,7 +85,8 @@ void Waiko::addContactPosMeasurement(const Vector3 & posMeasurement,
 {
   startNewIteration_();
 
-  InputWaiko & input = std::any_cast<InputWaiko &>(u_.back());
+  InputWaiko & input = convert_input<InputWaiko>(u_->back());
+  // InputWaiko & input = std::any_cast<InputWaiko &>(u_.back());
   Vector6 inputPos;
   inputPos << posMeasurement, imuContactPos;
 
@@ -98,7 +98,8 @@ void Waiko::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gai
 {
   startNewIteration_();
 
-  InputWaiko & input = std::any_cast<InputWaiko &>(u_.back());
+  // InputWaiko & input = std::any_cast<InputWaiko &>(u_.back());
+  InputWaiko & input = convert_input<InputWaiko>(u_->back());
   input.ori_measurements_.push_back(InputWaiko::OriMeas_Gain(oriMeasurement, gain));
 }
 

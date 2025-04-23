@@ -19,10 +19,10 @@ IMUMltpctiveDynamicalSystem::~IMUMltpctiveDynamicalSystem()
   // dtor
 }
 
-Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const std::any & input, TimeIndex)
+Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const InputBase & input, TimeIndex)
 {
   assertStateVector_(x);
-  const inputType & u = convert_input<inputType>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   Vector3 position = x.segment(indexes::pos, 3);
@@ -65,7 +65,7 @@ Vector IMUMltpctiveDynamicalSystem::stateDynamics(const Vector & x, const std::a
     return xk1;
 }
 
-Vector IMUMltpctiveDynamicalSystem::measureDynamics(const Vector & x, const std::any &, TimeIndex k)
+Vector IMUMltpctiveDynamicalSystem::measureDynamics(const Vector & x, const InputBase &, TimeIndex k)
 {
   assertStateVector_(x);
 

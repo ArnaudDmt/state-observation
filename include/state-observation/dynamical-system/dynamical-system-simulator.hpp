@@ -47,7 +47,7 @@ public:
   /// Set the value of the input at instant k
   /// If no value of the input is available when simulating the system
   /// the previous input value is automatically set.
-  virtual void setInput(const std::any & u, TimeIndex k);
+  virtual void setInput(const std::shared_ptr<InputBase> & u, TimeIndex k);
 
   /// Gets the state of the current time
   virtual Vector getCurrentState() const;
@@ -63,7 +63,7 @@ public:
 
   /// Gets the input of a given time index,
   /// if the Input is not available the previous input is provided
-  virtual std::any & getInput(TimeIndex k);
+  virtual InputBase & getInput(TimeIndex k);
 
   /// Gets the measurement value at a given time index
   /// if the value is not available, the dynamics is simulated
@@ -96,7 +96,7 @@ protected:
 
   IndexedVectorArray y_;
 
-  std::map<TimeIndex, std::any> u_;
+  std::map<TimeIndex, std::shared_ptr<InputBase>> u_;
 };
 } // namespace stateObservation
 #endif // STATEOBSERVATIONDYNAMICALSYSTEMSIMULATOR_H

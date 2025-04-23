@@ -1,6 +1,6 @@
 stateObservation::IndexedVectorArray offlineEKFFlexibilityEstimation(
     const stateObservation::IndexedVectorArray & y,
-    const stateObservation::IndexedVectorArray & u,
+    const stateObservation::IndexedInputVectorArray & u,
     const Vector & xh0,
     unsigned numberOfContacts,
     const std::vector<Vector3, Eigen::aligned_allocator<Vector3>> & contactsPositions,
@@ -43,8 +43,6 @@ stateObservation::IndexedVectorArray offlineEKFFlexibilityEstimation(
   /// the reconstruction of the state
   for(TimeIndex i = y.getFirstIndex(); i < y.getNextIndex(); ++i)
   {
-    // std::cout << i << std::endl;
-
     /// introduction of the measurement
     estimator.setMeasurement(y[i]);
 
@@ -77,10 +75,11 @@ stateObservation::IndexedVectorArray offlineEKFFlexibilityEstimation(
   const Index inputSize = 15;
 
   /// initialization of a zero input
-  stateObservation::IndexedVectorArray u;
+  stateObservation::IndexedInputVectorArray u;
   for(TimeIndex k = y.getFirstIndex() - 1; k < y.getNextIndex(); ++k)
   {
-    u.setValue(Vector::Zero(inputSize, 1), k);
+    VectorInput uk = VectorInput::Zero(inputSize, 1);
+    u.setValue(uk, k);
   }
 
   return offlineEKFFlexibilityEstimation(y, u, xh0, numberOfContacts, contactsPositions, dt);

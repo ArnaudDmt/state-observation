@@ -33,7 +33,7 @@ int test(bool withGyroBias)
   /// The array containing all the states, the measurements and the inputs
   IndexedVectorArray x;
   IndexedVectorArray y;
-  IndexedVectorArray u;
+  IndexedInputVectorArray u;
   Vector3 gyroBias = Vector3::Zero();
 
   /// The covariance matrix of the process noise and the measurement noise
@@ -77,21 +77,21 @@ int test(bool withGyroBias)
     /// the input is constant over 10 time samples
     for(Index i = 0; i < kmax / 10; ++i)
     {
-      Vector uk = Vector::Zero(imuSimulation.getInputSize(), 1);
+      std::shared_ptr<VectorInput> uk = std::make_shared<VectorInput>(Vector::Zero(imuSimulation.getInputSize(), 1));
       double id = double(i);
 
-      uk[0] = 0.4 * sin(M_PI / 10 * id);
-      uk[1] = 0.6 * sin(M_PI / 12 * id);
-      uk[2] = 0.2 * sin(M_PI / 5 * id);
+      (*uk)[0] = 0.4 * sin(M_PI / 10 * id);
+      (*uk)[1] = 0.6 * sin(M_PI / 12 * id);
+      (*uk)[2] = 0.2 * sin(M_PI / 5 * id);
 
-      uk[3] = 10 * sin(M_PI / 12 * id);
-      uk[4] = 0.07 * sin(M_PI / 15 * id);
-      uk[5] = 0.05 * sin(M_PI / 5 * id);
+      (*uk)[3] = 10 * sin(M_PI / 12 * id);
+      (*uk)[4] = 0.07 * sin(M_PI / 15 * id);
+      (*uk)[5] = 0.05 * sin(M_PI / 5 * id);
 
       /// filling the 10 time samples of the constant input
       for(int j = 0; j < 10; ++j)
       {
-        u.setValue(uk, i * 10 + j);
+        u.setValue(*uk, i * 10 + j);
       }
 
       /// give the input to the simulator
@@ -124,7 +124,7 @@ int test(bool withGyroBias)
   }
 
   /// initialization of the extended Kalman filter
-  ExtendedKalmanFilter filter(stateSize, measurementSize, false, true);
+  ExtendedKalmanFilter filter(stateSize, measurementSize, false, true, std::make_shared<IndexedInputVectorArray>());
 
   /// the initalization of a random estimation of the initial state
   Vector xh0 = tools::ProbabilityLawSimulation::getUniformMatrix<Vector>(stateSize) * 3.14;

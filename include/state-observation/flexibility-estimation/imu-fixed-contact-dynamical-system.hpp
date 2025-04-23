@@ -42,10 +42,12 @@ public:
   virtual ~IMUFixedContactDynamicalSystem();
 
   /// Description of the state dynamics
-  virtual stateObservation::Vector stateDynamics(const stateObservation::Vector & x, const std::any & u, TimeIndex k);
+  virtual stateObservation::Vector stateDynamics(const stateObservation::Vector & x, const InputBase & u, TimeIndex k);
 
   /// Description of the sensor's dynamics
-  virtual stateObservation::Vector measureDynamics(const stateObservation::Vector & x, const std::any & u, TimeIndex k);
+  virtual stateObservation::Vector measureDynamics(const stateObservation::Vector & x,
+                                                   const InputBase & u,
+                                                   TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(stateObservation::NoiseBase *);
@@ -107,8 +109,6 @@ protected:
   static const Index stateSize_ = 18;
   static const Index inputSize_ = 15;
   static const Index measurementSizeBase_ = 6;
-
-  typedef Vector inputType;
 
   Index measurementSize_;
 

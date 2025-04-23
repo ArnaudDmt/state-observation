@@ -67,20 +67,20 @@ int testDerivator()
     /// the input is constant over 10 time samples
     for(unsigned i = 0; i < kmax / 10; ++i)
     {
-      Vector uk = Vector::Zero(imu.getInputSize(), 1);
+      std::shared_ptr<VectorInput> uk = std::make_shared<VectorInput>(Vector::Zero(imu.getInputSize(), 1));
 
-      uk[0] = 0.4 * sin(M_PI / 10 * i);
-      uk[1] = 0.6 * sin(M_PI / 12 * i);
-      uk[2] = 0.2 * sin(M_PI / 5 * i);
+      (*uk)[0] = 0.4 * sin(M_PI / 10 * i);
+      (*uk)[1] = 0.6 * sin(M_PI / 12 * i);
+      (*uk)[2] = 0.2 * sin(M_PI / 5 * i);
 
-      uk[3] = 10 * sin(M_PI / 12 * i);
-      uk[4] = 0.07 * sin(M_PI / 15 * i);
-      uk[5] = 0.05 * sin(M_PI / 5 * i);
+      (*uk)[3] = 10 * sin(M_PI / 12 * i);
+      (*uk)[4] = 0.07 * sin(M_PI / 15 * i);
+      (*uk)[5] = 0.05 * sin(M_PI / 5 * i);
 
       /// filling the 10 time samples of the constant input
       for(int j = 0; j < 10; ++j)
       {
-        u.setValue(uk, i * 10 + j);
+        u.setValue(*uk, i * 10 + j);
       }
 
       /// give the input to the simulator
@@ -200,7 +200,7 @@ IndexedVectorArray getTrajectory(const char * PositionOrientation)
   return state;
 }
 
-int test(const IndexedVectorArray & y, const IndexedVectorArray & u)
+int test(const IndexedVectorArray & y, const IndexedInputVectorArray & u)
 {
   /// The number of samples
   const unsigned stateSize = 18;
@@ -270,7 +270,13 @@ int main()
 
   IndexedVectorArray y = getMeasurements("dg_HRP2LAAS-accelerometer.dat", "dg_HRP2LAAS-gyrometer.dat");
 
-  IndexedVectorArray u = getTrajectory("IMUTrajectory.dat");
+  IndexedVectorArray input = getTrajectory("IMUTrajectory.dat");
+
+  IndexedInputVectorArray u;
+  for(TimeIndex k = input.getFirstIndex(); k < input.getLastIndex(); k++)
+  {
+    u.setValue(VectorInput(input[k]), k);
+  }
 
   return test(y, u);
 }

@@ -74,12 +74,12 @@ public:
   typedef Vector MeasureVectorTan;
 
   /// Default constructor
-  KalmanFilterBase();
+  KalmanFilterBase(const std::shared_ptr<IndexedInputArrayInterface> input);
 
   /// The constructor
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
-  KalmanFilterBase(Index n, Index m);
+  KalmanFilterBase(Index n, Index m, const std::shared_ptr<IndexedInputArrayInterface> input);
 
   /// The constructor to use in case the dimension of the state space
   /// is smaller that its vector representation. For example
@@ -94,7 +94,7 @@ public:
   ///  \li nt : dimension of the tangent space to the state space
   ///  \li m : size of the measurements vector
   ///  \li mt : dimension of the tangent space to the measurement space
-  KalmanFilterBase(Index n, Index nt, Index m, Index mt);
+  KalmanFilterBase(Index n, Index nt, Index m, Index mt, const std::shared_ptr<IndexedInputArrayInterface> input);
 
   /// Set the value of the jacobian df/dx
   virtual void setA(const Amatrix & A);

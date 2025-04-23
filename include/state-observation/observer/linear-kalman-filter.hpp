@@ -20,6 +20,7 @@
 #ifndef STATEOBSERVER_LINEARKALMANFILTERHPP
 #define STATEOBSERVER_LINEARKALMANFILTERHPP
 
+#include <memory>
 #include <state-observation/api.h>
 #include <state-observation/observer/kalman-filter-base.hpp>
 
@@ -51,13 +52,16 @@ public:
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
   ///  \li p : size of the input vector
-  LinearKalmanFilter(Index n, Index m, Index p = 0) : KalmanFilterBase(n, m), p_(p) {}
+  LinearKalmanFilter(Index n, Index m, Index p = 0)
+  : KalmanFilterBase(n, m, std::make_shared<IndexedInputArrayT<VectorInput>>()), p_(p)
+  {
+  }
 
   /// Default constructor
-  LinearKalmanFilter() {}
+  LinearKalmanFilter() : KalmanFilterBase(std::make_shared<IndexedInputArrayT<VectorInput>>()) {}
 
   /// InputVector is the type of the input vector
-  typedef Vector InputVector;
+  typedef VectorInput InputVector;
 
   /// The type of the matrix linking the input to the state
   typedef Matrix Bmatrix;

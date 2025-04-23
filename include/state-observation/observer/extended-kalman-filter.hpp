@@ -50,7 +50,11 @@ public:
   ///  the input u_k \li The parameter directInputStateProcessFeedthrough defines whether (true) or not (false) the
   ///  state x_{k+1} requires the input u_k
 
-  ExtendedKalmanFilter(Index n, Index m, bool directInputOutputFeedthrough, bool directInputStateProcessFeedthrough);
+  ExtendedKalmanFilter(Index n,
+                       Index m,
+                       bool directInputOutputFeedthrough,
+                       bool directInputStateProcessFeedthrough,
+                       const std::shared_ptr<IndexedInputArrayInterface> input);
 
   /// The constructor.
   ///  \li n : size of the state vector
@@ -65,7 +69,8 @@ public:
                        Index m,
                        Index mt,
                        bool directInputOutputFeedthrough,
-                       bool directInputStateProcessFeedthrough);
+                       bool directInputStateProcessFeedthrough,
+                       const std::shared_ptr<IndexedInputArrayInterface> input);
 
   /// Set a pointer to the functor that defines the dynamics of the states
   /// and the measurement the user is responsible for the validity of the
@@ -126,7 +131,6 @@ protected:
   struct Optimization
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    std::any u_;
     KalmanFilterBase::Amatrix a_;
     KalmanFilterBase::Cmatrix c_;
     ObserverBase::StateVector x_;

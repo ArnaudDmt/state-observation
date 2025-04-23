@@ -21,7 +21,7 @@ IMUFixedContactDynamicalSystem::~IMUFixedContactDynamicalSystem()
   // dtor
 }
 
-Vector IMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const std::any &, TimeIndex)
+Vector IMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const InputBase &, TimeIndex)
 {
   assertStateVector_(x);
 
@@ -67,7 +67,7 @@ Quaternion IMUFixedContactDynamicalSystem::computeQuaternion_(const Vector3 & x)
   return quaternion_;
 }
 
-Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const std::any & input, TimeIndex k)
+Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const InputBase & input, TimeIndex k)
 {
   assertStateVector_(x);
 
@@ -82,7 +82,7 @@ Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const s
   Quaternion qFlex(computeQuaternion_(orientationFlexV));
   Matrix3 rFlex(qFlex.toRotationMatrix());
 
-  const inputType & u = convert_input<inputType>(input);
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   Vector3 positionControl(u.segment(indexes::pos, 3));

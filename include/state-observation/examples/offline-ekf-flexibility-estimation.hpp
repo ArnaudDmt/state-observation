@@ -47,7 +47,7 @@ namespace examples
  */
 stateObservation::IndexedVectorArray offlineEKFFlexibilityEstimation(
     const stateObservation::IndexedVectorArray & y,
-    const stateObservation::IndexedVectorArray & u,
+    const stateObservation::IndexedInputVectorArray & u,
     const Vector & xh0,
     unsigned numberOfContacts,
     const std::vector<Vector3, Eigen::aligned_allocator<Vector3>> & contactsPositions,

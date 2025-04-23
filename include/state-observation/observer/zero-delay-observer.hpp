@@ -47,10 +47,30 @@ public:
   ///  \li n : size of the state vector
   ///  \li m : size of the measurements vector
   ///  \li p : size of the input vector
-  ZeroDelayObserver(Index n, Index m) : ObserverBase(n, m) {}
+  ZeroDelayObserver(Index n, Index m, const std::shared_ptr<IndexedInputArrayInterface> input) : ObserverBase(n, m)
+  {
+    if(input)
+    {
+      u_ = input;
+    }
+    else
+    {
+      u_ = std::make_shared<IndexedInputArrayT<>>();
+    }
+  }
 
-  /// Default constructor (default values for n,m,p are zero)
-  ZeroDelayObserver() {}
+  /// Default constructor (default values for n,m are zero)
+  ZeroDelayObserver(const std::shared_ptr<IndexedInputArrayInterface> input)
+  {
+    if(input == nullptr)
+    {
+      u_ = std::make_shared<IndexedInputArrayT<>>();
+    }
+    else
+    {
+      u_ = input;
+    }
+  }
 
   /// Destructor
   virtual ~ZeroDelayObserver(){};
@@ -99,12 +119,12 @@ public:
 
   /// Set the value of the input vector at time index k. The
   /// inputs have to be inserted in chronological order without gaps.
-  virtual void setInput(const std::any & u_k, TimeIndex k);
+  virtual void setInput(const InputBase & u_k, TimeIndex k);
 
   /// @brief Set the input value at the next time indext
   ///
   /// @param u_k Value of the next input
-  virtual void pushInput(const std::any & u_k);
+  virtual void pushInput(const InputBase & u_k);
 
   /// Remove all the given values of the inputs
   /// If there is no input, this instruction has no effect
@@ -156,7 +176,7 @@ public:
   virtual TimeIndex getCurrentTime() const;
 
   /// Get the value of the input of the time index k
-  const std::any & getInput(TimeIndex k) const;
+  const InputBase & getInput(TimeIndex k) const;
 
   /// Get the number of available inputs
   virtual TimeSize getInputsNumber() const;
@@ -193,7 +213,7 @@ protected:
   IndexedVectorArray y_;
 
   /// Container for the inputs.
-  IndexedAnyArray u_;
+  std::shared_ptr<IndexedInputArrayInterface> u_;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

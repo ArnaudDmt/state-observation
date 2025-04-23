@@ -18,7 +18,7 @@ BidimElasticInvPendulum::~BidimElasticInvPendulum()
   // dtor
 }
 
-Vector BidimElasticInvPendulum::stateDynamics(const Vector & x, const std::any & u, TimeIndex)
+Vector BidimElasticInvPendulum::stateDynamics(const Vector & x, const InputBase & input, TimeIndex)
 {
   assertStateVector_(x);
 
@@ -27,7 +27,7 @@ Vector BidimElasticInvPendulum::stateDynamics(const Vector & x, const std::any &
 
   double p = x[0];
   double pdot = x[2];
-  double pdotdot = convert_input<double>(u);
+  double pdotdot = convert_input<BidimElasticInvPendulumInput>(input)[0];
   double theta = x[1];
   double thetadot = x[3];
   double thetadotdot = (1 / (m_ * (p * p + h_ * h_)))
@@ -63,7 +63,7 @@ void BidimElasticInvPendulum::setElasticity(const double & k)
   k_ = k;
 }
 
-Vector BidimElasticInvPendulum::measureDynamics(const Vector &, const std::any &, TimeIndex)
+Vector BidimElasticInvPendulum::measureDynamics(const Vector &, const InputBase &, TimeIndex)
 {
   /// There is no measurements
   return Vector::Zero(0);

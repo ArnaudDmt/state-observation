@@ -83,7 +83,7 @@ public:
   virtual void clearMeasurements() = 0;
 
   /// Set the value of the input vector at time index k
-  virtual void setInput(const std::any & u_k, TimeIndex k) = 0;
+  virtual void setInput(const InputBase & u_k, TimeIndex k) = 0;
 
   /// Remove all the given values of the inputs
   virtual void clearInputs() = 0;

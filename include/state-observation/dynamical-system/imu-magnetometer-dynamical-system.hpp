@@ -43,10 +43,10 @@ public:
   virtual ~IMUMagnetometerDynamicalSystem();
 
   /// Description of the state dynamics
-  virtual Vector stateDynamics(const Vector & x, const std::any & u, TimeIndex k);
+  virtual Vector stateDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// Description of the sensor's dynamics
-  virtual Vector measureDynamics(const Vector & x, const std::any & u, TimeIndex k);
+  virtual Vector measureDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);

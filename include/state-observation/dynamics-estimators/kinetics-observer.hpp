@@ -1169,7 +1169,7 @@ protected:
   /// @param u The current input
   /// @param k The current time index
   /// @return Vector&
-  virtual Vector stateDynamics(const Vector & x, const std::any & u, TimeIndex k);
+  virtual Vector stateDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// @brief Applies the measurement model to the given state vector using the given input to predict the sensor
   /// measurements.
@@ -1177,7 +1177,7 @@ protected:
   /// @param u The current input
   /// @param k The current time index
   /// @return Vector&
-  virtual Vector measureDynamics(const Vector & x, const std::any & u, TimeIndex k);
+  virtual Vector measureDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// @brief Adds the unmodeled and contact wrenches from the state to the given wrench.
   /// @param centroidStateVector The current state vector

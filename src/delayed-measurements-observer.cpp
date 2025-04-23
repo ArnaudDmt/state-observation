@@ -3,9 +3,22 @@
 
 namespace stateObservation
 {
-DelayedMeasurementObserver::DelayedMeasurementObserver(double dt, Index n, Index m, unsigned long bufferCapacity)
+DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
+                                                       Index n,
+                                                       Index m,
+                                                       unsigned long bufferCapacity,
+                                                       const std::shared_ptr<IndexedInputArrayInterface> input)
 : ObserverBase(n, m)
 {
+  if(input)
+  {
+    u_ = input;
+  }
+  else
+  {
+    u_ = std::make_shared<IndexedInputArrayT<>>();
+  }
+
   setStateCapacity(bufferCapacity / dt);
   setSamplingTime(dt);
 }
@@ -34,18 +47,18 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
     {
       y_.popFront();
     }
-    while(u_.size() > 0 && u_.getFirstIndex() < k_asynchronousMeas)
+    while(u_->size() > 0 && u_->getFirstIndex() < k_asynchronousMeas)
     {
-      u_.popFront();
+      u_->popFront();
     }
 
     for(boost::circular_buffer<IndexedVector>::iterator it = it_x; it != xBuffer_.begin(); --it)
     {
       oneStepEstimation_(it);
 
-      if(u_.size() > 0 && u_.checkIndex(it->getTime() - 1))
+      if(u_->size() > 0 && u_->checkIndex(it->getTime() - 1))
       {
-        u_.popFront();
+        u_->popFront();
       }
       y_.popFront();
     }
@@ -56,9 +69,9 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
     xBuffer_.push_front(IndexedVector(xBuffer_.front()(), i + 1));
     oneStepEstimation_(xBuffer_.begin());
 
-    if(u_.size() > 0 && u_.checkIndex(i))
+    if(u_->size() > 0 && u_->checkIndex(i))
     {
-      u_.popFront();
+      u_->popFront();
     }
 
     y_.popFront();
@@ -115,18 +128,18 @@ void DelayedMeasurementObserver::setMeasurement(const ObserverBase::MeasureVecto
   y_.setValue(y_k, k);
 }
 
-void DelayedMeasurementObserver::pushInput(const std::any & u_k)
+void DelayedMeasurementObserver::pushInput(const InputBase & u_k)
 {
-  if(u_.size() > 0)
+  if(u_->size() > 0)
   {
-    u_.pushBack(u_k);
+    u_->pushBack(u_k);
   }
   else
   {
     BOOST_ASSERT(xBuffer_.size() > 0
                  && "Unable to initialize input without time index, the state vector has not been set.");
     /// we need the input at the time of the state vector to predict the next one
-    u_.setValue(u_k, getCurrentTime());
+    u_->setValue(u_k, getCurrentTime());
   }
 }
 
@@ -185,17 +198,17 @@ void DelayedMeasurementObserver::clearMeasurements()
   y_.reset();
 }
 
-void DelayedMeasurementObserver::setInput(const std::any & u_k, TimeIndex k)
+void DelayedMeasurementObserver::setInput(const InputBase & u_k, TimeIndex k)
 {
-  BOOST_ASSERT((u_.getNextIndex() == k || u_.checkIndex(k)) && "ERROR: The time is set incorrectly \
+  BOOST_ASSERT((u_->getNextIndex() == k || u_->checkIndex(k)) && "ERROR: The time is set incorrectly \
                                 for the inputs (order or gap)");
 
-  u_.setValue(u_k, k);
+  u_->setValue(u_k, k);
 }
 
 void DelayedMeasurementObserver::clearInputs()
 {
-  u_.reset();
+  u_->reset();
 }
 
 } // namespace stateObservation

@@ -12,13 +12,12 @@
 #define VikingHPP
 
 #include <state-observation/observer/delayed-measurements-complem-filter.hpp>
-// #include <state-observation/tools/delayed-measurements-observer-iteration.hpp>
 #include <state-observation/tools/rigid-body-kinematics.hpp>
 
 namespace stateObservation
 {
 
-struct InputViking
+struct InputViking : public InputBase
 {
   // orientation measurement with the associated correction gain
   typedef std::pair<Matrix3, double> OriMeas_Gain;
@@ -34,7 +33,7 @@ struct InputViking
 
 /**
  * \class  Viking
- * \brief  Version of the Tilt Estimator for humanoid robots.
+ * \brief
  *
  */
 

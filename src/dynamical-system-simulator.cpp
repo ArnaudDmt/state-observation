@@ -26,9 +26,9 @@ void DynamicalSystemSimulator::setState(const Vector & x, TimeIndex k)
   x_.setValue(x, k);
 }
 
-void DynamicalSystemSimulator::setInput(const std::any & u, TimeIndex k)
+void DynamicalSystemSimulator::setInput(const std::shared_ptr<InputBase> & u, TimeIndex k)
 {
-  u_.insert(std::pair<TimeIndex, std::any>(k, u));
+  u_.insert(std::pair<TimeIndex, std::shared_ptr<InputBase>>(k, u));
 }
 
 Vector DynamicalSystemSimulator::getMeasurement(TimeIndex k)
@@ -57,16 +57,16 @@ TimeIndex DynamicalSystemSimulator::getCurrentTime() const
   return x_.getLastIndex();
 }
 
-std::any & DynamicalSystemSimulator::getInput(TimeIndex k)
+InputBase & DynamicalSystemSimulator::getInput(TimeIndex k)
 {
   BOOST_ASSERT(u_.size() > 0 && "ERROR: the input is not set");
-  std::map<TimeIndex, std::any>::iterator i = u_.upper_bound(k);
+  std::map<TimeIndex, std::shared_ptr<InputBase>>::iterator i = u_.upper_bound(k);
 
   --i;
 
   BOOST_ASSERT(i->first <= k && "ERROR: the input is not set for the current time");
 
-  return i->second;
+  return *(i->second);
 }
 
 void DynamicalSystemSimulator::simulateDynamics()
@@ -74,7 +74,7 @@ void DynamicalSystemSimulator::simulateDynamics()
   BOOST_ASSERT(f_ != 0x0 && "ERROR: A dynamics functor must be set");
 
   TimeIndex k(x_.getLastIndex());
-  const std::any & u = getInput(k);
+  const InputBase & u = getInput(k);
   y_.setValue(f_->measureDynamics(x_[k], u, k), k);
   x_.setValue(f_->stateDynamics(x_[k], u, k), k + 1);
 }

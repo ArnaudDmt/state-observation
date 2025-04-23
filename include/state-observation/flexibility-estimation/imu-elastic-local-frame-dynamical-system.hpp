@@ -99,7 +99,7 @@ public:
                             const Vector3 & addForce,
                             const Vector3 & addMoment);
 
-  stateObservation::Vector computeAccelerations(const Vector & x, const std::any & input);
+  stateObservation::Vector computeAccelerations(const Vector & x, const InputBase & input);
 
   // computation of the acceleration linear
   virtual void computeAccelerations(const Vector3 & positionCom,
@@ -127,7 +127,7 @@ public:
 
   /// Description of the state dynamics
   virtual stateObservation::Vector stateDynamics(const stateObservation::Vector & x,
-                                                 const std::any & input,
+                                                 const InputBase & input,
                                                  TimeIndex k);
 
   /// sets the finite differences derivation step vector
@@ -135,7 +135,7 @@ public:
 
   /// Description of the sensor's dynamics
   virtual stateObservation::Vector measureDynamics(const stateObservation::Vector & x,
-                                                   const std::any & input,
+                                                   const InputBase & input,
                                                    TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
@@ -230,14 +230,14 @@ public:
                                Vector & fc,
                                Vector & tc);
 
-  virtual void computeForcesAndMoments(const Vector & x, const std::any & u);
+  virtual void computeForcesAndMoments(const Vector & x, const InputBase & u);
 
   virtual Vector getForcesAndMoments();
 
-  virtual Vector getForcesAndMoments(const Vector & x, const std::any & u);
+  virtual Vector getForcesAndMoments(const Vector & x, const InputBase & u);
 
-  virtual Vector getMomentaDotFromForces(const Vector & x, const std::any & u);
-  virtual Vector getMomentaDotFromKinematics(const Vector & x, const std::any & u);
+  virtual Vector getMomentaDotFromForces(const Vector & x, const InputBase & u);
+  virtual Vector getMomentaDotFromKinematics(const Vector & x, const InputBase & u);
 
   virtual void iterateDynamicsEuler(const Vector3 & positionCom,
                                     const Vector3 & velocityCom,
@@ -346,7 +346,6 @@ protected:
 
   Vector xk_fory_;
   Vector yk_;
-  std::any uk_fory_;
 
   Index measurementSize_;
 

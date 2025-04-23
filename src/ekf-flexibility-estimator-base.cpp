@@ -3,9 +3,12 @@ namespace stateObservation
 {
 namespace flexibilityEstimation
 {
-EKFFlexibilityEstimatorBase::EKFFlexibilityEstimatorBase(Index stateSize, Index measurementSize, const Vector & dx)
-: FlexibilityEstimatorBase(), ekf_(stateSize, measurementSize, true, true), finiteDifferencesJacobians_(true), dx_(dx),
-  k_(0)
+EKFFlexibilityEstimatorBase::EKFFlexibilityEstimatorBase(Index stateSize,
+                                                         Index measurementSize,
+                                                         const std::shared_ptr<IndexedInputArrayInterface> input,
+                                                         const Vector & dx)
+: FlexibilityEstimatorBase(), ekf_(stateSize, measurementSize, true, true, input), finiteDifferencesJacobians_(true),
+  dx_(dx), k_(0)
 {
   // ctor
 }
@@ -70,23 +73,23 @@ void EKFFlexibilityEstimatorBase::setJacobians(const Matrix & A, const Matrix & 
   ekf_.setC(C);
 }
 
-void EKFFlexibilityEstimatorBase::setInput(const std::any & u)
+void EKFFlexibilityEstimatorBase::setInput(const InputBase & u)
 {
   ekf_.setInput(u, k_);
 }
 
-void EKFFlexibilityEstimatorBase::setMeasurementInput(const std::any & u)
+void EKFFlexibilityEstimatorBase::setMeasurementInput(const InputBase & u)
 {
   if(ekf_.getInputsNumber() == 0) ekf_.setInput(u, k_);
   ekf_.setInput(u, k_ + 1);
 }
 
-const std::any & EKFFlexibilityEstimatorBase::getInput()
+const InputBase & EKFFlexibilityEstimatorBase::getInput()
 {
   return ekf_.getInput(k_);
 }
 
-const std::any & EKFFlexibilityEstimatorBase::getMeasurementInput()
+const InputBase & EKFFlexibilityEstimatorBase::getMeasurementInput()
 {
   return ekf_.getInput(k_ + 1);
 }

@@ -49,10 +49,12 @@ public:
   virtual Vector3 stabilizeAccelerationAngular(Vector3, Vector3);
 
   /// Description of the state dynamics
-  virtual stateObservation::Vector stateDynamics(const stateObservation::Vector & x, const std::any & u, TimeIndex k);
+  virtual stateObservation::Vector stateDynamics(const stateObservation::Vector & x, const InputBase & u, TimeIndex k);
 
   /// Description of the sensor's dynamics
-  virtual stateObservation::Vector measureDynamics(const stateObservation::Vector & x, const std::any & u, TimeIndex k);
+  virtual stateObservation::Vector measureDynamics(const stateObservation::Vector & x,
+                                                   const InputBase & u,
+                                                   TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(stateObservation::NoiseBase *);

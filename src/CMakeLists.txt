@@ -43,7 +43,6 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/tools/miscellaneous-algorithms.hpp
     ${PROJECT_INCLUDE_DIR}/tools/rigid-body-kinematics.hpp
     ${PROJECT_INCLUDE_DIR}/tools/rigid-body-kinematics.hxx
-    ${PROJECT_INCLUDE_DIR}/tools/delayed-measurements-observer-iteration.hpp
     ${PROJECT_INCLUDE_DIR}/tools/logger.hpp
     ${PROJECT_INCLUDE_DIR}/tools/logger.hxx
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/Contact.hpp

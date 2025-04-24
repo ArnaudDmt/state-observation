@@ -5,7 +5,12 @@ namespace stateObservation
 {
 
 Viking::Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity)
-: DelayedMeasurementComplemFilter(dt, 13, 9, bufferCapacity, std::make_shared<IndexedInputArrayT<InputViking>>())
+: DelayedMeasurementComplemFilter(dt,
+                                  13,
+                                  9,
+                                  bufferCapacity,
+                                  nullptr,
+                                  std::make_shared<AsynchronousDataMapT<AsynchronousInputViking>>())
 {
   setAlpha(alpha);
   setBeta(beta);
@@ -35,7 +40,9 @@ void Viking::computeCorrectionTerms(StateIterator it)
 {
   TimeIndex k = it->getTime();
 
-  BOOST_ASSERT(this->u_->size() > 0 && this->u_->checkIndex(k - 1) && "ERROR: The input is not set");
+  // we fetch the state and input from the previous iteration
+  BOOST_ASSERT(!this->u_asynchronous_->empty() && this->u_asynchronous_->checkIndex(k + 1)
+               && "ERROR: The input is not set");
 
   StateIterator prevIter = it + 1;
   const Eigen::Ref<Vector3> initPos = (*prevIter)().segment<3>(6);
@@ -45,25 +52,19 @@ void Viking::computeCorrectionTerms(StateIterator it)
   Matrix3 initOri_inv = initOri.toMatrix3().transpose().eval();
   const Eigen::Ref<Vector3> x2_hat_prime = (*prevIter)().segment<3>(3);
 
-  InputViking & input = convert_input<InputViking>((*u_)[k - 1]);
+  AsynchronousInputViking & input = convert_async_data<AsynchronousInputViking>(u_asynchronous_->getElement(k + 1));
 
   oriCorrection_.setZero();
 
   posCorrection_.setZero();
-  for(auto & [posMeas, gainDelta, gainSigma] : input.pos_measurements_from_contact_)
+  for(auto & [posMeas, posOri, gain] : input.pos_ori_measurements_)
   {
-    const Eigen::Ref<Vector3> posMeasurement = posMeas.head(3);
-    const Eigen::Ref<Vector3> imuContactPos = posMeas.tail(3);
-    posCorrection_ += gainDelta * (imuContactPos - initOri_inv * (posMeasurement - initPos));
-    oriCorrection_ += gainSigma * (initOri_inv * (posMeasurement - initPos)).cross(imuContactPos);
-  }
+    // posCorrection_ += gain * (imuContactPos - initOri_inv * (posMeas - initPos));
+    // oriCorrection_ += gain * (initOri_inv * (posMeas - initPos)).cross(imuContactPos);
+    //  Matrix3 rot_diff = oriMeas * initOri_inv;
+    //  Vector3 rot_diff_vec = kine::skewSymmetricToRotationVector(rot_diff - rot_diff.transpose()) / 2.0;
 
-  for(auto & [oriMeas, gain] : input.ori_measurements_)
-  {
-    Matrix3 rot_diff = oriMeas * initOri_inv;
-    Vector3 rot_diff_vec = kine::skewSymmetricToRotationVector(rot_diff - rot_diff.transpose()) / 2.0;
-
-    oriCorrection_ -= gain * initOri_inv * Vector3::UnitZ() * (Vector3::UnitZ()).transpose() * rot_diff_vec;
+    // oriCorrection_ -= gain * initOri_inv * Vector3::UnitZ() * (Vector3::UnitZ()).transpose() * rot_diff_vec;
   }
 
   oriCorrection_ = rho_ * (initOri_inv * Vector3::UnitZ()).cross(x2_hat_prime) + oriCorrection_;
@@ -71,42 +72,29 @@ void Viking::computeCorrectionTerms(StateIterator it)
 
 void Viking::startNewIteration_()
 {
-  TimeIndex k = getCurrentTime();
-
-  if(!u_->checkIndex(k))
-  {
-    pushInput(InputViking());
-  }
+  u_asynchronous_->pushValue(AsynchronousInputViking(), getCurrentTime());
 }
 
-void Viking::addContactPosMeasurement(const Vector3 & posMeasurement,
-                                      const Vector3 & imuContactPos,
-                                      double gainDelta,
-                                      double gainSigma)
+void Viking::addDelayedPosOriMeasurement(const Vector3 & pos, const Matrix3 & ori, double gain, TimeIndex delay)
+{
+  startNewIteration_();
+  TimeIndex measTime = getCurrentTime() - delay;
+
+  u_asynchronous_->pushValue(AsynchronousInputViking(pos, ori, gain), measTime);
+}
+
+void Viking::addPosOriMeasurement(const Vector3 & pos, const Matrix3 & ori, double gain)
 {
   startNewIteration_();
 
-  InputViking & input = convert_input<InputViking>(u_->back());
-  // InputViking & input = std::any_cast<InputViking &>(u_.back());
-  Vector6 inputPos;
-  inputPos << posMeasurement, imuContactPos;
-
-  input.pos_measurements_from_contact_.emplace_back(
-      InputViking::ContactPosMeas_Gains(std::move(inputPos), gainDelta, gainSigma));
-}
-
-void Viking::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
-{
-  startNewIteration_();
-
-  // InputViking & input = std::any_cast<InputViking &>(u_.back());
-  InputViking & input = convert_input<InputViking>(u_->back());
-  input.ori_measurements_.push_back(InputViking::OriMeas_Gain(oriMeasurement, gain));
+  u_asynchronous_->pushValue(AsynchronousInputViking(pos, ori, gain), getCurrentTime());
 }
 
 ObserverBase::StateVector Viking::computeStateDynamics_(StateIterator it)
 {
   TimeIndex k = (*it).getTime();
+  // we fetch the estimated state from the previous iteration
+  const ObserverBase::StateVector & x_hat = (*(it + 1))();
   MeasureVector & synced_Meas = y_[k];
 
   computeCorrectionTerms(it);
@@ -115,8 +103,6 @@ ObserverBase::StateVector Viking::computeStateDynamics_(StateIterator it)
   const Vector3 & ya = synced_Meas.segment<3>(3);
   const Vector3 & yg = synced_Meas.segment<3>(6);
 
-  // we fetch the estimated state from the previous iteration
-  const ObserverBase::StateVector & x_hat = (*(it + 1))();
   kine::Kinematics kine(x_hat.tail(7), kine::Kinematics::Flags::pose);
 
   const auto & x1_hat = x_hat.segment<3>(0);

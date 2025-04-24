@@ -17,18 +17,26 @@
 namespace stateObservation
 {
 
-struct InputViking : public InputBase
+struct AsynchronousInputViking : public AsynchronousDataBase
 {
-  // orientation measurement with the associated correction gain
-  typedef std::pair<Matrix3, double> OriMeas_Gain;
-  // position measurement coming from a contact, with the associated correction gains, for the position and the
-  // orientation, respectively.
-  typedef std::tuple<Vector6, double, double> ContactPosMeas_Gains;
+public:
+  AsynchronousInputViking() {}
+  AsynchronousInputViking(const Vector3 & pos, const Matrix3 & ori, double gain)
+  {
+    pos_ori_measurements_.push_back(PosOriMeas_Gain(pos, ori, gain));
+  }
+  ~AsynchronousInputViking() {}
+  inline void merge(const AsynchronousDataBase & input2) override
+  {
+    const AsynchronousInputViking & async_input2 = static_cast<const AsynchronousInputViking &>(input2);
+    pos_ori_measurements_.insert(pos_ori_measurements_.end(), async_input2.pos_ori_measurements_.begin(),
+                                 async_input2.pos_ori_measurements_.end());
+  }
 
-  // orientation measurements from contacts
-  std::vector<OriMeas_Gain> ori_measurements_;
-  // position measurements from contacts = posMeasurement (in the world) << imuContactPos
-  std::vector<ContactPosMeas_Gains> pos_measurements_from_contact_;
+  typedef std::tuple<Vector3, Matrix3, double> PosOriMeas_Gain;
+  // position and orientation measurement, with associated gain
+
+  std::vector<PosOriMeas_Gain> pos_ori_measurements_;
 };
 
 /**
@@ -79,20 +87,17 @@ public:
 
   using DelayedMeasurementObserver::setMeasurement;
 
-  /// @brief adds the correction from a direct measurement of the IMU's frame orientation.
-  /// @param meas measured orientation of the IMU's frame in the world
-  /// @param gain weight of the correction
-  void addOrientationMeasurement(const Matrix3 & meas, double gain);
+  /// @brief adds a delayed global pose measurement to the correction
+  /// @param posMeasurement measured position in the world
+  /// @param oriMeasurement measured orientation in the world
+  /// @param gainDelta weight of the correction
+  void addDelayedPosOriMeasurement(const Vector3 & posMeasurement, const Matrix3 & meas, double gain, TimeIndex delay);
 
-  /// @brief adds the correction from a contact position measurement
-  /// @param posMeasurement measured position of the contact in the world
-  /// @param imuContactPos position of the contact in the imu's frame.
-  /// @param gainDelta weight of the position correction
-  /// @param gainSigma weight of the orientation correction
-  void addContactPosMeasurement(const Vector3 & posMeasurement,
-                                const Vector3 & imuContactPos,
-                                double gainDelta,
-                                double gainSigma);
+  /// @brief adds a global pose measurement to the correction
+  /// @param posMeasurement measured position in the world
+  /// @param oriMeasurement measured orientation in the world
+  /// @param gainDelta weight of the correction
+  void addPosOriMeasurement(const Vector3 & posMeasurement, const Matrix3 & meas, double gain);
 
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)

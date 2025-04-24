@@ -86,7 +86,7 @@ void Waiko::addContactPosMeasurement(const Vector3 & posMeasurement,
   startNewIteration_();
 
   InputWaiko & input = convert_input<InputWaiko>(u_->back());
-  // InputWaiko & input = std::any_cast<InputWaiko &>(u_.back());
+
   Vector6 inputPos;
   inputPos << posMeasurement, imuContactPos;
 
@@ -98,7 +98,6 @@ void Waiko::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gai
 {
   startNewIteration_();
 
-  // InputWaiko & input = std::any_cast<InputWaiko &>(u_.back());
   InputWaiko & input = convert_input<InputWaiko>(u_->back());
   input.ori_measurements_.push_back(InputWaiko::OriMeas_Gain(oriMeasurement, gain));
 }

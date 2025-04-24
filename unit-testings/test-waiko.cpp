@@ -45,9 +45,10 @@ int main()
   int returnVal;
   int errorcode = 1;
 
+  std::cout << "Starting testOrientationMeasurement" << errorcode << std::endl;
   if((returnVal = testOrientationMeasurement(errorcode)))
   {
-    std::cout << "Starting testOrientationMeasurement" << errorcode << std::endl;
+    std::cout << "testOrientationMeasurement failed!" << errorcode << std::endl;
     return returnVal;
   }
   else
@@ -56,6 +57,6 @@ int main()
   }
   errorcode++;
 
-  std::cout << "Test Waiko succeeded" << std::endl;
+  std::cout << "Test Viking succeeded" << std::endl;
   return 0;
 }

@@ -14,43 +14,61 @@
 #define DelayedMeasurementObserverHPP
 
 #include <boost/circular_buffer.hpp>
+#include <map>
 #include <set>
 #include <state-observation/api.h>
 #include <state-observation/observer/observer-base.hpp>
 
 namespace stateObservation
 {
-struct AsynchronousMeasurement
-{
-  AsynchronousMeasurement(TimeIndex k) : k_(k) {}
-  inline TimeIndex getTime() const
-  {
-    return k_;
-  }
-  inline bool operator<(const AsynchronousMeasurement & async_meas2) const noexcept
-  {
-    return (k_ < async_meas2.k_);
-  }
 
+class AsynchronousDataBase
+{
 protected:
-  TimeIndex k_;
+  AsynchronousDataBase() {}
+
+public:
+  virtual ~AsynchronousDataBase() {}
+  virtual void merge(const AsynchronousDataBase & input2) = 0;
 };
 
-struct AsynchronousInput
+class AsynchronousDataMapBase
 {
-  AsynchronousInput(TimeIndex k) : k_(k) {}
-  inline TimeIndex getTime() const
-  {
-    return k_;
-  }
-  inline bool operator<(const AsynchronousInput & async_meas2) const noexcept
-  {
-    return (k_ < async_meas2.k_);
-  }
+protected:
+  AsynchronousDataMapBase() {}
+
+public:
+  virtual ~AsynchronousDataMapBase() {}
+  virtual bool checkIndex(TimeIndex k) = 0;
+  virtual void pushValue(const AsynchronousDataBase & v, TimeIndex k) = 0;
+  virtual bool empty() const = 0;
+  virtual void erase(TimeIndex k) = 0;
+  virtual void clear() = 0;
+  virtual AsynchronousDataBase & getElement(TimeIndex k) = 0;
+  virtual TimeIndex getFirstIndex() = 0;
+};
+
+template<typename DataType>
+struct AsynchronousDataMapT : public AsynchronousDataMapBase
+{
+public:
+  inline bool checkIndex(TimeIndex k) override;
+  inline void pushValue(const AsynchronousDataBase & v, TimeIndex k) override;
+  inline void clear() override;
+  inline void erase(TimeIndex k) override;
+  inline bool empty() const override;
+  inline AsynchronousDataBase & getElement(TimeIndex k) override;
+  inline TimeIndex getFirstIndex() override;
 
 protected:
-  TimeIndex k_;
+  std::map<TimeIndex, DataType> v_;
 };
+
+template<typename DataType>
+inline DataType & convert_async_data(AsynchronousDataBase & u);
+
+template<typename DataType>
+inline const DataType & convert_async_data(const AsynchronousDataBase & u);
 
 /**
  * \class  DelayedMeasurementObserver
@@ -70,7 +88,9 @@ public:
                              Index n,
                              Index m,
                              unsigned long bufferCapacity,
-                             const std::shared_ptr<IndexedInputArrayInterface> input = nullptr);
+                             const std::shared_ptr<IndexedInputArrayInterface> input = nullptr,
+                             const std::shared_ptr<AsynchronousDataMapBase> async_input = nullptr,
+                             const std::shared_ptr<AsynchronousDataMapBase> async_meas = nullptr);
 
   /// Default constructor
   DelayedMeasurementObserver() = delete;
@@ -110,7 +130,7 @@ public:
   /// @param k the time index
   void setMeasurement(const Vector & y, TimeIndex k) override;
 
-  void pushAsyncMeasurement(const AsynchronousMeasurement & asyncMeas);
+  void pushAsyncMeasurement(const AsynchronousDataBase & asyncMeas, TimeIndex k);
 
   /// Get the measurement of the time index k
   Vector getMeasurement(TimeIndex k) const;
@@ -123,7 +143,7 @@ public:
 
   void pushInput(const InputBase & u_k);
 
-  void pushAsyncInput(const AsynchronousInput & asyncMeas);
+  void pushAsyncInput(const AsynchronousDataBase & asyncMeas, TimeIndex k);
 
   /// Set the value of the input vector at time index k. The
   /// inputs have to be inserted in chronological order without gaps.
@@ -164,6 +184,8 @@ public:
     return dt_;
   }
 
+  TimeIndex getAsynchronousFirstIndex();
+
   /// Get the value of the time index of the current state estimation
   virtual TimeIndex getCurrentTime() const;
 
@@ -193,11 +215,13 @@ protected:
   std::shared_ptr<IndexedInputArrayInterface> u_;
 
   /// Container for the asynchronous measurements.
-  std::set<AsynchronousMeasurement> y_asynchronous_;
+  std::shared_ptr<AsynchronousDataMapBase> y_asynchronous_;
   /// Container for the asynchronous inputs.
-  std::set<AsynchronousInput> u_asynchronous_;
+  std::shared_ptr<AsynchronousDataMapBase> u_asynchronous_;
 };
 
 } // namespace stateObservation
+
+#include <state-observation/observer/delayed-measurements-observer.hxx>
 
 #endif // DelayedMeasurementObserverHPP

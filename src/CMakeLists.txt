@@ -16,6 +16,7 @@ set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME})
 
 set(HEADERS
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-observer.hpp
+    ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-observer.hxx
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-complem-filter.hpp
     ${PROJECT_INCLUDE_DIR}/observer/waiko.hpp
     ${PROJECT_INCLUDE_DIR}/observer/viking.hpp

@@ -22,7 +22,7 @@ int testOrientationMeasurement(int errorcode)
   for(int i = 0; i < targetIter; i++)
   {
     viking.setMeasurement(Vector3::Zero(), cst::gravityConstant * initX2prime, Vector3::Zero(), i + 1);
-    viking.addOrientationMeasurement(measOri, 50);
+    // viking.addOrientationMeasurement(measOri, 50);
     viking.getEstimatedState(i + 1);
   }
 
@@ -45,9 +45,10 @@ int main()
   int returnVal;
   int errorcode = 1;
 
+  std::cout << "Starting testOrientationMeasurement" << errorcode << std::endl;
   if((returnVal = testOrientationMeasurement(errorcode)))
   {
-    std::cout << "Starting testOrientationMeasurement" << errorcode << std::endl;
+    std::cout << "testOrientationMeasurement failed!" << errorcode << std::endl;
     return returnVal;
   }
   else

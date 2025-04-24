@@ -19,8 +19,10 @@ public:
                                   Index n,
                                   Index m,
                                   unsigned long bufferCapacity,
-                                  const std::shared_ptr<IndexedInputArrayInterface> input)
-  : DelayedMeasurementObserver(dt, n, m, bufferCapacity, input)
+                                  const std::shared_ptr<IndexedInputArrayInterface> input = nullptr,
+                                  const std::shared_ptr<AsynchronousDataMapBase> async_input = nullptr,
+                                  const std::shared_ptr<AsynchronousDataMapBase> async_meas = nullptr)
+  : DelayedMeasurementObserver(dt, n, m, bufferCapacity, input, async_input, async_meas)
   {
   }
 

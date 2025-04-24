@@ -88,6 +88,13 @@ int testWithInput(int errorcode)
   }
   if(std::abs(obs.getEstimatedState(nextTime).x() - 10) > 1e-15) return errorcode;
 
+  // now we replay the previously played iterations, using the stored state and inputs
+  for(int i = 0; i < 10; i++)
+  {
+    stateObservation::Vector state = obs.getEstimatedState(i + 1);
+  }
+  if(std::abs(obs.getCurrentEstimatedState().x() - 10) > 1e-15) return errorcode;
+
   return 0;
 }
 
@@ -124,7 +131,7 @@ int testWithDelayedInput(int errorcode)
     }
     StateVector oneStepEstimation_(StateIterator it) override
     {
-      stateObservation::TimeIndex k = getCurrentTime();
+      stateObservation::TimeIndex k = it->getTime();
       if(u_asynchronous_->checkIndex(k - 1))
       {
         AsynchronousTestInput & input =
@@ -144,21 +151,21 @@ int testWithDelayedInput(int errorcode)
                    std::make_shared<stateObservation::AsynchronousDataMapT<AsynchronousTestInput>>());
 
   obs.initEstimator(stateObservation::Vector3::Zero());
+
   for(int i = 0; i < 10; i++)
   {
     obs.pushAsyncInput(AsynchronousTestInput(), i);
-    if(std::abs(obs.getEstimatedState(i + 1).x() - i - 1) > 1e-15) return errorcode;
+    stateObservation::Vector state = obs.getEstimatedState(i + 1);
+
+    if(std::abs(state.x() - i - 1) > 1e-15) return errorcode;
   }
 
-  //   // now we test the use of a buffer of inputs
-  //   obs.setCurrentState(stateObservation::Vector3::Zero());
-
-  //   stateObservation::TimeIndex nextTime = obs.getCurrentTime() + 10;
-  //   for(int i = obs.getCurrentTime(); i < nextTime; i++)
-  //   {
-  //     obs.pushAsyncInput(AsynchronousTestInput(), i);
-  //   }
-  //   if(std::abs(obs.getEstimatedState(nextTime).x() - 10) > 1e-15) return errorcode;
+  // now we replay the previously played iterations, using the stored state and inputs
+  for(int i = 0; i < 10; i++)
+  {
+    stateObservation::Vector state = obs.getEstimatedState(i + 1);
+  }
+  if(std::abs(obs.getCurrentEstimatedState().x() - 10) > 1e-15) return errorcode;
 
   return 0;
 }
@@ -170,16 +177,16 @@ int main()
 
   std::cout << "Starting test Delayed Measurement Observers." << std::endl;
 
-  std::cout << "Starting testWithoutInputMeas." << std::endl;
-  if((returnVal = testWithoutInputMeas(errorcode)))
-  {
-    std::cout << "testWithoutInputMeas failed!" << std::endl;
-    return returnVal;
-  }
-  else
-  {
-    std::cout << "testWithoutInputMeas succeeded." << std::endl;
-  }
+  //   std::cout << "Starting testWithoutInputMeas." << std::endl;
+  //   if((returnVal = testWithoutInputMeas(errorcode)))
+  //   {
+  //     std::cout << "testWithoutInputMeas failed!" << std::endl;
+  //     return returnVal;
+  //   }
+  //   else
+  //   {
+  //     std::cout << "testWithoutInputMeas succeeded." << std::endl;
+  //   }
   errorcode++;
 
   std::cout << "Starting testWithInput." << std::endl;

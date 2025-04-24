@@ -50,7 +50,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
   if(u_asynchronous_ || y_asynchronous_)
   {
     TimeIndex k_asynchronous = getAsynchronousFirstIndex();
-    if((k0 - k_asynchronous) < xBuffer_.size())
+    if(xBuffer_.size() > (k0 - k_asynchronous))
     {
       StateIterator it_x = xBuffer_.begin() + k0 - k_asynchronous;
 
@@ -71,40 +71,51 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
       for(boost::circular_buffer<IndexedVector>::iterator it = it_x; it != xBuffer_.begin(); --it)
       {
         oneStepEstimation_(it);
-        if(u_ && u_->size() > 0 && u_->checkIndex(it->getTime() - 1))
-        {
-          u_->popFront();
-        }
-        if(y_.size() > 0 && y_.checkIndex(it->getTime()))
-        {
-          y_.popFront();
-        }
-        if(!u_asynchronous_->empty() > 0 && u_asynchronous_->checkIndex(it->getTime() - 1))
-        {
-          u_asynchronous_->erase(it->getTime() - 1);
-        }
-        if(!y_asynchronous_->empty() > 0 && y_asynchronous_->checkIndex(it->getTime()))
-        {
-          y_asynchronous_->erase(it->getTime());
-        }
+        // if(u_ && u_->size() > 0 && u_->checkIndex(it->getTime() - 1))
+        // {
+        //   u_->popFront();
+        // }
+        // if(y_.size() > 0 && y_.checkIndex(it->getTime()))
+        // {
+        //   y_.popFront();
+        // }
+        // if(u_asynchronous_ && u_asynchronous_->checkIndex(it->getTime() - 1))
+        // {
+        //   u_asynchronous_->erase(it->getTime() - 1);
+        // }
+        // if(y_asynchronous_ && y_asynchronous_->checkIndex(it->getTime()))
+        // {
+        //   y_asynchronous_->erase(it->getTime());
+        // }
       }
     }
   }
 
   for(TimeIndex i = k0; i < k; ++i)
   {
+    TimeIndex removed_k_x = xBuffer_.back().getTime();
+
     xBuffer_.push_front(IndexedVector(xBuffer_.front()(), i + 1));
     oneStepEstimation_(xBuffer_.begin());
 
-    TimeIndex oldest_k_x = xBuffer_.begin()->getTime();
-
-    if(u_ && u_->size() > 0 && u_->getFirstIndex() < oldest_k_x)
+    if(xBuffer_.full())
     {
-      u_->popFront();
-    }
-    if(y_.size() > 0 && y_.getFirstIndex() <= oldest_k_x)
-    {
-      y_.popFront();
+      if(u_ && u_->size() > 0 && u_->getFirstIndex() < removed_k_x)
+      {
+        u_->popFront();
+      }
+      if(y_.size() > 0 && y_.getFirstIndex() <= removed_k_x)
+      {
+        y_.popFront();
+      }
+      if(u_asynchronous_ && u_asynchronous_->checkIndex(removed_k_x - 1))
+      {
+        u_asynchronous_->erase(removed_k_x - 1);
+      }
+      if(y_asynchronous_ && y_asynchronous_->checkIndex(removed_k_x))
+      {
+        y_asynchronous_->erase(removed_k_x);
+      }
     }
   }
 
@@ -141,7 +152,10 @@ bool DelayedMeasurementObserver::stateIsSet() const
 
 void DelayedMeasurementObserver::pushAsyncMeasurement(const AsynchronousDataBase & asyncMeas, TimeIndex k)
 {
-  y_asynchronous_->pushValue(asyncMeas, k);
+  if(k > xBuffer_.back().getTime())
+  {
+    y_asynchronous_->pushValue(asyncMeas, k);
+  }
 }
 
 void DelayedMeasurementObserver::setMeasurement(const ObserverBase::MeasureVector & y_k, TimeIndex k)
@@ -177,7 +191,10 @@ void DelayedMeasurementObserver::pushInput(const InputBase & u_k)
 
 void DelayedMeasurementObserver::pushAsyncInput(const AsynchronousDataBase & asyncInput, TimeIndex k)
 {
-  u_asynchronous_->pushValue(asyncInput, k);
+  if(k >= xBuffer_.back().getTime())
+  {
+    u_asynchronous_->pushValue(asyncInput, k);
+  }
 }
 
 void DelayedMeasurementObserver::setState(const ObserverBase::StateVector & x_k, TimeIndex k)

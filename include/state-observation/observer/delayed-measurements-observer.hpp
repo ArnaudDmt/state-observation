@@ -141,6 +141,9 @@ public:
   /// Remove all the given values of the measurements
   virtual void clearMeasurements() override;
 
+  /// Remove all the given values of the measurements
+  virtual void clearDelayedMeasurements();
+
   void pushInput(const InputBase & u_k);
 
   void pushAsyncInput(const AsynchronousDataBase & asyncMeas, TimeIndex k);
@@ -152,6 +155,10 @@ public:
   /// Remove all the given values of the inputs
   /// If there is no input, this instruction has no effect
   virtual void clearInputs() override;
+
+  /// Remove all the given values of the delayed inputs
+  /// If there is no input, this instruction has no effect
+  virtual void clearDelayedInputs();
 
   /// @brief Modify the value of the state vector at the current time.
   ///

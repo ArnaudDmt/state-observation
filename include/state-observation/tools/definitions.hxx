@@ -750,7 +750,7 @@ inline void IndexedInputArrayT<InputType, Allocator>::check_(TimeIndex time) con
 template<typename InputType, typename Allocator>
 inline void IndexedInputArrayT<InputType, Allocator>::check_() const
 {
-  BOOST_ASSERT(v_.size() && "Error: Matrix array is empty");
+  BOOST_ASSERT(v_.size() && "Error: Input array is empty");
 }
 
 template<typename InputType, typename Allocator>

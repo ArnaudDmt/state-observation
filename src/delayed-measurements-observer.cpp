@@ -54,39 +54,9 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
     {
       StateIterator it_x = xBuffer_.begin() + k0 - k_asynchronous;
 
-      // we remove all the input and measurements from iterations before the oldest asynchronous measurement
-      if(u_)
-      {
-        while(u_->size() > 0 && u_->getFirstIndex() < k_asynchronous)
-        {
-          u_->popFront();
-        }
-      }
-
-      while(y_.size() > 0 && y_.getFirstIndex() <= k_asynchronous)
-      {
-        y_.popFront();
-      }
-
       for(boost::circular_buffer<IndexedVector>::iterator it = it_x; it != xBuffer_.begin(); --it)
       {
         oneStepEstimation_(it);
-        // if(u_ && u_->size() > 0 && u_->checkIndex(it->getTime() - 1))
-        // {
-        //   u_->popFront();
-        // }
-        // if(y_.size() > 0 && y_.checkIndex(it->getTime()))
-        // {
-        //   y_.popFront();
-        // }
-        // if(u_asynchronous_ && u_asynchronous_->checkIndex(it->getTime() - 1))
-        // {
-        //   u_asynchronous_->erase(it->getTime() - 1);
-        // }
-        // if(y_asynchronous_ && y_asynchronous_->checkIndex(it->getTime()))
-        // {
-        //   y_asynchronous_->erase(it->getTime());
-        // }
       }
     }
   }
@@ -175,7 +145,7 @@ void DelayedMeasurementObserver::setMeasurement(const ObserverBase::MeasureVecto
 
 void DelayedMeasurementObserver::pushInput(const InputBase & u_k)
 {
-  BOOST_ASSERT(u_ && "The input vector has not been initialized in the contstructor.");
+  BOOST_ASSERT(u_ && "The input vector has not been initialized in the constructor.");
   if(u_->size() > 0)
   {
     u_->pushBack(u_k);
@@ -247,6 +217,12 @@ void DelayedMeasurementObserver::clearMeasurements()
   y_.reset();
 }
 
+void DelayedMeasurementObserver::clearDelayedMeasurements()
+{
+  BOOST_ASSERT(y_asynchronous_ && "The delayed measurements vector has not been initialized in the constructor.");
+  y_asynchronous_->clear();
+}
+
 void DelayedMeasurementObserver::setInput(const InputBase & u_k, TimeIndex k)
 {
   BOOST_ASSERT(u_ && "The input vector has not been initialized in the contstructor.");
@@ -258,8 +234,14 @@ void DelayedMeasurementObserver::setInput(const InputBase & u_k, TimeIndex k)
 
 void DelayedMeasurementObserver::clearInputs()
 {
-  BOOST_ASSERT(u_ && "The input vector has not been initialized in the contstructor.");
+  BOOST_ASSERT(u_ && "The input vector has not been initialized in the constructor.");
   u_->reset();
+}
+
+void DelayedMeasurementObserver::clearDelayedInputs()
+{
+  BOOST_ASSERT(u_asynchronous_ && "The delayed inputs vector has not been initialized in the constructor.");
+  u_asynchronous_->clear();
 }
 
 } // namespace stateObservation

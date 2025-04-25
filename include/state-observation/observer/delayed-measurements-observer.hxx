@@ -28,24 +28,29 @@ inline void AsynchronousDataMapT<DataType>::clear()
 template<typename DataType>
 inline void AsynchronousDataMapT<DataType>::erase(TimeIndex k)
 {
+  BOOST_ASSERT(!v_.empty() && "The asynchronous data vector is empty.");
+  BOOST_ASSERT(checkIndex(k) && "The element to erase does not exist.");
   v_.erase(k);
 }
 
 template<typename DataType>
 inline bool AsynchronousDataMapT<DataType>::empty() const
 {
-  v_.empty();
+  return v_.empty();
 }
 
 template<typename DataType>
 inline AsynchronousDataBase & AsynchronousDataMapT<DataType>::getElement(TimeIndex k)
 {
+  BOOST_ASSERT(!v_.empty() && "The asynchronous data vector is empty.");
+  BOOST_ASSERT(checkIndex(k) && "The element does not exist in the asynchronous data map.");
   return v_.at(k);
 }
 
 template<typename DataType>
 inline TimeIndex AsynchronousDataMapT<DataType>::getFirstIndex()
 {
+  BOOST_ASSERT(!v_.empty() && "The asynchronous data vector is empty.");
   return v_.begin()->first;
 }
 

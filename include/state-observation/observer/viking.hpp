@@ -21,9 +21,14 @@ struct AsynchronousInputViking : public AsynchronousDataBase
 {
 public:
   AsynchronousInputViking() {}
-  AsynchronousInputViking(const Vector3 & pos, const Matrix3 & ori, double gain)
+  /// @brief constructor with the position and measurement orientation, and the associated correction gains.
+  /// @param pos position measurement.
+  /// @param ori orientation measurement.
+  /// @param mu gain associated with the yaw correction from the orientation measurement.
+  /// @param lambda gain associated with the position correction from the position and orientation measurement.
+  AsynchronousInputViking(const Vector3 & pos, const Matrix3 & ori, double mu, double lambda)
   {
-    pos_ori_measurements_.push_back(PosOriMeas_Gain(pos, ori, gain));
+    pos_ori_measurements_.push_back(PosOriMeas_Gain(pos, ori, mu, lambda));
   }
   ~AsynchronousInputViking() {}
   inline void merge(const AsynchronousDataBase & input2) override
@@ -33,7 +38,7 @@ public:
                                  async_input2.pos_ori_measurements_.end());
   }
 
-  typedef std::tuple<Vector3, Matrix3, double> PosOriMeas_Gain;
+  typedef std::tuple<Vector3, Matrix3, double, double> PosOriMeas_Gain;
   // position and orientation measurement, with associated gain
 
   std::vector<PosOriMeas_Gain> pos_ori_measurements_;
@@ -91,13 +96,17 @@ public:
   /// @param posMeasurement measured position in the world
   /// @param oriMeasurement measured orientation in the world
   /// @param gainDelta weight of the correction
-  void addDelayedPosOriMeasurement(const Vector3 & posMeasurement, const Matrix3 & meas, double gain, TimeIndex delay);
+  void addDelayedPosOriMeasurement(const Vector3 & posMeasurement,
+                                   const Matrix3 & meas,
+                                   double mu,
+                                   double lambda,
+                                   TimeIndex delay);
 
   /// @brief adds a global pose measurement to the correction
   /// @param posMeasurement measured position in the world
   /// @param oriMeasurement measured orientation in the world
   /// @param gainDelta weight of the correction
-  void addPosOriMeasurement(const Vector3 & posMeasurement, const Matrix3 & meas, double gain);
+  void addPosOriMeasurement(const Vector3 & posMeasurement, const Matrix3 & meas, double mu, double lambda);
 
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)
@@ -131,30 +140,28 @@ public:
 
 protected:
   /// @brief Runs one loop of the estimator.
-  /// @details Calls \ref computeStateDerivatives_ then \ref integrateState_
+  /// @details Calls \ref computeStateDynamics_ then \ref integrateState_
   /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   StateVector oneStepEstimation_(StateIterator it) override;
 
   /// @brief Computes the dynamics of the state at the desired iteration.
   /// @details Computes x^{dot}_{k-1}
   /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
-  StateVector computeStateDynamics_(StateIterator it) override;
+  StateVector & computeStateDynamics_(StateIterator it) override;
 
   /// @brief Integrates the computed state dynamics
   /// @details Computes x_{k} = x_{k-1} + x^{dot}_{k-1} * dt
   /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
-  void integrateState_(StateIterator it, const Vector & dx_hat) override;
+  void integrateState_(StateIterator it) override;
 
-  /// @brief Computes the correction terms, used to compute the state dynamics in \ref computeStateDerivatives_
-  void computeCorrectionTerms(StateIterator it);
+  /// @brief Add the correction terms coming from the input to the computed state dynamics
+  void addCorrectionTerms(StateIterator it);
   void startNewIteration_() override;
 
 protected:
   /// The parameters of the estimator
-  double alpha_, beta_, rho_;
-
-  Vector3 posCorrection_;
-  Vector3 oriCorrection_;
+  double alpha_, beta_, rho_, gamma_;
+  kine::LocalKinematics state_kine_;
 };
 
 } // namespace stateObservation

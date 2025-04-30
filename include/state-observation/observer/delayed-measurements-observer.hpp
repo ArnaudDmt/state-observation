@@ -144,7 +144,7 @@ public:
   /// Remove all the given values of the measurements
   virtual void clearDelayedMeasurements();
 
-  void pushInput(const InputBase & u_k);
+  // void pushInput(const InputBase & u_k);
 
   void pushAsyncInput(const AsynchronousDataBase & asyncMeas, TimeIndex k);
 
@@ -221,6 +221,8 @@ protected:
   /// Container for the inputs.
   std::shared_ptr<IndexedInputArrayInterface> u_;
 
+  // indicates if new asynchronous data has been added and the impacted iterations must be run again
+  bool new_async_data_;
   /// Container for the asynchronous measurements.
   std::shared_ptr<AsynchronousDataMapBase> y_asynchronous_;
   /// Container for the asynchronous inputs.

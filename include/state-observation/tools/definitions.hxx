@@ -594,7 +594,7 @@ inline void IndexedObjectArrayT<ObjectType, Allocator>::truncateBefore(TimeIndex
 }
 
 template<typename ObjectType, typename Allocator>
-IndexedObjectArrayT<ObjectType, Allocator>::IndexedObjectArrayT() : IndexedObjectArrayBase()
+IndexedObjectArrayT<ObjectType, Allocator>::IndexedObjectArrayT() : IndexedObjectArrayBase(), v_()
 {
 }
 

@@ -17,6 +17,18 @@
 namespace stateObservation
 {
 
+class VikingInput : public InputBase
+{
+public:
+  VikingInput(const Vector3 & yv, const Vector3 & ya, const Vector3 & yg) : yv_k(yv), ya_k(ya), yg_k(yg) {}
+  // local linear velocity measurement
+  Vector3 yv_k;
+  // accelerometer measurement
+  Vector3 ya_k;
+  // gyrometer measurement
+  Vector3 yg_k;
+};
+
 struct AsynchronousInputViking : public AsynchronousDataBase
 {
 public:
@@ -70,10 +82,11 @@ public:
   /// @param x1 The initial local linear velocity of the IMU.
   /// @param x2_p The initial value of the intermediate estimate of the IMU's tilt.
   /// @param x2 The initial tilt of the IMU.
-  void initEstimator(const Vector3 & x1 = Vector3::Zero(),
-                     const Vector3 & x2_prime = Vector3::UnitZ(),
-                     const Vector3 & pos = Vector3::Zero(),
-                     const Vector4 & R = Vector4(0, 0, 0, 1));
+  void initEstimator(const Vector3 & x1,
+                     const Vector3 & x2,
+                     const Vector3 & gyro_bias,
+                     const Vector4 & ori,
+                     const Vector3 & pos);
 
   using DelayedMeasurementObserver::initEstimator;
 
@@ -84,18 +97,20 @@ public:
   /// @param k
   /// @param resetImuLocVelHat Resets x1hat (the estimate of the local linear velocity of the IMU in the world). Avoid
   /// discontinuities when the computation mode of the anchor point changes
-  void setMeasurement(const Vector3 & yv_k,
-                      const Vector3 & ya_k,
-                      const Vector3 & yg_k,
-                      TimeIndex k,
-                      bool resetImuLocVelHat = false);
+  void setInput(const Vector3 & yv_k,
+                const Vector3 & ya_k,
+                const Vector3 & yg_k,
+                TimeIndex k,
+                bool resetImuLocVelHat = false);
 
-  using DelayedMeasurementObserver::setMeasurement;
+  using DelayedMeasurementObserver::setInput;
 
   /// @brief adds a delayed global pose measurement to the correction
   /// @param posMeasurement measured position in the world
   /// @param oriMeasurement measured orientation in the world
-  /// @param gainDelta weight of the correction
+  /// @param mu gain associated with the yaw correction from the orientation measurement.
+  /// @param lambda gain associated with the position correction from the position and orientation measurement.
+  /// @param delay number of iterations ellapsed between the measurements acquisition and the current iteration.
   void addDelayedPosOriMeasurement(const Vector3 & posMeasurement,
                                    const Matrix3 & meas,
                                    double mu,
@@ -105,8 +120,9 @@ public:
   /// @brief adds a global pose measurement to the correction
   /// @param posMeasurement measured position in the world
   /// @param oriMeasurement measured orientation in the world
-  /// @param gainDelta weight of the correction
-  void addPosOriMeasurement(const Vector3 & posMeasurement, const Matrix3 & meas, double mu, double lambda);
+  /// @param mu gain associated with the yaw correction from the orientation measurement.
+  /// @param lambda gain associated with the position correction from the position and orientation measurement.
+  void addPosOriMeasurement(const Vector3 & posMeasurement, const Matrix3 & oriMeasurement, double mu, double lambda);
 
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)
@@ -157,6 +173,31 @@ protected:
   /// @brief Add the correction terms coming from the input to the computed state dynamics
   void addCorrectionTerms(StateIterator it);
   void startNewIteration_() override;
+
+public:
+  inline static constexpr Index sizeX1 = 3;
+  inline static constexpr Index sizeX2 = 3;
+  inline static constexpr Index sizeGyroBias = 3;
+  inline static constexpr Index sizeOri = 4;
+  inline static constexpr Index sizePos = 3;
+
+  inline static constexpr Index sizeX1Tangent = 3;
+  inline static constexpr Index sizeX2Tangent = 3;
+  inline static constexpr Index sizeGyroBiasTangent = 3;
+  inline static constexpr Index sizeOriTangent = 3;
+  inline static constexpr Index sizePosTangent = 3;
+
+  inline static constexpr Index x1Index = 0;
+  inline static constexpr Index x2Index = sizeX1;
+  inline static constexpr Index gyroBiasIndex = x2Index + sizeX2;
+  inline static constexpr Index oriIndex = gyroBiasIndex + sizeGyroBias;
+  inline static constexpr Index posIndex = oriIndex + sizeOri;
+
+  inline static constexpr Index x1IndexTangent = 0;
+  inline static constexpr Index x2IndexTangent = sizeX1Tangent;
+  inline static constexpr Index gyroBiasIndexTangent = x2IndexTangent + sizeX2Tangent;
+  inline static constexpr Index oriIndexTangent = gyroBiasIndexTangent + sizeGyroBiasTangent;
+  inline static constexpr Index posIndexTangent = oriIndexTangent + sizeOriTangent;
 
 protected:
   /// The parameters of the estimator

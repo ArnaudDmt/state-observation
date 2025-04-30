@@ -12,6 +12,7 @@ DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
 : ObserverBase(n, m)
 {
   u_ = input;
+  new_async_data_ = false;
   u_asynchronous_ = async_input;
   y_asynchronous_ = async_meas;
 
@@ -47,7 +48,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
   TimeIndex k0 = getCurrentTime();
 
   // if there are asynchronous measurements, the impacted previous iterations are re-computed until the current one.
-  if(u_asynchronous_ || y_asynchronous_)
+  if(new_async_data_ && (u_asynchronous_ || y_asynchronous_))
   {
     TimeIndex k_asynchronous = getAsynchronousFirstIndex();
     if(xBuffer_.size() > (k0 - k_asynchronous))
@@ -63,8 +64,8 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
 
   for(TimeIndex i = k0; i < k; ++i)
   {
+    // we store the index of the oldest element before it potentially gets pushed out of the buffer
     TimeIndex removed_k_x = xBuffer_.back().getTime();
-
     xBuffer_.push_front(IndexedVector(xBuffer_.front()(), i + 1));
     oneStepEstimation_(xBuffer_.begin());
 
@@ -88,6 +89,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
       }
     }
   }
+  new_async_data_ = false;
 
   return xBuffer_.front()();
 }
@@ -122,6 +124,7 @@ bool DelayedMeasurementObserver::stateIsSet() const
 
 void DelayedMeasurementObserver::pushAsyncMeasurement(const AsynchronousDataBase & asyncMeas, TimeIndex k)
 {
+  new_async_data_ = true;
   if(k > xBuffer_.back().getTime())
   {
     y_asynchronous_->pushValue(asyncMeas, k);
@@ -143,24 +146,25 @@ void DelayedMeasurementObserver::setMeasurement(const ObserverBase::MeasureVecto
   y_.setValue(y_k, k);
 }
 
-void DelayedMeasurementObserver::pushInput(const InputBase & u_k)
-{
-  BOOST_ASSERT(u_ && "The input vector has not been initialized in the constructor.");
-  if(u_->size() > 0)
-  {
-    u_->pushBack(u_k);
-  }
-  else
-  {
-    BOOST_ASSERT(xBuffer_.size() > 0
-                 && "Unable to initialize input without time index, the state vector has not been set.");
-    /// we need the input at the time of the state vector to predict the next one
-    u_->setValue(u_k, getCurrentTime());
-  }
-}
+// void DelayedMeasurementObserver::pushInput(const InputBase & u_k)
+// {
+//   BOOST_ASSERT(u_ && "The input vector has not been initialized in the constructor.");
+//   if(u_->size() > 0)
+//   {
+//     u_->pushBack(u_k);
+//   }
+//   else
+//   {
+//     BOOST_ASSERT(xBuffer_.size() > 0
+//                  && "Unable to initialize input without time index, the state vector has not been set.");
+//     /// we need the input at the time of the state vector to predict the next one
+//     u_->setValue(u_k, getCurrentTime());
+//   }
+// }
 
 void DelayedMeasurementObserver::pushAsyncInput(const AsynchronousDataBase & asyncInput, TimeIndex k)
 {
+  new_async_data_ = true;
   if(k >= xBuffer_.back().getTime())
   {
     u_asynchronous_->pushValue(asyncInput, k);
@@ -176,27 +180,6 @@ void DelayedMeasurementObserver::setState(const ObserverBase::StateVector & x_k,
 
     xBuffer_.push_front(IndexedVector(x_k, k));
   }
-
-  // xBuffer_.front().set(x_k, k);
-
-  // if(k < getCurrentTime())
-  // {
-  //   y_.clear();
-  //   u_.clear();
-  // }
-  // else
-  // {
-  //   while(y_.size() > 0 && y_.getFirstIndex() <= k)
-  //   {
-  //     y_.popFront();
-  //   }
-
-  //   if(p_ > 0)
-  //     while(u_.size() > 0 && u_.getFirstIndex() < k)
-  //     {
-  //       u_.popFront();
-  //     }
-  // }
 }
 
 void DelayedMeasurementObserver::setCurrentState(const ObserverBase::StateVector & x_k)
@@ -225,7 +208,7 @@ void DelayedMeasurementObserver::clearDelayedMeasurements()
 
 void DelayedMeasurementObserver::setInput(const InputBase & u_k, TimeIndex k)
 {
-  BOOST_ASSERT(u_ && "The input vector has not been initialized in the contstructor.");
+  BOOST_ASSERT(u_ && "The input vector has not been initialized in the constructor.");
   BOOST_ASSERT((u_->getNextIndex() == k || u_->checkIndex(k)) && "ERROR: The time is set incorrectly \
                                 for the inputs (order or gap)");
 

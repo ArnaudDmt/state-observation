@@ -13,16 +13,18 @@ Waiko::Waiko(double dt, double alpha, double beta, double rho, unsigned long buf
 
 Waiko::~Waiko() {}
 
-void Waiko::setMeasurement(const Vector3 & yv_k,
-                           const Vector3 & ya_k,
-                           const Vector3 & yg_k,
-                           TimeIndex k,
-                           bool resetImuLocVelHat)
+void Waiko::setInput(const Vector3 & yv_k,
+                     const Vector3 & ya_k,
+                     const Vector3 & yg_k,
+                     TimeIndex k,
+                     bool resetImuLocVelHat)
 {
-  ObserverBase::MeasureVector y_k(getMeasureSize());
-  y_k << yv_k, ya_k, yg_k;
+  startNewIteration_();
+  InputWaiko & input = convert_input<InputWaiko>((*u_)[k]);
 
-  setMeasurement(y_k, k);
+  input.yv = yv_k;
+  input.ya = ya_k;
+  input.yg = yg_k;
 
   if(resetImuLocVelHat)
   {
@@ -33,10 +35,9 @@ void Waiko::setMeasurement(const Vector3 & yv_k,
 void Waiko::computeCorrectionTerms(StateIterator it)
 {
   TimeIndex k = it->getTime();
-
-  BOOST_ASSERT(this->u_->size() > 0 && this->u_->checkIndex(k - 1) && "ERROR: The input is not set");
-
   StateIterator prevIter = it + 1;
+  BOOST_ASSERT(u_ && u_->size() > 0 && u_->checkIndex(prevIter->getTime()) && "ERROR: The input is not set");
+
   const Eigen::Ref<Vector3> initPos = (*prevIter)().segment<3>(6);
   const Eigen::Ref<Vector4> initOri_quat = (*prevIter)().tail(4);
   kine::Orientation initOri;
@@ -74,7 +75,7 @@ void Waiko::startNewIteration_()
 
   if(!u_->checkIndex(k))
   {
-    pushInput(InputWaiko());
+    setInput(InputWaiko(), k);
   }
 }
 
@@ -84,7 +85,6 @@ void Waiko::addContactPosMeasurement(const Vector3 & posMeasurement,
                                      double gainSigma)
 {
   startNewIteration_();
-
   InputWaiko & input = convert_input<InputWaiko>(u_->back());
 
   Vector6 inputPos;
@@ -97,22 +97,22 @@ void Waiko::addContactPosMeasurement(const Vector3 & posMeasurement,
 void Waiko::addOrientationMeasurement(const Matrix3 & oriMeasurement, double gain)
 {
   startNewIteration_();
-
   InputWaiko & input = convert_input<InputWaiko>(u_->back());
+
   input.ori_measurements_.push_back(InputWaiko::OriMeas_Gain(oriMeasurement, gain));
 }
 
 ObserverBase::StateVector & Waiko::computeStateDynamics_(StateIterator it)
 {
   dx_hat_.setZero();
-  TimeIndex k = (*it).getTime();
-  MeasureVector & synced_Meas = y_[k];
-
   computeCorrectionTerms(it);
 
-  const Vector3 & yv = synced_Meas.head<3>();
-  const Vector3 & ya = synced_Meas.segment<3>(3);
-  const Vector3 & yg = synced_Meas.segment<3>(6);
+  StateIterator prevIter = it + 1;
+  InputWaiko & input = convert_input<InputWaiko>((*u_)[prevIter->getTime()]);
+
+  const Vector3 & yv = input.yv;
+  const Vector3 & ya = input.ya;
+  const Vector3 & yg = input.yg;
 
   // we fetch the estimated state from the previous iteration
   const ObserverBase::StateVector & x_hat = (*(it + 1))();

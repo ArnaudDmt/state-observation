@@ -518,34 +518,11 @@ typedef IndexedMatrixT<Vector3> IndexedVector3;
 typedef IndexedMatrixT<Matrix3> IndexedMatrix3;
 
 /**
- * \class    IndexedObjectArrayT
+ * \class    IndexedObjectArrayBase
  * \brief    This class describes a structure that enables to store array of objects
  *           with time indexation.
- *
+ * \details  Base class that declares all the necessary functions without type specification.
  */
-
-class InputBase
-{
-protected:
-  InputBase(){};
-
-public:
-  virtual ~InputBase() = default;
-};
-
-template<typename InputType = Vector>
-class InputT : public InputBase
-{
-public:
-  ~InputT() {}
-  InputType v;
-};
-
-class VectorInput : public Vector, public InputBase
-{
-  using Vector::Vector;
-};
-
 class IndexedObjectArrayBase
 {
 protected:
@@ -609,6 +586,11 @@ protected:
   TimeIndex k_;
 };
 
+/**
+ * \class    IndexedObjectArrayT
+ * \brief    This class describes a structure that enables to store array of objects
+ *           with time indexation.
+ */
 template<typename ObjectType, typename Allocator>
 class IndexedObjectArrayT : public IndexedObjectArrayBase
 {
@@ -700,10 +682,49 @@ protected:
   Deque v_;
 };
 
-/// @brief Class that DECLARES all the neccessary functions for the handling of an array of index inputs.
-/// @details Functions are not defined here since they will be in \ref IndexInputArrayT, which inherits from this class.
-/// Allows to call functions on the array for any type of input, while avoiding to template all the code. Here, only
-/// \ref IndexInputArrayT is templated within estimators, and not the estimators themselves.
+/**
+ * \class    InputBase
+ * \brief    Base class for inputs, necessary to do polymorphism.
+ * \details  Each observer requiring its own input type, polymorphism (or templating) needs to "generalize" their
+ * handling. This class is the base class the specific inputs derive from.
+ */
+class InputBase
+{
+protected:
+  InputBase(){};
+
+public:
+  virtual ~InputBase() = default;
+};
+
+/**
+ * \class    InputT
+ * \brief    Input with specified type.
+ */
+template<typename InputType = Vector>
+class InputT : public InputBase
+{
+public:
+  ~InputT() {}
+  InputType v;
+};
+
+/**
+ * \class    VectorInput
+ * \brief    Input as a Vector object, commonly used within observers.
+ */
+class VectorInput : public Vector, public InputBase
+{
+  using Vector::Vector;
+};
+
+/**
+ * \class    IndexedInputArrayInterface
+ * \brief    Class that DECLARES all the neccessary functions for the handling of an array of indexed inputs.
+ * \details  Functions are not defined here since they will be in \ref IndexInputArrayT, which inherits from this class.
+ * Allows to call functions on the array for any type of input, while avoiding to template all the code. Here, only \ref
+ * IndexInputArrayT is templated within estimators, and not the estimators themselves.
+ */
 class IndexedInputArrayInterface : public IndexedObjectArrayBase
 {
 public:
@@ -794,6 +815,11 @@ protected:
   void checkNext_(TimeIndex time) const override = 0;
 };
 
+/**
+ * \class    IndexedInputArrayT
+ * \brief    Array of type-specified indexed input objects. Uses polymorphism to manage the list for any input type.
+ * \details  Uses polymorphism to manage the list for any input type.
+ */
 template<typename InputType = InputT<>, typename Allocator = std::allocator<InputT<>>>
 class IndexedInputArrayT : public IndexedInputArrayInterface
 {

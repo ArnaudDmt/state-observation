@@ -1084,7 +1084,7 @@ inline KinematicsInternal<T>::KinematicsInternal(const CheckedVector3 & position
 template<class T>
 inline T KinematicsInternal<T>::zeroKinematics(typename KinematicsInternal::Flags::Byte flags)
 {
-  Kinematics kine;
+  T kine;
   kine.setZero(flags);
   return kine;
 }

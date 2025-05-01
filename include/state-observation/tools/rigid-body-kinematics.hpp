@@ -726,12 +726,6 @@ struct LocalKinematics : public internal::KinematicsInternal<LocalKinematics>
   /// @param locK the global kinematics to convert
   inline LocalKinematics & operator=(const Kinematics & kine);
 
-  /// initializes at zero all the flagged fields
-  /// the typename allows to set if the prefered type for rotation
-  /// is a Matrix3 or a Quaternion (Quaternion by default)
-  template<typename t = Quaternion>
-  LocalKinematics & setZero(Flags::Byte = Flags::all);
-
   /// @brief integrates the current local kinematics over the timestep dt.
   /// @details can be used to predict the future local kinematics from the current ones.
   /// @param dt the timestep used for the integration

@@ -1,3 +1,4 @@
+#include <iostream>
 #include <state-observation/observer/viking.hpp>
 #include <state-observation/tools/definitions.hpp>
 
@@ -44,9 +45,9 @@ void Viking::addCorrectionTerms(StateIterator it)
   }
 
   // we fetch the estimated state from the previous iteration
-  ObserverBase::StateVector & x_hat = (*prevIter)();
-  Eigen::Ref<Vector3> x2_hat = x_hat.segment<sizeX2>(x2Index);
-  Eigen::Ref<Vector3> pl_hat = x_hat.segment<sizePos>(posIndex);
+  const ObserverBase::StateVector & x_hat = (*prevIter)();
+  Eigen::VectorBlock<const ObserverBase::StateVector, sizeX2> x2_hat = x_hat.segment<sizeX2>(x2Index);
+  Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
 
   // we add the correction terms compute the state dynamics
   Eigen::Ref<Vector3> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
@@ -109,18 +110,18 @@ ObserverBase::StateVector & Viking::computeStateDynamics_(StateIterator it)
   BOOST_ASSERT(u_ && u_->checkIndex(prevIter->getTime()) && "ERROR: The input is not set");
 
   // we fetch the estimated state from the previous iteration
-  ObserverBase::StateVector & x_hat = (*prevIter)();
-  Eigen::Ref<Vector3> x1_hat = x_hat.segment<sizeX1>(x1Index);
-  Eigen::Ref<Vector3> x2_hat = x_hat.segment<sizeX2>(x2Index);
-  Eigen::Ref<Vector3> b_hat = x_hat.segment<sizeGyroBias>(gyroBiasIndex);
-  Eigen::Ref<Vector3> pl_hat = x_hat.segment<sizePos>(posIndex);
+  const ObserverBase::StateVector & x_hat = (*prevIter)();
+  Eigen::VectorBlock<const ObserverBase::StateVector, sizeX1> x1_hat = x_hat.segment<sizeX1>(x1Index);
+  Eigen::VectorBlock<const ObserverBase::StateVector, sizeX2> x2_hat = x_hat.segment<sizeX2>(x2Index);
+  Eigen::VectorBlock<const ObserverBase::StateVector, sizeGyroBias> b_hat = x_hat.segment<sizeGyroBias>(gyroBiasIndex);
+  Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
   state_kine_.fromVector(x_hat.tail(7), kine::Kinematics::Flags::pose);
 
   // we fetch the input from the previous iteration
-  VikingInput & synced_Input = convert_input<VikingInput>((*u_)[prevIter->getTime()]);
-  const Vector3 yv = synced_Input.yv_k;
-  const Vector3 ya = synced_Input.ya_k;
-  const Vector3 yg = synced_Input.yg_k;
+  const VikingInput & synced_Input = convert_input<VikingInput>((*u_)[prevIter->getTime()]);
+  const Vector3 & yv = synced_Input.yv_k;
+  const Vector3 & ya = synced_Input.ya_k;
+  const Vector3 & yg = synced_Input.yg_k;
 
   Vector3 unbiased_yg = yg - b_hat;
 
@@ -139,17 +140,23 @@ ObserverBase::StateVector & Viking::computeStateDynamics_(StateIterator it)
   // using pl_dot = -S(yg) pl + v_l
   v_l = x1_hat + pl_hat.cross(unbiased_yg);
 
+  std::cout << std::endl << "WESH" << std::endl;
+  std::cout << std::endl << "x1_hat: " << x1_hat.transpose() << std::endl;
+  std::cout << std::endl << "unbiased_yg: " << unbiased_yg.transpose() << std::endl;
+  std::cout << std::endl << "x2_hat: " << x2_hat.transpose() << std::endl;
+  std::cout << std::endl << "ya: " << ya.transpose() << std::endl;
+  std::cout << std::endl << "yv: " << yv.transpose() << std::endl;
+
   return dx_hat_;
 }
 
 void Viking::integrateState_(StateIterator it)
 {
-  ObserverBase::StateVector & initState = (*(it + 1))();
   ObserverBase::StateVector & newState = (*(it))();
 
-  Eigen::Ref<Vector3> x1_hat = initState.segment<sizeX1>(x1Index);
-  Eigen::Ref<Vector3> x2_hat = initState.segment<sizeX2>(x2Index);
-  Eigen::Ref<Vector3> b_hat = initState.segment<sizeGyroBias>(gyroBiasIndex);
+  Eigen::Ref<Vector3> x1_hat = newState.segment<sizeX1>(x1Index);
+  Eigen::Ref<Vector3> x2_hat = newState.segment<sizeX2>(x2Index);
+  Eigen::Ref<Vector3> b_hat = newState.segment<sizeGyroBias>(gyroBiasIndex);
 
   // we add the correction terms compute the state dynamics
   const auto & x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);

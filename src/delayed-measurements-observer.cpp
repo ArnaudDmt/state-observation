@@ -1,5 +1,4 @@
 #include <state-observation/observer/delayed-measurements-observer.hpp>
-
 namespace stateObservation
 {
 DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
@@ -27,7 +26,8 @@ void DelayedMeasurementObserver::initEstimator(const Vector & x)
 
 TimeIndex DelayedMeasurementObserver::getAsynchronousFirstIndex()
 {
-  TimeIndex k_u_async, k_y_async = std::numeric_limits<long>::max();
+  TimeIndex k_u_async = std::numeric_limits<long>::max();
+  TimeIndex k_y_async = std::numeric_limits<long>::max();
 
   if(u_asynchronous_ && !u_asynchronous_->empty())
   {

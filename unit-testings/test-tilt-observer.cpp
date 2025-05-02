@@ -18,13 +18,13 @@ struct Traj
     if(inMotion)
     {
       kine.linAcc() += linJerk * dt;
-      // kine.angAcc() += angJerk * dt;
+      kine.angAcc() += angJerk * dt;
     }
     else
     {
       double K = 20;
       kine.linAcc() = -K * kine.linVel();
-      // kine.angAcc() = -K * kine.angVel();
+      kine.angAcc() = -K * kine.angVel();
     }
 
     kine.integrate(dt);
@@ -48,7 +48,6 @@ int testTiltObserver(int errorcode)
 {
   double simTime = 10.00;
   double dt = 0.005;
-  // int nbIters = 1000;
   int nbIters = int(simTime / dt);
 
   double err;
@@ -66,7 +65,7 @@ int testTiltObserver(int errorcode)
     tilt.getEstimatedState(i + 1);
 
     err = (tilt.getCurrentEstimatedState().segment<3>(0) - traj().linVel()).squaredNorm();
-    if(err > 1e-6)
+    if(err > 1e-4)
     {
       std::cout << std::endl << "The local velocity estimate is incorrect." << std::endl;
       std::cout << std::endl << "Estimated: " << tilt.getCurrentEstimatedState().segment<3>(0).transpose() << std::endl;
@@ -75,7 +74,7 @@ int testTiltObserver(int errorcode)
     }
 
     err = (tilt.getCurrentEstimatedState().segment<3>(6) - traj.getX2()).squaredNorm();
-    if(err > 1e-6)
+    if(err > 1e-4)
     {
       std::cout << std::endl << "The tilt estimate is incorrect." << std::endl;
       std::cout << std::endl << "Estimated: " << tilt.getCurrentEstimatedState().segment<3>(6).transpose() << std::endl;

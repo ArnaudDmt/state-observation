@@ -38,9 +38,10 @@ public:
   /// @param ori orientation measurement.
   /// @param mu gain associated with the yaw correction from the orientation measurement.
   /// @param lambda gain associated with the position correction from the position and orientation measurement.
-  AsynchronousInputViking(const Vector3 & pos, const Matrix3 & ori, double mu, double lambda)
+  /// @param gamma gain associated with the tilt correction from the orientation measurement.
+  AsynchronousInputViking(const Vector3 & pos, const Matrix3 & ori, double mu, double lambda, double gamma)
   {
-    pos_ori_measurements_.push_back(PosOriMeas_Gain(pos, ori, mu, lambda));
+    pos_ori_measurements_.push_back(PosOriMeas_Gain(pos, ori, mu, lambda, gamma));
   }
   ~AsynchronousInputViking() {}
   inline void merge(const AsynchronousDataBase & input2) override
@@ -50,8 +51,8 @@ public:
                                  async_input2.pos_ori_measurements_.end());
   }
 
-  typedef std::tuple<Vector3, Matrix3, double, double> PosOriMeas_Gain;
-  // position and orientation measurement, with associated gain
+  // position and orientation measurement, with associated gains mu, lambda and gamma
+  typedef std::tuple<Vector3, Matrix3, double, double, double> PosOriMeas_Gain;
 
   std::vector<PosOriMeas_Gain> pos_ori_measurements_;
 };
@@ -65,14 +66,40 @@ public:
 class STATE_OBSERVATION_DLLAPI Viking : public DelayedMeasurementComplemFilter
 {
 public:
+  inline static constexpr Index sizeX1 = 3;
+  inline static constexpr Index sizeX2 = 3;
+  inline static constexpr Index sizeGyroBias = 3;
+  inline static constexpr Index sizeOri = 4;
+  inline static constexpr Index sizePos = 3;
+
+  inline static constexpr Index sizeX1Tangent = 3;
+  inline static constexpr Index sizeX2Tangent = 3;
+  inline static constexpr Index sizeGyroBiasTangent = 3;
+  inline static constexpr Index sizeOriTangent = 3;
+  inline static constexpr Index sizePosTangent = 3;
+
+  inline static constexpr Index x1Index = 0;
+  inline static constexpr Index x2Index = sizeX1;
+  inline static constexpr Index gyroBiasIndex = x2Index + sizeX2;
+  inline static constexpr Index oriIndex = gyroBiasIndex + sizeGyroBias;
+  inline static constexpr Index posIndex = oriIndex + sizeOri;
+
+  inline static constexpr Index x1IndexTangent = 0;
+  inline static constexpr Index x2IndexTangent = sizeX1Tangent;
+  inline static constexpr Index gyroBiasIndexTangent = x2IndexTangent + sizeX2Tangent;
+  inline static constexpr Index oriIndexTangent = gyroBiasIndexTangent + sizeGyroBiasTangent;
+  inline static constexpr Index posIndexTangent = oriIndexTangent + sizeOriTangent;
+
+public:
   /// The constructor
   ///  \li alpha : parameter related to the convergence of the linear velocity
   ///              of the IMU expressed in the control frame
   ///  \li beta  : parameter related to the fast convergence of the tilt
   ///  \li rho  : parameter related to the orthogonality
   ///  \li dt  : timestep between each iteration
-  ///  \li dt  : capacity of the iteration buffer
-  Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity);
+  ///  \li bufferCapacity  : capacity of the iteration buffer
+  ///  \li withGyroBias  : indicates if the gyrometer bias must be used in the estimation
+  Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity, bool withGyroBias);
 
   /// @brief Destroy the Kinetics Observer
   ///
@@ -110,11 +137,13 @@ public:
   /// @param oriMeasurement measured orientation in the world
   /// @param mu gain associated with the yaw correction from the orientation measurement.
   /// @param lambda gain associated with the position correction from the position and orientation measurement.
+  /// @param gamma gain associated with the tilt correction from the orientation measurement.
   /// @param delay number of iterations ellapsed between the measurements acquisition and the current iteration.
   void addDelayedPosOriMeasurement(const Vector3 & posMeasurement,
                                    const Matrix3 & meas,
                                    double mu,
                                    double lambda,
+                                   double gamma,
                                    TimeIndex delay);
 
   /// @brief adds a global pose measurement to the correction
@@ -122,7 +151,12 @@ public:
   /// @param oriMeasurement measured orientation in the world
   /// @param mu gain associated with the yaw correction from the orientation measurement.
   /// @param lambda gain associated with the position correction from the position and orientation measurement.
-  void addPosOriMeasurement(const Vector3 & posMeasurement, const Matrix3 & oriMeasurement, double mu, double lambda);
+  /// @param gamma gain associated with the tilt correction from the orientation measurement.
+  void addPosOriMeasurement(const Vector3 & posMeasurement,
+                            const Matrix3 & oriMeasurement,
+                            double mu,
+                            double lambda,
+                            double gamma);
 
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)
@@ -154,6 +188,47 @@ public:
     return rho_;
   }
 
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeX1> getEstimatedLocLinVel(StateIterator it = {})
+  {
+    if(it == StateIterator{})
+    {
+      it = xBuffer_.begin();
+    }
+    return (*it)().segment<sizeX1>(x1Index);
+  }
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeX2> getEstimatedTilt(StateIterator it = {})
+  {
+    if(it == StateIterator{})
+    {
+      it = xBuffer_.begin();
+    }
+    return (*it)().segment<sizeX2>(x2Index);
+  }
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeGyroBias> getEstimatedGyroBias(StateIterator it = {})
+  {
+    if(it == StateIterator{})
+    {
+      it = xBuffer_.begin();
+    }
+    return (*it)().segment<sizeGyroBias>(gyroBiasIndex);
+  }
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeOri> getEstimatedOrientation(StateIterator it = {})
+  {
+    if(it == StateIterator{})
+    {
+      it = xBuffer_.begin();
+    }
+    return (*it)().segment<sizeOri>(oriIndex);
+  }
+  Eigen::VectorBlock<ObserverBase::StateVector, sizePos> getEstimatedLocPosition(StateIterator it = {})
+  {
+    if(it == StateIterator{})
+    {
+      it = xBuffer_.begin();
+    }
+    return (*it)().segment<sizePos>(posIndex);
+  }
+
 protected:
   /// @brief Runs one loop of the estimator.
   /// @details Calls \ref computeStateDynamics_ then \ref integrateState_
@@ -174,35 +249,11 @@ protected:
   void addCorrectionTerms(StateIterator it);
   void startNewIteration_() override;
 
-public:
-  inline static constexpr Index sizeX1 = 3;
-  inline static constexpr Index sizeX2 = 3;
-  inline static constexpr Index sizeGyroBias = 3;
-  inline static constexpr Index sizeOri = 4;
-  inline static constexpr Index sizePos = 3;
-
-  inline static constexpr Index sizeX1Tangent = 3;
-  inline static constexpr Index sizeX2Tangent = 3;
-  inline static constexpr Index sizeGyroBiasTangent = 3;
-  inline static constexpr Index sizeOriTangent = 3;
-  inline static constexpr Index sizePosTangent = 3;
-
-  inline static constexpr Index x1Index = 0;
-  inline static constexpr Index x2Index = sizeX1;
-  inline static constexpr Index gyroBiasIndex = x2Index + sizeX2;
-  inline static constexpr Index oriIndex = gyroBiasIndex + sizeGyroBias;
-  inline static constexpr Index posIndex = oriIndex + sizeOri;
-
-  inline static constexpr Index x1IndexTangent = 0;
-  inline static constexpr Index x2IndexTangent = sizeX1Tangent;
-  inline static constexpr Index gyroBiasIndexTangent = x2IndexTangent + sizeX2Tangent;
-  inline static constexpr Index oriIndexTangent = gyroBiasIndexTangent + sizeGyroBiasTangent;
-  inline static constexpr Index posIndexTangent = oriIndexTangent + sizeOriTangent;
-
 protected:
   /// The parameters of the estimator
-  double alpha_, beta_, rho_, gamma_;
+  double alpha_, beta_, rho_;
   kine::LocalKinematics state_kine_;
+  bool withGyroBias_;
 };
 
 } // namespace stateObservation

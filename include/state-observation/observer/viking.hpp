@@ -36,12 +36,13 @@ public:
   /// @brief constructor with the position and measurement orientation, and the associated correction gains.
   /// @param pos position measurement.
   /// @param ori orientation measurement.
-  /// @param mu gain associated with the yaw correction from the orientation measurement.
-  /// @param lambda gain associated with the position correction from the position and orientation measurement.
-  /// @param gamma gain associated with the tilt correction from the orientation measurement.
-  AsynchronousInputViking(const Vector3 & pos, const Matrix3 & ori, double mu, double lambda, double gamma)
+  /// @param mu gain associated with the linear velocity correction from the pose measurement.
+  /// @param lambda gain associated with the yaw correction from the orientation measurement.
+  /// @param tau gain associated with the tilt correction from the orientation measurement.
+  /// @param eta gain associated with the position correction from the pose measurement.
+  AsynchronousInputViking(const Vector3 & pos, const Matrix3 & ori, double mu, double lambda, double tau, double eta)
   {
-    pos_ori_measurements_.push_back(PosOriMeas_Gain(pos, ori, mu, lambda, gamma));
+    pos_ori_measurements_.push_back(PosOriMeas_Gain(pos, ori, mu, lambda, tau, eta));
   }
   ~AsynchronousInputViking() {}
   inline void merge(const AsynchronousDataBase & input2) override
@@ -51,8 +52,8 @@ public:
                                  async_input2.pos_ori_measurements_.end());
   }
 
-  // position and orientation measurement, with associated gains mu, lambda and gamma
-  typedef std::tuple<Vector3, Matrix3, double, double, double> PosOriMeas_Gain;
+  // position and orientation measurement, with associated gains mu, lambda, tau and eta.
+  typedef std::tuple<Vector3, Matrix3, double, double, double, double> PosOriMeas_Gain;
 
   std::vector<PosOriMeas_Gain> pos_ori_measurements_;
 };
@@ -95,11 +96,18 @@ public:
   ///  \li alpha : parameter related to the convergence of the linear velocity
   ///              of the IMU expressed in the control frame
   ///  \li beta  : parameter related to the fast convergence of the tilt
-  ///  \li rho  : parameter related to the orthogonality
+  ///  \li gamma  : parameter related to the orthogonality
+  ///  \li rho  : parameter related to the correction of the bias by the linear velocity measurement.
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer
   ///  \li withGyroBias  : indicates if the gyrometer bias must be used in the estimation
-  Viking(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity, bool withGyroBias);
+  Viking(double dt,
+         double alpha,
+         double beta,
+         double gamma,
+         double rho,
+         unsigned long bufferCapacity,
+         bool withGyroBias);
 
   /// @brief Destroy the Kinetics Observer
   ///
@@ -135,28 +143,32 @@ public:
   /// @brief adds a delayed global pose measurement to the correction
   /// @param posMeasurement measured position in the world
   /// @param oriMeasurement measured orientation in the world
-  /// @param mu gain associated with the yaw correction from the orientation measurement.
-  /// @param lambda gain associated with the position correction from the position and orientation measurement.
-  /// @param gamma gain associated with the tilt correction from the orientation measurement.
+  /// @param mu gain associated with the linear velocity correction from the pose measurement.
+  /// @param lambda gain associated with the yaw correction from the orientation measurement.
+  /// @param tau gain associated with the tilt correction from the orientation measurement.
+  /// @param eta gain associated with the position correction from the pose measurement.
   /// @param delay number of iterations ellapsed between the measurements acquisition and the current iteration.
   void addDelayedPosOriMeasurement(const Vector3 & posMeasurement,
                                    const Matrix3 & meas,
                                    double mu,
                                    double lambda,
-                                   double gamma,
+                                   double tau,
+                                   double eta,
                                    TimeIndex delay);
 
   /// @brief adds a global pose measurement to the correction
   /// @param posMeasurement measured position in the world
   /// @param oriMeasurement measured orientation in the world
-  /// @param mu gain associated with the yaw correction from the orientation measurement.
-  /// @param lambda gain associated with the position correction from the position and orientation measurement.
-  /// @param gamma gain associated with the tilt correction from the orientation measurement.
+  /// @param mu gain associated with the linear velocity correction from the pose measurement.
+  /// @param lambda gain associated with the yaw correction from the orientation measurement.
+  /// @param tau gain associated with the tilt correction from the orientation measurement.
+  /// @param eta gain associated with the position correction from the pose measurement.
   void addPosOriMeasurement(const Vector3 & posMeasurement,
                             const Matrix3 & oriMeasurement,
                             double mu,
                             double lambda,
-                            double gamma);
+                            double tau,
+                            double eta);
 
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)
@@ -176,6 +188,16 @@ public:
   double getBeta()
   {
     return beta_;
+  }
+
+  /// set gamma
+  void setGamma(const double gamma)
+  {
+    gamma_ = gamma;
+  }
+  double getGamma()
+  {
+    return gamma_;
   }
 
   /// set rho
@@ -251,7 +273,12 @@ protected:
 
 protected:
   /// The parameters of the estimator
-  double alpha_, beta_, rho_;
+  ///  \li alpha : parameter related to the convergence of the linear velocity
+  ///              of the IMU expressed in the control frame
+  ///  \li beta  : parameter related to the fast convergence of the tilt
+  ///  \li gamma  : parameter related to the orthogonality
+  ///  \li rho  : parameter related to the correction of the bias by the linear velocity measurement.
+  double alpha_, beta_, gamma_, rho_;
   kine::LocalKinematics state_kine_;
   bool withGyroBias_;
 };

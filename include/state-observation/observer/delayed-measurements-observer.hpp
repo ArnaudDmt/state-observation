@@ -222,8 +222,9 @@ protected:
   /// Container for the inputs.
   std::shared_ptr<IndexedInputArrayInterface> u_;
 
-  // indicates if new asynchronous data has been added and the index the estimation must be run again from
-  std::optional<TimeIndex> oldestNewAsyncDataIndex_;
+  // Iteration from which the next estimation iteration must be run. In general, simply corresponds to the time of the
+  // latest estimation, but if asynchronous data is received, it will correspond to the oldest data.
+  TimeIndex currentIter_;
   /// Container for the asynchronous measurements.
   std::shared_ptr<AsynchronousDataMapBase> y_asynchronous_;
   /// Container for the asynchronous inputs.

@@ -14,6 +14,7 @@ DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
   u_ = input;
   u_asynchronous_ = async_input;
   y_asynchronous_ = async_meas;
+  currentIter_ = 0;
 
   setStateCapacity(bufferCapacity / dt);
   setSamplingTime(dt);
@@ -45,24 +46,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
 {
   BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
 
-  TimeIndex k0 = getCurrentTime();
-
-  // if there are asynchronous measurements, the impacted previous iterations are re-computed until the current one.
-  if(oldestNewAsyncDataIndex_ && (u_asynchronous_ || y_asynchronous_))
-  {
-    TimeIndex k_asynchronous = oldestNewAsyncDataIndex_.value();
-    if(xBuffer_.size() > (k0 - k_asynchronous))
-    {
-      StateIterator it_x = xBuffer_.begin() + k0 - k_asynchronous;
-
-      for(boost::circular_buffer<IndexedVector>::iterator it = it_x; it != xBuffer_.begin(); --it)
-      {
-        oneStepEstimation_(it);
-      }
-    }
-  }
-
-  for(TimeIndex i = k0; i < k; ++i)
+  for(TimeIndex i = currentIter_; i < k; ++i)
   {
     // we store the index of the oldest element before it potentially gets pushed out of the buffer
     TimeIndex removed_k_x = xBuffer_.back().getTime();
@@ -89,7 +73,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
       }
     }
   }
-  oldestNewAsyncDataIndex_.reset();
+  currentIter_ = getCurrentTime();
 
   return xBuffer_.front()();
 }
@@ -127,7 +111,7 @@ void DelayedMeasurementObserver::pushAsyncMeasurement(const AsynchronousDataBase
   if(k > xBuffer_.back().getTime())
   {
     y_asynchronous_->pushValue(asyncMeas, k);
-    oldestNewAsyncDataIndex_ = oldestNewAsyncDataIndex_ ? std::min(k, oldestNewAsyncDataIndex_.value()) : k;
+    currentIter_ = std::min(currentIter_, k);
   }
 }
 
@@ -151,7 +135,7 @@ void DelayedMeasurementObserver::pushAsyncInput(const AsynchronousDataBase & asy
   if(k >= xBuffer_.back().getTime())
   {
     u_asynchronous_->pushValue(asyncInput, k);
-    oldestNewAsyncDataIndex_ = oldestNewAsyncDataIndex_ ? std::min(k, oldestNewAsyncDataIndex_.value()) : k;
+    currentIter_ = std::min(currentIter_, k);
   }
 }
 

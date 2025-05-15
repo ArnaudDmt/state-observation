@@ -182,7 +182,7 @@ int testWithDelayedInputAndMeas(int errorcode)
   struct TestData : public AsynchronousDataBase, public InputBase
   {
   public:
-    TestData() : data_(0.25) {}
+    TestData() : data_(0.5) {}
     ~TestData() {}
     inline void merge(const AsynchronousDataBase &) override {}
 
@@ -204,16 +204,27 @@ int testWithDelayedInputAndMeas(int errorcode)
     StateVector oneStepEstimation_(StateIterator it) override
     {
       TimeIndex k = it->getTime();
+      StateIterator prevIter = it + 1;
+
+      // we fetch the estimated state from the previous iteration
+      const ObserverBase::StateVector & x_hat = (*prevIter)();
+
       Vector meas = getMeasurement(k);
-      TestData & input = convert_input<TestData>(u_->front());
+      TestData & input = convert_input<TestData>((*u_)[k - 1]);
 
-      TestData & delayed_input = convert_async_data<TestData>(u_asynchronous_->getElement(k - 1));
-      TestData & delayed_meas = convert_async_data<TestData>(y_asynchronous_->getElement(k));
-
-      (*it)().x() += delayed_input.data_;
-      (*it)().x() += delayed_meas.data_;
-      (*it)().x() += meas[0];
+      (*it)().x() = x_hat.x() + meas[0];
       (*it)().x() += input.data_;
+
+      if(u_asynchronous_->checkIndex(k - 1))
+      {
+        TestData & delayed_input = convert_async_data<TestData>(u_asynchronous_->getElement(k - 1));
+        (*it)().x() += delayed_input.data_;
+      }
+      if(y_asynchronous_->checkIndex(k))
+      {
+        TestData & delayed_meas = convert_async_data<TestData>(y_asynchronous_->getElement(k));
+        (*it)().x() += delayed_meas.data_;
+      }
 
       return (*it)();
     }
@@ -226,16 +237,23 @@ int testWithDelayedInputAndMeas(int errorcode)
 
   obs.initEstimator(Vector3::Zero());
 
-  for(int i = 0; i < 10; i++)
+  for(int i = 0; i < 15; i++)
+  {
+    obs.setInput(TestData(), i);
+    obs.setMeasurement(Vector1::Identity() * 0.5, i + 1);
+  }
+  Vector state = obs.getEstimatedState(10);
+
+  if(std::abs(state.x() - 10) > 1e-15) return errorcode;
+  // we now add asynchronous input and measurements a-posteriori
+  for(int i = 0; i < 5; i++)
   {
     obs.pushAsyncInput(TestData(), i);
-    obs.setInput(TestData(), i);
-    obs.setMeasurement(Vector1::Identity() * 0.25, i + 1);
     obs.pushAsyncMeasurement(TestData(), i + 1);
-    Vector state = obs.getEstimatedState(i + 1);
-
-    if(std::abs(state.x() - i - 1) > 1e-15) return errorcode;
   }
+  state = obs.getEstimatedState(15);
+
+  if(std::abs(state.x() - 20) > 1e-15) return errorcode;
 
   return 0;
 }

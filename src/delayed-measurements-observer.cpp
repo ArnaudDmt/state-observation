@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <state-observation/observer/delayed-measurements-observer.hpp>
 namespace stateObservation
 {
@@ -11,7 +12,6 @@ DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
 : ObserverBase(n, m)
 {
   u_ = input;
-  new_async_data_ = false;
   u_asynchronous_ = async_input;
   y_asynchronous_ = async_meas;
 
@@ -48,9 +48,9 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
   TimeIndex k0 = getCurrentTime();
 
   // if there are asynchronous measurements, the impacted previous iterations are re-computed until the current one.
-  if(new_async_data_ && (u_asynchronous_ || y_asynchronous_))
+  if(oldestNewAsyncDataIndex_ && (u_asynchronous_ || y_asynchronous_))
   {
-    TimeIndex k_asynchronous = getAsynchronousFirstIndex();
+    TimeIndex k_asynchronous = oldestNewAsyncDataIndex_.value();
     if(xBuffer_.size() > (k0 - k_asynchronous))
     {
       StateIterator it_x = xBuffer_.begin() + k0 - k_asynchronous;
@@ -89,7 +89,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
       }
     }
   }
-  new_async_data_ = false;
+  oldestNewAsyncDataIndex_.reset();
 
   return xBuffer_.front()();
 }
@@ -124,10 +124,10 @@ bool DelayedMeasurementObserver::stateIsSet() const
 
 void DelayedMeasurementObserver::pushAsyncMeasurement(const AsynchronousDataBase & asyncMeas, TimeIndex k)
 {
-  new_async_data_ = true;
   if(k > xBuffer_.back().getTime())
   {
     y_asynchronous_->pushValue(asyncMeas, k);
+    oldestNewAsyncDataIndex_ = oldestNewAsyncDataIndex_ ? std::min(k, oldestNewAsyncDataIndex_.value()) : k;
   }
 }
 
@@ -146,28 +146,12 @@ void DelayedMeasurementObserver::setMeasurement(const ObserverBase::MeasureVecto
   y_.setValue(y_k, k);
 }
 
-// void DelayedMeasurementObserver::pushInput(const InputBase & u_k)
-// {
-//   BOOST_ASSERT(u_ && "The input vector has not been initialized in the constructor.");
-//   if(u_->size() > 0)
-//   {
-//     u_->pushBack(u_k);
-//   }
-//   else
-//   {
-//     BOOST_ASSERT(xBuffer_.size() > 0
-//                  && "Unable to initialize input without time index, the state vector has not been set.");
-//     /// we need the input at the time of the state vector to predict the next one
-//     u_->setValue(u_k, getCurrentTime());
-//   }
-// }
-
 void DelayedMeasurementObserver::pushAsyncInput(const AsynchronousDataBase & asyncInput, TimeIndex k)
 {
-  new_async_data_ = true;
   if(k >= xBuffer_.back().getTime())
   {
     u_asynchronous_->pushValue(asyncInput, k);
+    oldestNewAsyncDataIndex_ = oldestNewAsyncDataIndex_ ? std::min(k, oldestNewAsyncDataIndex_.value()) : k;
   }
 }
 

@@ -15,6 +15,7 @@
 
 #include <boost/circular_buffer.hpp>
 #include <map>
+#include <optional>
 #include <set>
 #include <state-observation/api.h>
 #include <state-observation/observer/observer-base.hpp>
@@ -96,7 +97,7 @@ public:
   DelayedMeasurementObserver() = delete;
 
   /// Destructor
-  virtual ~DelayedMeasurementObserver(){};
+  virtual ~DelayedMeasurementObserver() {};
 
   // inline const IndexedVector & getPastState(size_t nbIters)
   // {
@@ -221,8 +222,8 @@ protected:
   /// Container for the inputs.
   std::shared_ptr<IndexedInputArrayInterface> u_;
 
-  // indicates if new asynchronous data has been added and the impacted iterations must be run again
-  bool new_async_data_;
+  // indicates if new asynchronous data has been added and the index the estimation must be run again from
+  std::optional<TimeIndex> oldestNewAsyncDataIndex_;
   /// Container for the asynchronous measurements.
   std::shared_ptr<AsynchronousDataMapBase> y_asynchronous_;
   /// Container for the asynchronous inputs.

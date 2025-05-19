@@ -14,9 +14,9 @@ DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
   u_ = input;
   u_asynchronous_ = async_input;
   y_asynchronous_ = async_meas;
-  currentIter_ = 0;
+  currentIterIndex_ = 0;
 
-  setStateCapacity(bufferCapacity / dt);
+  setStateCapacity(unsigned(std::round(bufferCapacity / dt)));
   setSamplingTime(dt);
 }
 
@@ -46,11 +46,19 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
 {
   BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
 
-  for(TimeIndex i = currentIter_; i < k; ++i)
+  TimeIndex k0 = getCurrentTime();
+
+  for(StateIterator it = xBuffer_.begin() + (k0 - currentIterIndex_); it != xBuffer_.begin(); it--)
   {
-    // we store the index of the oldest element before it potentially gets pushed out of the buffer
+    oneStepEstimation_(it - 1);
+  }
+  for(StateIterator it = xBuffer_.begin(); getCurrentTime() < k; it--)
+  {
     TimeIndex removed_k_x = xBuffer_.back().getTime();
-    xBuffer_.push_front(IndexedVector(xBuffer_.front()(), i + 1));
+
+    // we store the index of the oldest element before it potentially gets pushed out of the buffer
+    xBuffer_.push_front(IndexedVector(xBuffer_.front()(), getCurrentTime() + 1));
+
     oneStepEstimation_(xBuffer_.begin());
 
     if(xBuffer_.full())
@@ -73,7 +81,7 @@ const ObserverBase::StateVector & DelayedMeasurementObserver::getEstimatedState(
       }
     }
   }
-  currentIter_ = getCurrentTime();
+  currentIterIndex_ = getCurrentTime();
 
   return xBuffer_.front()();
 }
@@ -111,7 +119,7 @@ void DelayedMeasurementObserver::pushAsyncMeasurement(const AsynchronousDataBase
   if(k > xBuffer_.back().getTime())
   {
     y_asynchronous_->pushValue(asyncMeas, k);
-    currentIter_ = std::min(currentIter_, k);
+    currentIterIndex_ = std::min(currentIterIndex_, k - 1);
   }
 }
 
@@ -135,7 +143,7 @@ void DelayedMeasurementObserver::pushAsyncInput(const AsynchronousDataBase & asy
   if(k >= xBuffer_.back().getTime())
   {
     u_asynchronous_->pushValue(asyncInput, k);
-    currentIter_ = std::min(currentIter_, k);
+    currentIterIndex_ = std::min(currentIterIndex_, k);
   }
 }
 

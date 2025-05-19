@@ -154,7 +154,7 @@ public:
                                    double lambda,
                                    double tau,
                                    double eta,
-                                   TimeIndex delay);
+                                   double delay);
 
   /// @brief adds a global pose measurement to the correction
   /// @param posMeasurement measured position in the world

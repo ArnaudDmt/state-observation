@@ -224,7 +224,7 @@ protected:
 
   // Iteration from which the next estimation iteration must be run. In general, simply corresponds to the time of the
   // latest estimation, but if asynchronous data is received, it will correspond to the oldest data.
-  TimeIndex currentIter_;
+  TimeIndex currentIterIndex_;
   /// Container for the asynchronous measurements.
   std::shared_ptr<AsynchronousDataMapBase> y_asynchronous_;
   /// Container for the asynchronous inputs.

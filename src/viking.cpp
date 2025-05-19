@@ -1,6 +1,5 @@
 #include <state-observation/observer/viking.hpp>
 #include <state-observation/tools/definitions.hpp>
-
 namespace stateObservation
 {
 
@@ -46,11 +45,12 @@ void Viking::addDelayedPosOriMeasurement(const Vector3 & pos,
                                          double lambda,
                                          double tau,
                                          double eta,
-                                         TimeIndex delay)
+                                         double delay)
 {
-  TimeIndex measTime = getCurrentTime() - delay;
+  TimeIndex itersDelay = TimeIndex(std::round(delay / dt_));
+  TimeIndex measTime = getCurrentTime() - itersDelay;
 
-  u_asynchronous_->pushValue(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), measTime);
+  pushAsyncInput(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), measTime);
 }
 
 void Viking::addPosOriMeasurement(const Vector3 & pos,
@@ -60,7 +60,7 @@ void Viking::addPosOriMeasurement(const Vector3 & pos,
                                   double tau,
                                   double eta)
 {
-  u_asynchronous_->pushValue(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), getCurrentTime());
+  pushAsyncInput(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), getCurrentTime());
 }
 
 ObserverBase::StateVector & Viking::computeStateDynamics_(StateIterator it)
@@ -161,6 +161,7 @@ void Viking::addCorrectionTerms(StateIterator it)
 void Viking::integrateState_(StateIterator it)
 {
   ObserverBase::StateVector & newState = (*(it))();
+  newState = (*(it + 1))();
 
   Eigen::Ref<Vector3> x1_hat = newState.segment<sizeX1>(x1Index);
   Eigen::Ref<Vector3> x2_hat = newState.segment<sizeX2>(x2Index);
@@ -214,7 +215,6 @@ ObserverBase::StateVector Viking::oneStepEstimation_(StateIterator it)
   computeStateDynamics_(it);
   addCorrectionTerms(it);
   integrateState_(it);
-
   return (*(it))();
 }
 

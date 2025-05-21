@@ -33,7 +33,7 @@ struct AsynchronousInputViking : public AsynchronousDataBase
 {
 public:
   AsynchronousInputViking() {}
-  /// @brief constructor with the position and measurement orientation, and the associated correction gains.
+  /// @brief constructor with the position and orientation measurements, and the associated correction gains.
   /// @param pos position measurement.
   /// @param ori orientation measurement.
   /// @param mu gain associated with the linear velocity correction from the pose measurement.
@@ -44,18 +44,33 @@ public:
   {
     pos_ori_measurements_.push_back(PosOriMeas_Gain(pos, ori, mu, lambda, tau, eta));
   }
+  /// @brief constructor with an orientation measurement, and the associated correction gains.
+  /// @param ori orientation measurement.
+  /// @param lambda gain associated with the yaw correction from the orientation measurement.
+  /// @param tau gain associated with the tilt correction from the orientation measurement.
+  AsynchronousInputViking(const Matrix3 & ori, double lambda, double tau)
+  {
+    ori_measurements_.push_back(OriMeas_Gain(ori, lambda, tau));
+  }
+
   ~AsynchronousInputViking() {}
   inline void merge(const AsynchronousDataBase & input2) override
   {
     const AsynchronousInputViking & async_input2 = static_cast<const AsynchronousInputViking &>(input2);
     pos_ori_measurements_.insert(pos_ori_measurements_.end(), async_input2.pos_ori_measurements_.begin(),
                                  async_input2.pos_ori_measurements_.end());
+    ori_measurements_.insert(ori_measurements_.end(), async_input2.ori_measurements_.begin(),
+                             async_input2.ori_measurements_.end());
   }
 
   // position and orientation measurement, with associated gains mu, lambda, tau and eta.
   typedef std::tuple<Vector3, Matrix3, double, double, double, double> PosOriMeas_Gain;
 
+  // orientation measurement, with associated gains lambda and tau.
+  typedef std::tuple<Matrix3, double, double> OriMeas_Gain;
+
   std::vector<PosOriMeas_Gain> pos_ori_measurements_;
+  std::vector<OriMeas_Gain> ori_measurements_;
 };
 
 /**
@@ -149,12 +164,19 @@ public:
   /// @param eta gain associated with the position correction from the pose measurement.
   /// @param delay number of iterations ellapsed between the measurements acquisition and the current iteration.
   void addDelayedPosOriMeasurement(const Vector3 & posMeasurement,
-                                   const Matrix3 & meas,
+                                   const Matrix3 & oriMeasurement,
                                    double mu,
                                    double lambda,
                                    double tau,
                                    double eta,
                                    double delay);
+
+  /// @brief adds a delayed global orientation measurement to the correction
+  /// @param oriMeasurement measured orientation in the world
+  /// @param lambda gain associated with the yaw correction from the orientation measurement.
+  /// @param tau gain associated with the tilt correction from the orientation measurement.
+  /// @param delay number of iterations ellapsed between the measurements acquisition and the current iteration.
+  void addDelayedOriMeasurement(const Matrix3 & meas, double lambda, double tau, double delay);
 
   /// @brief adds a global pose measurement to the correction
   /// @param posMeasurement measured position in the world
@@ -169,6 +191,12 @@ public:
                             double lambda,
                             double tau,
                             double eta);
+
+  /// @brief adds a global pose measurement to the correction
+  /// @param oriMeasurement measured orientation in the world
+  /// @param lambda gain associated with the yaw correction from the orientation measurement.
+  /// @param tau gain associated with the tilt correction from the orientation measurement.
+  void addOriMeasurement(const Matrix3 & oriMeasurement, double lambda, double tau);
 
   /// set the gain of x1_hat variable
   void setAlpha(const double alpha)

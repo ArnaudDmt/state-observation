@@ -404,7 +404,7 @@ int testWithGyroBias(int errorcode, double threshold)
   return 0;
 }
 
-int testWithAsyncMeas(int errorcode, double threshold)
+int testWithAsyncPoseMeas(int errorcode, double threshold)
 {
   double simTime = 5.0000;
   double dt = 0.0001;
@@ -498,12 +498,125 @@ int testWithAsyncMeas(int errorcode, double threshold)
   return 0;
 }
 
+int testWithAsyncOriMeas(int errorcode, double threshold)
+{
+  double simTime = 20.0000;
+  double dt = 0.0001;
+  int nbIters = int(std::round(simTime / dt));
+
+  double err;
+  Viking viking(dt, 1, 1, 1, 3, 1, true);
+
+  Traj::Iteration & firstIter = traj.getFirstIter();
+
+  viking.initEstimator(firstIter.getYv(), firstIter.getX2(), Vector3::Zero(), firstIter.getOriQuat(),
+                       firstIter.getPos());
+
+  Vector3 gyroBias = Vector3::Random() / 1000;
+
+  // Open the CSV file for writing
+  std::ofstream file("/tmp/test.csv");
+
+  // Write the header row
+  file << "Iteration,EstimatedVelX,EstimatedVelY,EstimatedVelZ,SimulatedVelX,SimulatedVelY,SimulatedVelZ,EstimatedRoll,"
+          "EstimatedPitch,EstimatedYaw,SimulatedRoll,SimulatedPitch,SimulatedYaw,"
+          "EstimatedPosX,EstimatedPosY,EstimatedPosZ,SimulatedPosX,SimulatedPosY,SimulatedPosZ,EstimatedBiasX,"
+          "EstimatedBiasY,EstimatedBiasZ,SimulatedBiasX,SimulatedBiasY,SimulatedBiasZ\n";
+
+  for(int i = 0; i < nbIters; i++)
+  {
+    const Traj::Iteration & currentIter = traj.getIter(i * dt);
+
+    Vector3 yv = currentIter.getYv();
+    Vector3 ya = currentIter.getYa();
+    Vector3 yg = currentIter.getYg() + gyroBias;
+
+    viking.setInput(yv, ya, yg, i);
+
+    double delay = 0.0004;
+    if(i % 2 == 0 && (i * dt - delay) >= 0.0)
+    {
+      const Traj::Iteration & delayedIter = traj.getIter(i * dt - delay);
+
+      viking.addDelayedOriMeasurement(delayedIter.getOri(), 1, 1, delay);
+    }
+
+    viking.getEstimatedState(i + 1);
+
+    Eigen::VectorBlock<ObserverBase::StateVector, Viking::sizeX1> x1_hat = viking.getEstimatedLocLinVel();
+    Eigen::VectorBlock<ObserverBase::StateVector, Viking::sizeX2> x2_hat = viking.getEstimatedTilt();
+    Eigen::VectorBlock<ObserverBase::StateVector, Viking::sizeGyroBias> b_hat = viking.getEstimatedGyroBias();
+    Eigen::VectorBlock<ObserverBase::StateVector, Viking::sizeOri> q_hat = viking.getEstimatedOrientation();
+    Eigen::VectorBlock<ObserverBase::StateVector, Viking::sizePos> pl_hat = viking.getEstimatedLocPosition();
+
+    Orientation finalOri_hat;
+    finalOri_hat.fromVector4(q_hat);
+
+    // Write the data for this iteration to the CSV
+    file << i + 1 << "," << x1_hat[0] << "," << x1_hat[1] << "," << x1_hat[2] << "," << yv[0] << "," << yv[1] << ","
+         << yv[2] << "," << finalOri_hat.toRollPitchYaw()[0] << "," << finalOri_hat.toRollPitchYaw()[1] << ","
+         << finalOri_hat.toRollPitchYaw()[2] << "," << currentIter.getOrientation().toRollPitchYaw()[0] << ","
+         << currentIter.getOrientation().toRollPitchYaw()[1] << "," << currentIter.getOrientation().toRollPitchYaw()[2]
+         << "," << pl_hat[0] << "," << pl_hat[1] << "," << pl_hat[2] << "," << currentIter.getPl()[0] << ","
+         << currentIter.getPl()[1] << "," << currentIter.getPl()[2] << "," << b_hat[0] << "," << b_hat[1] << ","
+         << b_hat[2] << "," << gyroBias[0] << "," << gyroBias[1] << "," << gyroBias[2] << "\n";
+
+    if(i > 4 * nbIters / 5)
+    {
+      Matrix3 oriError = finalOri_hat.toMatrix3() * currentIter.getOri().transpose();
+      Vector3 oriErrorVector = kine::skewSymmetricToRotationVector(oriError - oriError.transpose()) / 2.0;
+
+      err = (x1_hat - currentIter.getYv()).squaredNorm();
+      if(err > threshold)
+      {
+        std::cout << std::endl << "The local velocity estimate is incorrect." << std::endl;
+        std::cout << std::endl << "Estimated: " << x1_hat.transpose() << std::endl;
+        std::cout << std::endl << "Simulated: " << currentIter.getYv().transpose() << std::endl;
+        return errorcode;
+      }
+
+      err = (x2_hat - currentIter.getX2()).squaredNorm();
+      if(err > threshold)
+      {
+        std::cout << std::endl << "The tilt estimate is incorrect." << std::endl;
+        std::cout << std::endl << "Estimated: " << x2_hat.transpose() << std::endl;
+        std::cout << std::endl << "Simulated: " << currentIter.getX2().transpose() << std::endl;
+
+        return errorcode;
+      }
+
+      err = (oriErrorVector).squaredNorm();
+      if(err > threshold)
+      {
+        std::cout << std::endl << "The orientation estimate is incorrect." << std::endl;
+        std::cout << std::endl << "Error vector: " << oriErrorVector.transpose() << std::endl;
+        std::cout << std::endl
+                  << "Estimated: " << kine::rotationMatrixToYawAxisAgnostic(finalOri_hat.toMatrix3()) << std::endl;
+        std::cout << std::endl
+                  << "Simulated: " << kine::rotationMatrixToYawAxisAgnostic(currentIter.getOri()) << std::endl;
+        return errorcode;
+      }
+
+      err = (pl_hat - currentIter.getPl()).squaredNorm();
+      if(err > 1e-3)
+      {
+        std::cout << std::endl << "The position estimate is incorrect." << std::endl;
+        std::cout << std::endl << "Estimated: " << pl_hat.transpose() << std::endl;
+        std::cout << std::endl << "Simulated: " << currentIter.getPl().transpose() << std::endl;
+        return errorcode;
+      }
+    }
+  }
+  file.close();
+  return 0;
+}
+
 int main()
 {
   int returnVal;
   int errorcode = 1;
 
-  traj.init(0.0001, 6);
+  traj.init(0.0001, 20);
 
   std::cout << "Starting testWithoutPosAndOriMeasurement" << std::endl;
   if((returnVal = testWithoutPosAndOriMeasurement(errorcode, 1e-6)))
@@ -544,18 +657,29 @@ int main()
   errorcode++;
   traj.reset();
 
-  std::cout << "Starting testWithAsyncMeas" << std::endl;
-  if((returnVal = testWithAsyncMeas(errorcode, 1e-6)))
+  std::cout << "Starting testWithAsyncPoseMeas" << std::endl;
+  if((returnVal = testWithAsyncPoseMeas(errorcode, 1e-6)))
   {
-    std::cout << "testWithAsyncMeas failed!" << errorcode << std::endl;
+    std::cout << "testWithAsyncPoseMeas failed!" << errorcode << std::endl;
     return returnVal;
   }
   else
   {
-    std::cout << "testWithAsyncMeas succeeded" << std::endl;
+    std::cout << "testWithAsyncPoseMeas succeeded" << std::endl;
   }
   errorcode++;
   traj.reset();
+
+  std::cout << "Starting testWithAsyncOriMeas" << std::endl;
+  if((returnVal = testWithAsyncOriMeas(errorcode, 1e-6)))
+  {
+    std::cout << "testWithAsyncOriMeas failed!" << errorcode << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "testWithAsyncOriMeas succeeded" << std::endl;
+  }
 
   std::cout << "Test Viking succeeded" << std::endl;
   return 0;

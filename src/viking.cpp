@@ -53,6 +53,14 @@ void Viking::addDelayedPosOriMeasurement(const Vector3 & pos,
   pushAsyncInput(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), measTime);
 }
 
+void Viking::addDelayedOriMeasurement(const Matrix3 & ori, double lambda, double tau, double delay)
+{
+  TimeIndex itersDelay = TimeIndex(std::round(delay / dt_));
+  TimeIndex measTime = getCurrentTime() - itersDelay;
+
+  pushAsyncInput(AsynchronousInputViking(ori, lambda, tau), measTime);
+}
+
 void Viking::addPosOriMeasurement(const Vector3 & pos,
                                   const Matrix3 & ori,
                                   double mu,
@@ -61,6 +69,11 @@ void Viking::addPosOriMeasurement(const Vector3 & pos,
                                   double eta)
 {
   pushAsyncInput(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), getCurrentTime());
+}
+
+void Viking::addOriMeasurement(const Matrix3 & ori, double lambda, double tau)
+{
+  pushAsyncInput(AsynchronousInputViking(ori, lambda, tau), getCurrentTime());
 }
 
 ObserverBase::StateVector & Viking::computeStateDynamics_(StateIterator it)
@@ -155,6 +168,24 @@ void Viking::addCorrectionTerms(StateIterator it)
     w_l += lambda * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ() * Vector3::UnitZ().transpose()
            * R_tilde_vec;
     v_l += eta * (meas_pl - pl_hat);
+  }
+  for(auto & [oriMeas, lambda, tau] : async_input.ori_measurements_)
+  {
+    Vector3 meas_tilt = oriMeas.transpose() * Vector3::UnitZ();
+    Matrix3 R_tilde = oriMeas * state_kine_.orientation.toMatrix3().transpose();
+    Vector3 R_tilde_vec = kine::skewSymmetricToRotationVector(R_tilde - R_tilde.transpose()) / 2.0;
+
+    x2_hat_dot += tau * (meas_tilt - x2_hat);
+    if(withGyroBias_)
+    {
+      // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
+      // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
+      b_hat_dot += cst::gravityConstant * rho_ / beta_ * x2_hat.cross(meas_tilt)
+                   - cst::gravityConstant / 4.0 * rho_ * tau * std::min(gamma_, lambda) / beta_
+                         * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec;
+    }
+    w_l += lambda * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ() * Vector3::UnitZ().transpose()
+           * R_tilde_vec;
   }
 }
 

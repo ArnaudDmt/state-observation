@@ -512,7 +512,7 @@ int testWithAsyncOriMeas(int errorcode, double threshold)
   viking.initEstimator(firstIter.getYv(), firstIter.getX2(), Vector3::Zero(), firstIter.getOriQuat(),
                        firstIter.getPos());
 
-  Vector3 gyroBias = Vector3::Random() / 1000;
+  Vector3 gyroBias = Vector3::Random() / 100;
 
   // Open the CSV file for writing
   std::ofstream file("/tmp/test.csv");

@@ -47,18 +47,42 @@ void Viking::addDelayedPosOriMeasurement(const Vector3 & pos,
                                          double eta,
                                          double delay)
 {
-  TimeIndex itersDelay = TimeIndex(std::round(delay / dt_));
-  TimeIndex measTime = getCurrentTime() - itersDelay;
+  // we start from the latest iteration then lookbackwards for the iteration such that the cumulated dt is the closest
+  // to delay
+  StateIterator prevIter = xBuffer_.begin();
+  StateIterator currentIter = prevIter;
+  double time_interval = 0.0;
+  double prev_time_interval = 0.0;
+  Index measIndex;
 
-  pushAsyncInput(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), measTime);
+  BOOST_ASSERT(false && "FIX THIS");
+
+  while(time_interval < delay)
+  {
+    prevIter = currentIter;
+    currentIter += 1;
+    prev_time_interval = time_interval;
+    time_interval += convert_input<VikingInput>((*u_)[prevIter->getTime()]).dt_;
+  }
+  if(delay - prev_time_interval < time_interval - delay)
+  {
+    measIndex = prevIter->getTime();
+  }
+  else
+  {
+    measIndex = currentIter->getTime();
+  }
+
+  pushAsyncInput(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), measIndex);
 }
 
 void Viking::addDelayedOriMeasurement(const Matrix3 & ori, double lambda, double tau, double delay)
 {
-  TimeIndex itersDelay = TimeIndex(std::round(delay / dt_));
-  TimeIndex measTime = getCurrentTime() - itersDelay;
+  BOOST_ASSERT(false && "FIX THIS");
+  // TimeIndex itersDelay = TimeIndex(std::round(delay / dt));
+  // TimeIndex measTime = getCurrentTime() - itersDelay;
 
-  pushAsyncInput(AsynchronousInputViking(ori, lambda, tau), measTime);
+  // pushAsyncInput(AsynchronousInputViking(ori, lambda, tau), measTime);
 }
 
 void Viking::addPosOriMeasurement(const Vector3 & pos,
@@ -191,8 +215,9 @@ void Viking::addCorrectionTerms(StateIterator it)
 
 void Viking::integrateState_(StateIterator it)
 {
-  ObserverBase::StateVector & newState = (*(it))();
-  newState = (*(it + 1))();
+  StateIterator prevIter = it + 1;
+  ObserverBase::StateVector & newState = (*prevIter)();
+  const VikingInput & synced_Input = convert_input<VikingInput>((*u_)[prevIter->getTime()]);
 
   Eigen::Ref<Vector3> x1_hat = newState.segment<sizeX1>(x1Index);
   Eigen::Ref<Vector3> x2_hat = newState.segment<sizeX2>(x2Index);
@@ -207,18 +232,18 @@ void Viking::integrateState_(StateIterator it)
   const auto & v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
 
   // discrete-time integration of x1_hat, x2_hat and b_hat
-  x1_hat += x1_hat_dot * dt_;
-  x2_hat += x2_hat_dot * dt_;
-  b_hat += b_hat_dot * dt_;
-  pl_hat += v_l * dt_;
+  double dt = synced_Input.dt_;
+  x1_hat += x1_hat_dot * dt;
+  x2_hat += x2_hat_dot * dt;
+  b_hat += b_hat_dot * dt;
+  pl_hat += v_l * dt;
 
   // discrete-time integration of p and R
   state_kine_.linVel = v_l;
   state_kine_.angVel = w_l;
 
-  state_kine_.orientation.integrateRightSide(w_l * dt_);
+  state_kine_.orientation.integrateRightSide(w_l * dt);
   state_kine_.position = pl_hat;
-  // state_kine_.SE3_integration(dt_);
 
   newState.segment<sizeOri>(oriIndex) = state_kine_.orientation.toVector4();
   newState.segment<sizePos>(posIndex) = state_kine_.position();

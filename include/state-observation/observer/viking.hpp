@@ -27,6 +27,8 @@ public:
   Vector3 ya_k;
   // gyrometer measurement
   Vector3 yg_k;
+  // timestep
+  double dt_;
 };
 
 struct AsynchronousInputViking : public AsynchronousDataBase

@@ -5,3 +5,4 @@ macro(ADD_CSV_READER name)
 endmacro()
 
 ADD_CSV_READER(tilt-estimator-csv-reader)
+ADD_CSV_READER(viking_txt_reader_panoramis)

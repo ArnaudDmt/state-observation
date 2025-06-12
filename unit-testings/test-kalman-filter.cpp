@@ -7,7 +7,6 @@
 #include <algorithm>
 
 #include <bitset>
-#include <iomanip>
 
 #include <state-observation/observer/extended-kalman-filter.hpp>
 #include <state-observation/observer/linear-kalman-filter.hpp>

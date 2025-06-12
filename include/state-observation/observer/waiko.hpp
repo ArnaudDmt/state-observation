@@ -26,7 +26,13 @@ struct InputWaiko : public InputBase
   // orientation, respectively.
   typedef std::tuple<Vector6, double, double> ContactPosMeas_Gains;
 
-  // orientation measurements from contacts
+  // local linear velocity measurement
+  Vector3 yv;
+  // accelerometer measurement
+  Vector3 ya;
+  // gyrometer measurement
+  Vector3 yg;
+  // orientation measurements
   std::vector<OriMeas_Gain> ori_measurements_;
   // position measurements from contacts = posMeasurement (in the world) << imuContactPos
   std::vector<ContactPosMeas_Gains> pos_measurements_from_contact_;
@@ -72,13 +78,13 @@ public:
   /// @param k
   /// @param resetImuLocVelHat Resets x1hat (the estimate of the local linear velocity of the IMU in the world). Avoid
   /// discontinuities when the computation mode of the anchor point changes
-  void setMeasurement(const Vector3 & yv_k,
-                      const Vector3 & ya_k,
-                      const Vector3 & yg_k,
-                      TimeIndex k,
-                      bool resetImuLocVelHat = false);
+  void setInput(const Vector3 & yv_k,
+                const Vector3 & ya_k,
+                const Vector3 & yg_k,
+                TimeIndex k,
+                bool resetImuLocVelHat = false);
 
-  using DelayedMeasurementObserver::setMeasurement;
+  using DelayedMeasurementObserver::setInput;
 
   /// @brief adds the correction from a direct measurement of the IMU's frame orientation.
   /// @param meas measured orientation of the IMU's frame in the world
@@ -134,14 +140,15 @@ protected:
   /// @brief Computes the dynamics of the state at the desired iteration.
   /// @details Computes x^{dot}_{k-1}
   /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
-  StateVector computeStateDynamics_(StateIterator it) override;
+  StateVector & computeStateDynamics_(StateIterator it) override;
 
   /// @brief Integrates the computed state dynamics
   /// @details Computes x_{k} = x_{k-1} + x^{dot}_{k-1} * dt
   /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
-  void integrateState_(StateIterator it, const Vector & dx_hat) override;
+  void integrateState_(StateIterator it) override;
 
   /// @brief Computes the correction terms, used to compute the state dynamics in \ref computeStateDerivatives_
+  /// @param it Iterator that points to the updated state. Points to x_{k} = f(x_{k-1}, u_{k-1})
   void computeCorrectionTerms(StateIterator it);
   void startNewIteration_() override;
 

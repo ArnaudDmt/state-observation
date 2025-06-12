@@ -1084,7 +1084,7 @@ inline KinematicsInternal<T>::KinematicsInternal(const CheckedVector3 & position
 template<class T>
 inline T KinematicsInternal<T>::zeroKinematics(typename KinematicsInternal::Flags::Byte flags)
 {
-  Kinematics kine;
+  T kine;
   kine.setZero(flags);
   return kine;
 }
@@ -1489,7 +1489,7 @@ inline const Kinematics & Kinematics::integrate(double dt)
   }
 
   /** AngVel update */
-  if((areSet & (AngVel | AngAcc)) != 0)
+  if((areSet & (AngVel | AngAcc)) == (AngVel | AngAcc))
   {
     angVel() += angAcc() * dt;
   }
@@ -2344,7 +2344,7 @@ inline const LocalKinematics & LocalKinematics::SE3_integration(double dt)
       break;
   };
   /** Angular velocity */
-  if((areSet & (AngVel | AngAcc)) != 0)
+  if((areSet & (AngVel | AngAcc)) == (AngVel | AngAcc))
   {
     angVel() += angAcc() * dt;
   }
@@ -2429,7 +2429,7 @@ inline const LocalKinematics & LocalKinematics::integrate(double dt)
       break;
   };
   /** Angular velocity */
-  if((areSet & (AngVel | AngAcc)) != 0)
+  if((areSet & (AngVel | AngAcc)) == (AngVel | AngAcc))
   {
     angVel() += angAcc() * dt;
   }
@@ -2781,9 +2781,9 @@ inline const LocalKinematics & LocalKinematics::update(const LocalKinematics & n
 
         else /// velocity is not available
         {
-          BOOST_ASSERT(
-              (computAngVel && computAngAcc)
-              && "The linear accleration requires the angular velocity and the angular acceleration to be computable");
+          BOOST_ASSERT((computAngVel && computAngAcc)
+                       && "The linear accleration requires the angular velocity and the angular acceleration to be "
+                          "computable");
           BOOST_ASSERT((thisLinPos.isSet() && computPos)
                        && "The linear accleration cannot be updated with so few information");
           if(thisLinPos.isSet() && computPos && posMethod != useLinVelAndAcc && posMethod != useLinAcceleration

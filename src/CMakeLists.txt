@@ -19,6 +19,7 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-observer.hxx
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-complem-filter.hpp
     ${PROJECT_INCLUDE_DIR}/observer/waiko.hpp
+    ${PROJECT_INCLUDE_DIR}/observer/waiko-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/viking.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator-humanoid.hpp
@@ -81,6 +82,7 @@ set(HEADERS
 
 set(SRC
     waiko.cpp
+    waiko-humanoid.cpp
     viking.cpp
     delayed-measurements-observer.cpp
     tilt-estimator.cpp

@@ -1,7 +1,6 @@
-#pragma once
-#include <state-observation/tools/measurements-manager/ContactsManager.hpp>
-
-namespace stateObservation::measurements
+namespace stateObservation
+{
+namespace measurements
 {
 ///////////////////////////////////////////////////////////////////////
 /// ------------------------------Contacts-----------------------------
@@ -9,7 +8,7 @@ namespace stateObservation::measurements
 
 template<typename ContactT>
 template<typename OnNewContact, typename OnMaintainedContact, typename OnRemovedContact, typename OnAddedContact>
-void ContactsManager<ContactT>::updateContacts(std::set<std::string> & latestContactList,
+void ContactsManager<ContactT>::updateContacts(std::unordered_set<std::string> & latestContactList,
                                                OnNewContact onNewContact,
                                                OnMaintainedContact onMaintainedContact,
                                                OnRemovedContact onRemovedContact,
@@ -24,7 +23,7 @@ void ContactsManager<ContactT>::updateContacts(std::set<std::string> & latestCon
     contactsDetected_ = true;
     contact.isSet(true);
 
-    if(currentContactsList_.find(contact.id()) != currentContactsList_.end())
+    if(currentContactsList_.find(contactName) != currentContactsList_.end())
     {
       onMaintainedContact(contact);
     }
@@ -75,5 +74,5 @@ inline ContactT & ContactsManager<ContactT>::addContactToManager(const std::stri
 
   return contact;
 }
-
-} // namespace stateObservation::measurements
+} // namespace measurements
+} // namespace stateObservation

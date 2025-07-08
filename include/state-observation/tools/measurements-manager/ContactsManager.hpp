@@ -1,17 +1,20 @@
-#pragma once
-#include <set>
+#ifndef CONTACTSMANAGERHPP
+#define CONTACTSMANAGERHPP
+#include <state-observation/api.h>
 #include <state-observation/tools/measurements-manager/Contact.hpp>
+#include <unordered_set>
 
-namespace stateObservation::measurements
+namespace stateObservation
 {
-
+namespace measurements
+{
 /// @brief Structure that implements all the necessary functions to manage the map of contacts. Handles their detection
 /// and updates the list of the detected contacts, newly removed contacts, etc., to apply the appropriate functions on
 /// them.
 /// @details The template allows to define other kinds of contacts and thus add custom parameters to them.
 /// @tparam ContactT Contact, associated to a sensor.
 template<typename ContactT>
-struct ContactsManager
+struct STATE_OBSERVATION_DLLAPI ContactsManager
 {
 
 protected:
@@ -37,7 +40,7 @@ public:
            typename OnMaintainedContact,
            typename OnRemovedContact,
            typename OnAddedContact = std::nullptr_t>
-  void updateContacts(std::set<std::string> & latestContactList,
+  void updateContacts(std::unordered_set<std::string> & latestContactList,
                       OnNewContact onNewContact,
                       OnMaintainedContact onMaintainedContact,
                       OnRemovedContact onRemovedContact,
@@ -77,13 +80,16 @@ protected:
   std::unordered_map<std::string, ContactT> listContacts_;
 
   // vector containing the name of all the currently set contacts
-  std::set<std::string> currentContactsList_;
+  std::unordered_set<std::string> currentContactsList_;
 
   // Index generator, incremented everytime a new contact is created
   unsigned idx_ = 0;
   /** True if any contact is detected, false otherwise */
   bool contactsDetected_ = false;
 };
-} // namespace stateObservation::measurements
+} // namespace measurements
+} // namespace stateObservation
 
-#include <state-observation/tools/measurements-manager/ContactsManager.hpp>
+#include <state-observation/tools/measurements-manager/ContactsManager.hxx>
+
+#endif // CONTACTSMANAGERHPP

@@ -1,8 +1,10 @@
-#pragma once
+#ifndef SENSORHPP
+#define SENSORHPP
 #include <string>
-namespace stateObservation::measurements
+namespace stateObservation
 {
-
+namespace measurements
+{
 /**
  * Object making easier the handling of sensors within the observers.
  **/
@@ -34,4 +36,6 @@ protected:
   int id_;
   std::string name_;
 };
-} // namespace stateObservation::measurements
+} // namespace measurements
+} // namespace stateObservation
+#endif // SENSORHPP

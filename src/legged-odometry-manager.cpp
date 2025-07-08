@@ -1,4 +1,3 @@
-#include <iostream>
 #include <state-observation/tools/odometry/legged-odometry-manager.hpp>
 namespace stateObservation::odometry
 {
@@ -7,9 +6,7 @@ namespace stateObservation::odometry
 /// -------------------------Legged Odometry---------------------------
 ///////////////////////////////////////////////////////////////////////
 
-void LeggedOdometryManager::init(const Configuration & odomConfig,
-                                 const Vector7 & initPose,
-                                 const Kinematics & worldAnchorKine)
+void LeggedOdometryManager::init(const Configuration & odomConfig, const Vector7 & initPose)
 
 {
   odometryType_ = odomConfig.odometryType_;
@@ -18,18 +15,10 @@ void LeggedOdometryManager::init(const Configuration & odomConfig,
 
   fbKine_.position = initPose.segment(0, 3);
   fbKine_.orientation.fromVector4(initPose.segment(3, 4));
-
-  worldRefAnchorPosition_ = worldAnchorKine.position();
-  worldAnchorPos_ = worldAnchorKine.position();
-
-  fbAnchorPos_ = -fbKine_.orientation.toMatrix3().transpose() * fbKine_.position()
-                 + fbKine_.orientation.toMatrix3() * worldAnchorPos_;
 }
 
 void LeggedOdometryManager::run(KineParams & kineParams)
 {
-  std::cout << std::endl << "k_data: " << k_data_ << std::endl;
-  std::cout << std::endl << "k_est_: " << k_est_ << std::endl;
   BOOST_ASSERT_MSG(k_data_ != k_est_, "Please call initLoop before this function");
   BOOST_ASSERT_MSG(kineParams.tiltOrAttitudeMeas != nullptr, "Need a full orientation or at least a tilt estimate.");
 
@@ -37,7 +26,7 @@ void LeggedOdometryManager::run(KineParams & kineParams)
   updateFbAndContacts(kineParams);
 
   // updates the floating base kinematics in the observer
-  updateFbKinematicsPvt(kineParams.kineToUpdate);
+  updateFbKinematicsPvt(*kineParams.kineToUpdate);
 
   k_est_ = k_iter_;
 }
@@ -123,7 +112,10 @@ void LeggedOdometryManager::updateFbAndContacts(const KineParams & params)
   else
   {
     /*   if we can update the position, we compute the weighted average of the position obtained from the contacts    */
-    fbKine_.position = getWorldFbPosFromAnchor();
+    if(!maintainedContacts_.empty())
+    {
+      fbKine_.position = getWorldFbPosFromAnchor();
+    }
   }
 
   // we correct the reference position of the contacts in the world
@@ -202,7 +194,6 @@ Vector3 LeggedOdometryManager::getWorldFbPosFromAnchor()
   {
     fbAnchorPos_ += mContact->contactFbKine_.getInverse().position() * mContact->lambda();
   }
-
   worldFbPosFromAnchor = getWorldRefAnchorPos() - fbKine_.orientation * fbAnchorPos_;
 
   return worldFbPosFromAnchor;
@@ -356,7 +347,7 @@ const Vector3 & LeggedOdometryManager::getWorldRefAnchorPos()
     return worldRefAnchorPosition_;
   }
 
-  // "force-weighted" sum of the estimated floating base positions
+  // weighted sum of the estimated floating base positions
   worldRefAnchorPosition_.setZero();
 
   // checks that the position and orientation can be updated from the currently set contacts and computes the pose of
@@ -364,7 +355,6 @@ const Vector3 & LeggedOdometryManager::getWorldRefAnchorPos()
   for(auto * mContact : maintainedContacts_)
   {
     const Kinematics & worldContactRefKine = mContact->worldRefKine_;
-
     // force weighted sum of the estimated floating base positions
     worldRefAnchorPosition_ += worldContactRefKine.position() * mContact->lambda();
   }

@@ -59,7 +59,7 @@ int testLeggedOdometry(int errorcode)
   stateObservation::odometry::LeggedOdometryManager odometryManager_(dt); // manager for the legged odometry
 
   odometry::LeggedOdometryManager::Configuration odomConfig(measurements::stringToOdometryType("6D"));
-  odometryManager_.init(odomConfig, traj.kine);
+  odometryManager_.init(odomConfig, traj.kine.toVector(Kinematics::Flags::pose));
 
   Kinematics kine;
   kine.position = Vector3(0.0, 0.0, 0.8);
@@ -71,14 +71,19 @@ int testLeggedOdometry(int errorcode)
     stateObservation::odometry::LeggedOdometryManager::ContactInputData test(zeroKine, 1.0);
 
     std::unordered_map<std::string, stateObservation::odometry::LeggedOdometryManager::ContactInputData> contactData;
-    contactData.insert({"Contact1", test});
-    contactData.insert({"Contact2", test});
-    odometryManager_.replaceRobotPose(odometry::Vector7::Zero());
+    if(i % 2 == 0)
+    {
+      contactData.insert({"Contact1", test});
+    }
+    else
+    {
+      contactData.insert({"Contact2", test});
+    }
+
     odometryManager_.initLoop(stateObservation::odometry::LeggedOdometryManager::ContactUpdateParameters(contactData));
 
-    odometry::Vector7 pose = kine.toVector(kine::Kinematics::Flags::pose);
     odometryManager_.run(
-        odometry::LeggedOdometryManager::KineParams(pose).attitudeMeas(traj.kine.orientation.toMatrix3()));
+        odometry::LeggedOdometryManager::KineParams(kine).attitudeMeas(traj.kine.orientation.toMatrix3()));
   }
 
   return 0;

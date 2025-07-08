@@ -41,6 +41,7 @@ void LeggedOdometryManager::updateContacts(const ContactUpdateParameters<OnNewCo
   {
     newContacts_.push_back(&newContact);
     newContact.contactFbKine_ = contactParams.contactData_.at(newContact.name()).contactFbKine_;
+    newContact.lambda(contactParams.contactData_.at(newContact.name()).lambda_);
     if constexpr(!std::is_same_v<OnNewContactObserver, std::nullptr_t>)
     {
       (*contactParams.onNewContactFn)(newContact);
@@ -51,6 +52,7 @@ void LeggedOdometryManager::updateContacts(const ContactUpdateParameters<OnNewCo
   {
     maintainedContacts_.push_back(&maintainedContact);
     maintainedContact.contactFbKine_ = contactParams.contactData_.at(maintainedContact.name()).contactFbKine_;
+    maintainedContact.lambda(contactParams.contactData_.at(maintainedContact.name()).lambda_);
     maintainedContact.lifeTimeIncrement(ctl_dt_);
 
     maintainedContact.worldFbKineFromRef_ = maintainedContact.worldRefKine_ * maintainedContact.contactFbKine_;
@@ -60,6 +62,7 @@ void LeggedOdometryManager::updateContacts(const ContactUpdateParameters<OnNewCo
       (*contactParams.onMaintainedContactFn)(maintainedContact);
     }
 
+    sumLambdas_position += maintainedContact.lambda();
     posUpdatable_ = true;
   };
 

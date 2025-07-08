@@ -143,21 +143,20 @@ public:
 
     static KineParams fromOther(const KineParams & other)
     {
-      KineParams out(other.kineToUpdate.toVector(Kinematics::Flags::pose));
+      KineParams out(*other.kineToUpdate);
       out.oriIsAttitude = other.oriIsAttitude;
       out.tiltOrAttitudeMeas = other.tiltOrAttitudeMeas;
       return out;
     }
 
-    explicit KineParams(const Vector7 & pose)
+    explicit KineParams(Kinematics & pose)
     {
-      kineToUpdate.position = pose.segment(0, 3);
-      kineToUpdate.orientation.fromVector4(pose.segment(3, 4));
+      kineToUpdate = &pose;
     }
 
     /* Variables to update */
     // Kinematics of the floating base of the robot in the world that we want to update with the odometry.
-    Kinematics kineToUpdate;
+    Kinematics * kineToUpdate;
     /* Inputs */
 
     // Input position of the floating base in the world, used to perform the
@@ -394,8 +393,7 @@ public:
   /// @brief Initializer for the odometry manager.
   /// @param odomConfig Desired configuration of the odometry
   /// @param initPose Initial pose of the floating base
-  /// @param worldAnchorKine Kinematics of the anchor frame in the world frame
-  void init(const Configuration & odomConfig, const Vector7 & initPose, const Kinematics & worldAnchorKine);
+  void init(const Configuration & odomConfig, const Vector7 & initPose);
 
   /// @brief Function that initializes the loop of the legged odometry. To be called at the beginning of each iteration.
   /// @details Updates the joints configuration, the contacts, and sets the velocity and acceleration of the odometry
@@ -540,8 +538,6 @@ protected:
   // Indicates if the reference pose of the contacts must be corrected at the end of each iteration.
   bool correctContacts_ = true;
 
-  // position of the anchor point of the robot in the world
-  stateObservation::Vector3 worldAnchorPos_;
   // position of the anchor point of the robot in the world, obtained from the contact references.
   stateObservation::Vector3 worldRefAnchorPosition_;
   // position of the anchor point in the frame of the floating base.

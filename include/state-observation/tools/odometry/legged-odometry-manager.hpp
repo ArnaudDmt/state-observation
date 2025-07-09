@@ -396,11 +396,9 @@ public:
   void init(const Configuration & odomConfig, const Vector7 & initPose);
 
   /// @brief Function that initializes the loop of the legged odometry. To be called at the beginning of each iteration.
-  /// @details Updates the joints configuration, the contacts, and sets the velocity and acceleration of the odometry
-  /// robot to zero as we internally compute only kinematics in frames attached to the robots. This function is
-  /// necessary because one can start computing the anchor point or using the run(const mc_control::MCController &, *
-  /// mc_rtc::Logger &, sva::PTransformd &, sva::MotionVecd &, sva::MotionVecd &) function, that require these updates.
-  /// @param runParams Functions called when creating/upadting/breaking contacts.
+  /// @details Updates the the contacts, and sets the velocity and acceleration of the odometry if necessary.
+  /// @param linVel linear velocity of the floating base in the world.
+  /// @param angVel angular velocity of the floating base in the world.
   template<typename OnNewContactObserver = std::nullptr_t,
            typename OnMaintainedContactObserver = std::nullptr_t,
            typename OnRemovedContactObserver = std::nullptr_t,
@@ -408,7 +406,9 @@ public:
   void initLoop(const ContactUpdateParameters<OnNewContactObserver,
                                               OnMaintainedContactObserver,
                                               OnRemovedContactObserver,
-                                              OnAddedContactObserver> & runParams);
+                                              OnAddedContactObserver> & runParams,
+                const Vector3 * linVel = nullptr,
+                const Vector3 * angVel = nullptr);
 
   /// @brief Function that runs the legged odometry loop. Using the input orientation and the current contacts, it
   /// estimates the new state of the robot.
@@ -475,9 +475,6 @@ private:
   /// @param runParams Parameters used to run the legged odometry.
   void updateFbAndContacts(const KineParams & params);
 
-  /// @brief Updates the velocity of the floating base.
-  void updateFbVelocity(const Vector3 & linVel, Vector3 * angVel = nullptr);
-
   /// @brief Updates the position of the floating base in the world.
   /// @details For each maintained contact, we compute the position of the floating base in the contact frame, we
   /// then compute their weighted average and obtain the estimated translation from the anchor point to the floating
@@ -518,9 +515,12 @@ protected:
 
   // contacts manager used by this odometry manager
   LeggedOdometryContactsManager contactsManager_;
+
+public:
   // tracked kinematics of the floating base
   Kinematics fbKine_;
 
+protected:
   // contacts created on the current iteration
   std::vector<LoContact *> newContacts_;
   // contacts maintained during the current iteration

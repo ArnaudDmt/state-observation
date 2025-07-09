@@ -10,12 +10,21 @@ template<typename OnNewContactObserver,
 void LeggedOdometryManager::initLoop(const ContactUpdateParameters<OnNewContactObserver,
                                                                    OnMaintainedContactObserver,
                                                                    OnRemovedContactObserver,
-                                                                   OnAddedContactObserver> & contactParams)
+                                                                   OnAddedContactObserver> & contactParams,
+                                     const Vector3 * linVel,
+                                     const Vector3 * angVel)
 {
   k_iter_++;
-
   updateContacts(contactParams);
 
+  if(linVel != nullptr)
+  {
+    fbKine_.linVel = *linVel;
+  }
+  if(angVel != nullptr)
+  {
+    fbKine_.angVel = *angVel;
+  }
   k_data_ = k_iter_;
 }
 

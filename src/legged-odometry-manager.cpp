@@ -7,7 +7,6 @@ namespace stateObservation::odometry
 ///////////////////////////////////////////////////////////////////////
 
 void LeggedOdometryManager::init(const Configuration & odomConfig, const Vector7 & initPose)
-
 {
   odometryType_ = odomConfig.odometryType_;
   withYawEstimation_ = odomConfig.withYaw_;
@@ -132,15 +131,6 @@ void LeggedOdometryManager::updateFbAndContacts(const KineParams & params)
   }
 }
 
-void LeggedOdometryManager::updateFbVelocity(const Vector3 & linVel, Vector3 * angVel)
-{
-  fbKine_.linVel = linVel;
-  if(angVel)
-  {
-    fbKine_.angVel = angVel;
-  }
-}
-
 void LeggedOdometryManager::selectForOrientationOdometry(bool & oriUpdatable, double & sumLambdas)
 {
   // we cannot update the orientation if no contact was set on last iteration
@@ -231,7 +221,6 @@ const Kinematics & LeggedOdometryManager::getContactKinematics(LoContact & conta
   {
     contact.currentWorldKine_ = fbKine_ * contact.contactFbKine_.getInverse();
   };
-
   return contact.currentWorldKine_;
 }
 
@@ -283,9 +272,10 @@ Kinematics LeggedOdometryManager::getAnchorKineIn(Kinematics & worldTargetKine)
 
   if(worldTargetKine.linVel.isSet())
   {
-    BOOST_ASSERT_MSG(fbKine_.linVel.isSet(),
-                     "The velocity of the anchor frame cannot be computed without the velocity of the "
-                     "floating base. Please make sure to use updateFbVelocity().");
+    BOOST_ASSERT_MSG(
+        fbKine_.linVel.isSet() && fbKine_.angVel.isSet(),
+        "The velocity of the anchor frame cannot be computed without the linear and angular velocities of the "
+        "floating base. Please add them to initLoop().");
     targetAnchorKine.linVel.set().setZero();
   }
 
@@ -295,6 +285,10 @@ Kinematics LeggedOdometryManager::getAnchorKineIn(Kinematics & worldTargetKine)
     targetAnchorKine.position() += targetContactKine.position() * mContact->lambda();
     if(targetContactKine.linVel.isSet())
     {
+      BOOST_ASSERT_MSG(targetContactKine.linVel.isSet(),
+                       "The velocity of the contact in the target frame cannot be computed. "
+                       "Please add the velocity of the contact to contactFbKine_.");
+
       targetAnchorKine.linVel() += targetContactKine.linVel() * mContact->lambda();
     }
   }

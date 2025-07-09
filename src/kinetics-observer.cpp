@@ -686,6 +686,60 @@ void KineticsObserver::convertWrenchFromCentroidToUser(const Vector3 & forceCent
   momentUserFrame = momentCentroidFrame + com_().cross(forceCentroidFrame);
 }
 
+void KineticsObserver::getOdometryWorldContactRest_(const Vector3 & contactForceMeas,
+                                                    const Vector3 & contactTorqueMeas,
+                                                    const Matrix3 & linStiffness,
+                                                    const Matrix3 & linDamping,
+                                                    const Matrix3 & angStiffness,
+                                                    const Matrix3 & angDamping,
+                                                    bool flatOdometry,
+                                                    Kinematics & worldContactKine)
+{
+  // we get the kinematics of the contact in the real world from the ones of the centroid estimated by the Kinetics
+  // Observer. These kinematics are not the reference kinematics of the contact as they are affected by the contact
+  // flexibility. We remove it using the viscoelastic model.
+
+  worldContactKine.position =
+      worldContactKine.orientation.toMatrix3() * linStiffness.inverse()
+          * (contactForceMeas
+             + worldContactKine.orientation.toMatrix3().transpose() * linDamping * worldContactKine.linVel())
+      + worldContactKine.position();
+
+  /* We get the reference orientation of the contact by removing the contribution of the visco-elastic model */
+  // difference between the reference orientation and the real one, obtained from the visco-elastic model
+  Vector3 flexRotDiff =
+      -2 * worldContactKine.orientation.toMatrix3() * angStiffness.inverse()
+      * (contactTorqueMeas
+         + worldContactKine.orientation.toMatrix3().transpose() * angDamping * worldContactKine.angVel());
+
+  // axis of the rotation
+  Vector3 flexRotAxis = flexRotDiff / flexRotDiff.norm();
+
+  double diffNorm = flexRotDiff.norm() / 2;
+
+  if(diffNorm > 1.0)
+  {
+    diffNorm = 1.0;
+  }
+  else if(diffNorm < -1.0)
+  {
+    diffNorm = -1.0;
+  }
+
+  double flexRotAngle = std::asin(diffNorm);
+
+  // angle axis representation of the rotation due to the visco-elastic model
+  Eigen::AngleAxisd flexRotAngleAxis(flexRotAngle, flexRotAxis);
+  // matrix representation of the rotation due to the visco-elastic model
+  Matrix3 flexRotMatrix = kine::Orientation(flexRotAngleAxis).toMatrix3();
+  worldContactKine.orientation = Matrix3(flexRotMatrix.transpose() * worldContactKine.orientation.toMatrix3());
+
+  if(flatOdometry)
+  {
+    worldContactKine.position()(2) = 0.0;
+  }
+}
+
 void KineticsObserver::setWithUnmodeledWrench(bool b)
 {
   withUnmodeledWrench_ = b;
@@ -1229,6 +1283,24 @@ void KineticsObserver::setCoMAngularMomentum(const Vector3 & sigma)
     sigmad_.set(tools::derivate(sigma_(), sigma, dt_ * double(k_data_ - sigma_.getTime())), k_data_);
   }
   sigma_.set(sigma, k_data_);
+}
+
+Index KineticsObserver::addContact(Kinematics & worldContactKine,
+                                   const Matrix12 & initialCovarianceMatrix,
+                                   const Matrix12 & processCovarianceMatrix,
+                                   Index contactNumber,
+                                   const Matrix3 & linStiffness,
+                                   const Matrix3 & linDamping,
+                                   const Matrix3 & angStiffness,
+                                   const Matrix3 & angDamping,
+                                   const Vector3 & contactForceMeas,
+                                   const Vector3 & contactTorqueMeas,
+                                   bool flatOdometry)
+{
+  getOdometryWorldContactRest_(contactForceMeas, contactTorqueMeas, linStiffness, linDamping, angStiffness, angDamping,
+                               flatOdometry, worldContactKine);
+  return addContact(worldContactKine, initialCovarianceMatrix, processCovarianceMatrix, contactNumber, linStiffness,
+                    linDamping, angStiffness, angDamping);
 }
 
 Index KineticsObserver::addContact(const Kinematics & worldContactRefKine,

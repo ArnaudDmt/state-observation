@@ -40,7 +40,7 @@ public:
            typename OnMaintainedContact,
            typename OnRemovedContact,
            typename OnAddedContact = std::nullptr_t>
-  void updateContacts(std::unordered_set<std::string> & latestContactList,
+  void updateContacts(const std::unordered_set<std::string> & latestContactList,
                       OnNewContact onNewContact,
                       OnMaintainedContact onMaintainedContact,
                       OnRemovedContact onRemovedContact,

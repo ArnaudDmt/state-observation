@@ -91,7 +91,6 @@ public:
   // kinematics of the frame of the floating base in the frame of the contact, obtained by forward kinematics.
   Kinematics contactFbKine_;
 
-protected:
   // weighing coefficient for the anchor point computation
   double lambda_;
   // time ellapsed since the creation of the contact.
@@ -114,7 +113,7 @@ public:
 
     /// @var Kinematics & pose /* Pose of the floating base of the robot in the world that we want to update with
     /// the odometry */
-    /// @var bool oriIsAttitude /* Informs if the rotation matrix ContactUpdateParameters#tiltOrAttitude stored in this
+    /// @var bool oriIsAttitude /* Informs if the rotation matrix ContactUpdateFunctions#tiltOrAttitude stored in this
     /// structure is a tilt or an attitude (full orientation). */
     /// @var Eigen::Matrix3d* tiltOrAttitude /* Input orientation of the floating base in the world, used to perform the
     /// legged odometry. If only a tilt is provided, the yaw will come from the yaw of the contacts. */
@@ -162,7 +161,7 @@ public:
     // Input position of the floating base in the world, used to perform the
     // legged odometry.
     const Eigen::Vector3d * worldPosMeas = nullptr;
-    // Informs if the rotation matrix ContactUpdateParameters#tiltOrAttitude stored in this structure
+    // Informs if the rotation matrix tiltOrAttitude stored in this structure
     // is a tilt or an attitude (full orientation).
     bool oriIsAttitude = false;
     // Input orientation of the floating base in the world, used to perform the
@@ -184,7 +183,7 @@ public:
            typename OnMaintainedContactObserver = std::nullptr_t,
            typename OnRemovedContactObserver = std::nullptr_t,
            typename OnAddedContactObserver = std::nullptr_t>
-  struct ContactUpdateParameters
+  struct ContactUpdateFunctions
   {
     /// @brief Structure containing all the functions required to update the contact
 
@@ -198,59 +197,57 @@ public:
     /// must be called when a contact is newly added to the manager (used to add it to the gui, to logs that must be
     /// written since its first detection, etc.) */
 
-    explicit ContactUpdateParameters(const std::unordered_map<std::string, ContactInputData> & contactData)
-    : contactData_(contactData)
-    {
-    }
+    explicit ContactUpdateFunctions() {}
 
     template<typename OnNewContactOther>
-    ContactUpdateParameters<OnNewContactOther,
-                            OnMaintainedContactObserver,
-                            OnRemovedContactObserver,
-                            OnAddedContactObserver>
+    ContactUpdateFunctions<OnNewContactOther,
+                           OnMaintainedContactObserver,
+                           OnRemovedContactObserver,
+                           OnAddedContactObserver>
         onNewContact(OnNewContactOther & onNewContact)
     {
-      auto out = ContactUpdateParameters<OnNewContactOther, OnMaintainedContactObserver, OnRemovedContactObserver,
-                                         OnAddedContactObserver>::fromOther(*this);
+      auto out = ContactUpdateFunctions<OnNewContactOther, OnMaintainedContactObserver, OnRemovedContactObserver,
+                                        OnAddedContactObserver>::fromOther(*this);
+
       out.onNewContactFn = &onNewContact;
       return out;
     }
 
     template<typename OnMaintainedContactOther>
-    ContactUpdateParameters<OnNewContactObserver,
-                            OnMaintainedContactOther,
-                            OnRemovedContactObserver,
-                            OnAddedContactObserver>
+    ContactUpdateFunctions<OnNewContactObserver,
+                           OnMaintainedContactOther,
+                           OnRemovedContactObserver,
+                           OnAddedContactObserver>
         onMaintainedContact(OnMaintainedContactOther & onMaintainedContact)
     {
-      auto out = ContactUpdateParameters<OnNewContactObserver, OnMaintainedContactOther, OnRemovedContactObserver,
-                                         OnAddedContactObserver>::fromOther(*this);
+      auto out = ContactUpdateFunctions<OnNewContactObserver, OnMaintainedContactOther, OnRemovedContactObserver,
+                                        OnAddedContactObserver>::fromOther(*this);
       out.onMaintainedContactFn = &onMaintainedContact;
       return out;
     }
 
     template<typename OnRemovedContactOther>
-    ContactUpdateParameters<OnNewContactObserver,
-                            OnMaintainedContactObserver,
-                            OnRemovedContactOther,
-                            OnAddedContactObserver>
+    ContactUpdateFunctions<OnNewContactObserver,
+                           OnMaintainedContactObserver,
+                           OnRemovedContactOther,
+                           OnAddedContactObserver>
         onRemovedContact(OnRemovedContactOther & onRemovedContact)
     {
-      auto out = ContactUpdateParameters<OnNewContactObserver, OnMaintainedContactObserver, OnRemovedContactOther,
-                                         OnAddedContactObserver>::fromOther(*this);
+      auto out = ContactUpdateFunctions<OnNewContactObserver, OnMaintainedContactObserver, OnRemovedContactOther,
+                                        OnAddedContactObserver>::fromOther(*this);
       out.onRemovedContactFn = &onRemovedContact;
       return out;
     }
 
     template<typename OnAddedContactOther>
-    ContactUpdateParameters<OnNewContactObserver,
-                            OnMaintainedContactObserver,
-                            OnRemovedContactObserver,
-                            OnAddedContactOther>
+    ContactUpdateFunctions<OnNewContactObserver,
+                           OnMaintainedContactObserver,
+                           OnRemovedContactObserver,
+                           OnAddedContactOther>
         onAddedContact(OnAddedContactOther & onAddedontact)
     {
-      auto out = ContactUpdateParameters<OnNewContactObserver, OnMaintainedContactObserver, OnRemovedContactObserver,
-                                         OnAddedContactOther>::fromOther(*this);
+      auto out = ContactUpdateFunctions<OnNewContactObserver, OnMaintainedContactObserver, OnRemovedContactObserver,
+                                        OnAddedContactOther>::fromOther(*this);
       out.onAddedContactFn = &onAddedontact;
       return out;
     }
@@ -259,12 +256,12 @@ public:
              typename OnMaintainedContactOther,
              typename OnRemovedContactOther,
              typename OnAddedContactOther>
-    static ContactUpdateParameters fromOther(const ContactUpdateParameters<OnNewContactOther,
-                                                                           OnMaintainedContactOther,
-                                                                           OnRemovedContactOther,
-                                                                           OnAddedContactOther> & other)
+    static ContactUpdateFunctions fromOther(const ContactUpdateFunctions<OnNewContactOther,
+                                                                         OnMaintainedContactOther,
+                                                                         OnRemovedContactOther,
+                                                                         OnAddedContactOther> & other)
     {
-      ContactUpdateParameters out;
+      ContactUpdateFunctions out;
       if constexpr(std::is_same_v<OnNewContactOther, OnNewContactObserver>)
       {
         out.onNewContactFn = other.onNewContactFn;
@@ -294,7 +291,6 @@ public:
     /* Function defined in the observer using the legged odometry that must be called when a contact is newly added to
      * the manager (used to add it to the gui, to logs that must be written since its first detection, etc.) */
     OnAddedContactObserver * onAddedContactFn = nullptr;
-    std::unordered_map<std::string, ContactInputData> contactData_;
   };
 
 protected:
@@ -397,16 +393,19 @@ public:
 
   /// @brief Function that initializes the loop of the legged odometry. To be called at the beginning of each iteration.
   /// @details Updates the the contacts, and sets the velocity and acceleration of the odometry if necessary.
+  /// @param latestContactList List of every currently set contacts.
+  /// @param updateFunctions Functions used when updating the contacts.
   /// @param linVel linear velocity of the floating base in the world.
   /// @param angVel angular velocity of the floating base in the world.
   template<typename OnNewContactObserver = std::nullptr_t,
            typename OnMaintainedContactObserver = std::nullptr_t,
            typename OnRemovedContactObserver = std::nullptr_t,
            typename OnAddedContactObserver = std::nullptr_t>
-  void initLoop(const ContactUpdateParameters<OnNewContactObserver,
-                                              OnMaintainedContactObserver,
-                                              OnRemovedContactObserver,
-                                              OnAddedContactObserver> & runParams,
+  void initLoop(const std::unordered_set<std::string> & latestContactList,
+                const ContactUpdateFunctions<OnNewContactObserver,
+                                             OnMaintainedContactObserver,
+                                             OnRemovedContactObserver,
+                                             OnAddedContactObserver> & updateFunctions,
                 const Vector3 * linVel = nullptr,
                 const Vector3 * angVel = nullptr);
 
@@ -456,16 +455,18 @@ public:
   }
 
 private:
-  /// @brief Updates the pose of the contacts and estimates the associated kinematics.
+  /// @brief Updates the contacts
+  /// @param latestContactList List of all currently set contacts.
   /// @param runParams Parameters used to run the legged odometry.
   template<typename OnNewContactObserver = std::nullptr_t,
            typename OnMaintainedContactObserver = std::nullptr_t,
            typename OnRemovedContactObserver = std::nullptr_t,
            typename OnAddedContactObserver = std::nullptr_t>
-  void updateContacts(const ContactUpdateParameters<OnNewContactObserver,
-                                                    OnMaintainedContactObserver,
-                                                    OnRemovedContactObserver,
-                                                    OnAddedContactObserver> & params);
+  void updateContacts(const std::unordered_set<std::string> & latestContactList,
+                      const ContactUpdateFunctions<OnNewContactObserver,
+                                                   OnMaintainedContactObserver,
+                                                   OnRemovedContactObserver,
+                                                   OnAddedContactObserver> & updateFunctions);
 
   /// @brief Updates the floating base pose given as argument by the observer.
   /// @param pose The pose of the floating base in the world that we want to update

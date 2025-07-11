@@ -12,7 +12,6 @@
 #define WaikoHPP
 
 #include <state-observation/observer/delayed-measurements-complem-filter.hpp>
-// #include <state-observation/tools/delayed-measurements-observer-iteration.hpp>
 #include <state-observation/tools/rigid-body-kinematics.hpp>
 
 namespace stateObservation
@@ -56,7 +55,7 @@ public:
   ///  \li dt  : capacity of the iteration buffer
   Waiko(double dt, double alpha, double beta, double rho, unsigned long bufferCapacity);
 
-  /// @brief Destroy the Kinetics Observer
+  /// @brief Destroy the observer
   ///
   virtual ~Waiko();
 

@@ -126,7 +126,7 @@ public:
          unsigned long bufferCapacity,
          bool withGyroBias);
 
-  /// @brief Destroy the Kinetics Observer
+  /// @brief Destroy the observer
   ///
   virtual ~Viking();
 

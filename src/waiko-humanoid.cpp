@@ -4,22 +4,11 @@
 namespace stateObservation
 {
 
-WaikoHumanoid::WaikoHumanoid(double dt,
-                             double alpha,
-                             double beta,
-                             double gamma,
-                             double rho,
-                             unsigned long bufferCapacity,
-                             bool withGyroBias)
-: DelayedMeasurementComplemFilter(dt,
-                                  16,
-                                  15,
-                                  9,
-                                  bufferCapacity,
-                                  std::make_shared<IndexedInputArrayT<InputWaiko>>(),
-                                  std::make_shared<AsynchronousDataMapT<InputWaiko>>()),
-  alpha_(alpha), beta_(beta), gamma_(gamma), rho_(rho), withGyroBias_(withGyroBias)
+WaikoHumanoid::WaikoHumanoid(double dt, double alpha, double beta, double gamma, double rho, bool withGyroBias)
+: ZeroDelayObserver(16, 0, std::make_shared<IndexedInputArrayT<InputWaiko>>()), alpha_(alpha), beta_(beta),
+  gamma_(gamma), rho_(rho), withGyroBias_(withGyroBias), dt_(dt)
 {
+  dx_hat_.resize(15);
 }
 
 WaikoHumanoid::~WaikoHumanoid() {}
@@ -50,30 +39,36 @@ void WaikoHumanoid::setInput(const Vector3 & yv_k,
   }
 }
 
+void WaikoHumanoid::addContactInput(const InputWaiko::ContactInput & contactInput, TimeIndex k)
+{
+  InputWaiko & input = convert_input<InputWaiko>(getInput(k));
+  input.contact_inputs_.push_back(contactInput);
+}
+
 void WaikoHumanoid::startNewIteration_() {}
 
 ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
 {
   dx_hat_.setZero();
-
-  BOOST_ASSERT(u_ && u_->checkIndex(prevIter->getTime()) && "ERROR: The input is not set");
+  TimeIndex k = this->x_.getTime();
+  BOOST_ASSERT(u_ && u_->checkIndex(k) && "ERROR: The input is not set");
 
   // we fetch the estimated state from the previous iteration
-  const ObserverBase::StateVector & x_hat = (*prevIter)();
+  const ObserverBase::StateVector & x_hat = getCurrentEstimatedState();
   Eigen::VectorBlock<const ObserverBase::StateVector, sizeX1> x1_hat = x_hat.segment<sizeX1>(x1Index);
   Eigen::VectorBlock<const ObserverBase::StateVector, sizeX2> x2_hat = x_hat.segment<sizeX2>(x2Index);
   Eigen::VectorBlock<const ObserverBase::StateVector, sizeGyroBias> b_hat = x_hat.segment<sizeGyroBias>(gyroBiasIndex);
   Eigen::VectorBlock<const ObserverBase::StateVector, sizeOri> q_hat = x_hat.segment<sizeOri>(oriIndex);
   Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
 
-  kine::Orientation ori;
-  ori.fromVector4(q_hat);
+  state_kine_.position = pl_hat;
+  state_kine_.orientation.fromVector4(q_hat);
 
   // we fetch the input from the previous iteration
-  const InputWaiko & input = convert_input<InputWaiko>((*u_)[prevIter->getTime()]);
-  const Vector3 & yv = input.yv;
-  const Vector3 & ya = input.ya;
-  const Vector3 & yg = input.yg;
+  const InputWaiko & input = convert_input<InputWaiko>(getInput(k));
+  const Vector3 & yv = input.yv_;
+  const Vector3 & ya = input.ya_;
+  const Vector3 & yg = input.yg_;
 
   Vector3 unbiased_yg = yg;
   if(withGyroBias_)
@@ -82,11 +77,13 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
   }
 
   // we compute the state dynamics
-  Eigen::Ref<Vector3> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
-  Eigen::Ref<Vector3> x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
-  Eigen::Ref<Vector3> b_hat_dot = dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
-  Eigen::Ref<Vector3> w_l = dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l)
-  Eigen::Ref<Vector3> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
+  Eigen::VectorBlock<Vector, sizeX1> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
+  Eigen::VectorBlock<Vector, sizeX2Tangent> x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
+  Eigen::VectorBlock<Vector, sizeGyroBiasTangent> b_hat_dot =
+      dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
+  Eigen::VectorBlock<Vector, sizeOriTangent> w_l =
+      dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l)
+  Eigen::VectorBlock<Vector, sizePosTangent> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
 
   x1_hat_dot = x1_hat.cross(unbiased_yg) - cst::gravityConstant * x2_hat + ya + alpha_ * (yv - x1_hat); // x1
   x2_hat_dot = x2_hat.cross(unbiased_yg) - beta_ / cst::gravityConstant * (yv - x1_hat); // x2
@@ -122,17 +119,15 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
   return dx_hat_;
 }
 
-void WaikoHumanoid::addCorrectionTerms(StateIterator it)
+void WaikoHumanoid::addCorrectionTerms()
 {
-  // we fetch the state and input from the previous iteration
-  StateIterator prevIter = it + 1;
-  if(!u_asynchronous_->checkIndex(prevIter->getTime()))
-  {
-    return;
-  }
+  TimeIndex k = this->x_.getTime();
+  BOOST_ASSERT(u_ && u_->checkIndex(k) && "ERROR: The input is not set");
 
   // we fetch the estimated state from the previous iteration
-  const ObserverBase::StateVector & x_hat = (*prevIter)();
+  const ObserverBase::StateVector & x_hat = getCurrentEstimatedState();
+  const InputWaiko & input = convert_input<InputWaiko>(getInput(k));
+
   Eigen::VectorBlock<const ObserverBase::StateVector, sizeX2> x2_hat = x_hat.segment<sizeX2>(x2Index);
   Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
 
@@ -143,61 +138,38 @@ void WaikoHumanoid::addCorrectionTerms(StateIterator it)
   Eigen::Ref<Vector3> w_l = dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l * dt)
   Eigen::Ref<Vector3> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
 
-  AsynchronousInputWaikoHumanoid & async_input =
-      convert_async_data<AsynchronousInputWaikoHumanoid>(u_asynchronous_->getElement(prevIter->getTime()));
-
-  for(auto & [posMeas, oriMeas, mu, lambda, tau, eta] : async_input.pos_ori_measurements_)
+  for(const InputWaiko::ContactInput & contactInput : input.contact_inputs_)
   {
-    Vector3 meas_pl = oriMeas.transpose() * posMeas;
-    Vector3 meas_tilt = oriMeas.transpose() * Vector3::UnitZ();
-    Matrix3 R_tilde = oriMeas * state_kine_.orientation.toMatrix3().transpose();
+    Vector3 meas_pl = contactInput.ori_.transpose() * contactInput.pos_;
+    Vector3 meas_tilt = contactInput.ori_.transpose() * Vector3::UnitZ();
+    Matrix3 R_tilde = contactInput.ori_ * state_kine_.orientation.toMatrix3().transpose();
     Vector3 R_tilde_vec = kine::skewSymmetricToRotationVector(R_tilde - R_tilde.transpose()) / 2.0;
 
-    x1_hat_dot += mu * (meas_pl - pl_hat);
-    x2_hat_dot += tau * (meas_tilt - x2_hat);
+    x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
+    x2_hat_dot += contactInput.tau_ * (meas_tilt - x2_hat);
     if(withGyroBias_)
     {
       // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
       // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
       b_hat_dot += cst::gravityConstant * rho_ / beta_ * x2_hat.cross(meas_tilt)
-                   - cst::gravityConstant / 4.0 * rho_ * tau * std::min(gamma_, lambda) / beta_
-                         * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec
-                   + rho_ * mu * pl_hat.cross(meas_pl);
+                   - cst::gravityConstant / 4.0 * rho_ * contactInput.tau_ * std::min(gamma_, contactInput.lambda_)
+                         / beta_ * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec
+                   + rho_ * contactInput.mu_ * pl_hat.cross(meas_pl);
     }
-    w_l += lambda * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ() * Vector3::UnitZ().transpose()
-           * R_tilde_vec;
-    v_l += eta * (meas_pl - pl_hat);
-  }
-  for(auto & [oriMeas, lambda, tau] : async_input.ori_measurements_)
-  {
-    Vector3 meas_tilt = oriMeas.transpose() * Vector3::UnitZ();
-    Matrix3 R_tilde = oriMeas * state_kine_.orientation.toMatrix3().transpose();
-    Vector3 R_tilde_vec = kine::skewSymmetricToRotationVector(R_tilde - R_tilde.transpose()) / 2.0;
-
-    x2_hat_dot += tau * (meas_tilt - x2_hat);
-    if(withGyroBias_)
-    {
-      // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
-      // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
-      b_hat_dot += cst::gravityConstant * rho_ / beta_ * x2_hat.cross(meas_tilt)
-                   - cst::gravityConstant / 4.0 * rho_ * tau * std::min(gamma_, lambda) / beta_
-                         * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec;
-    }
-    w_l += lambda * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ() * Vector3::UnitZ().transpose()
-           * R_tilde_vec;
+    w_l += contactInput.lambda_ * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
+           * Vector3::UnitZ().transpose() * R_tilde_vec;
+    v_l += contactInput.eta_ * (meas_pl - pl_hat);
   }
 }
 
-void WaikoHumanoid::integrateState_(StateIterator it)
+void WaikoHumanoid::integrateState_()
 {
-  StateIterator prevIter = it + 1;
-  ObserverBase::StateVector & newState = (*prevIter)();
-  const WaikoHumanoidInput & synced_Input = convert_input<WaikoHumanoidInput>((*u_)[prevIter->getTime()]);
+  ObserverBase::StateVector & x_hat = getCurrentEstimatedState();
 
-  Eigen::Ref<Vector3> x1_hat = newState.segment<sizeX1>(x1Index);
-  Eigen::Ref<Vector3> x2_hat = newState.segment<sizeX2>(x2Index);
-  Eigen::Ref<Vector3> b_hat = newState.segment<sizeGyroBias>(gyroBiasIndex);
-  Eigen::Ref<Vector3> pl_hat = newState.segment<sizePos>(posIndex);
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeX1> x1_hat = x_hat.segment<sizeX1>(x1Index);
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeX2> x2_hat = x_hat.segment<sizeX2>(x2Index);
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeGyroBias> b_hat = x_hat.segment<sizeGyroBias>(gyroBiasIndex);
+  Eigen::VectorBlock<ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
 
   // we add the correction terms compute the state dynamics
   const auto & x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
@@ -207,21 +179,22 @@ void WaikoHumanoid::integrateState_(StateIterator it)
   const auto & v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
 
   // discrete-time integration of x1_hat, x2_hat and b_hat
-  double dt = synced_Input.dt_;
-  x1_hat += x1_hat_dot * dt;
-  x2_hat += x2_hat_dot * dt;
-  b_hat += b_hat_dot * dt;
-  pl_hat += v_l * dt;
+  x1_hat += x1_hat_dot * dt_;
+  x2_hat += x2_hat_dot * dt_;
+  b_hat += b_hat_dot * dt_;
+  pl_hat += v_l * dt_;
 
   // discrete-time integration of p and R
   state_kine_.linVel = v_l;
   state_kine_.angVel = w_l;
 
-  state_kine_.orientation.integrateRightSide(w_l * dt);
+  state_kine_.orientation.integrateRightSide(w_l * dt_);
   state_kine_.position = pl_hat;
 
-  newState.segment<sizeOri>(oriIndex) = state_kine_.orientation.toVector4();
-  newState.segment<sizePos>(posIndex) = state_kine_.position();
+  x_hat.segment<sizeOri>(oriIndex) = state_kine_.orientation.toVector4();
+  x_hat.segment<sizePos>(posIndex) = state_kine_.position();
+
+  setState(x_hat, getCurrentTime() + 1);
 }
 
 void WaikoHumanoid::initEstimator(const Vector3 & x1,
@@ -238,15 +211,15 @@ void WaikoHumanoid::initEstimator(const Vector3 & x1,
   initStateVector.segment<sizeOri>(oriIndex) = ori;
   initStateVector.segment<sizePos>(posIndex) = pos;
 
-  initEstimator(initStateVector);
+  setState(initStateVector, 0);
 }
 
-ObserverBase::StateVector WaikoHumanoid::oneStepEstimation_(StateIterator it)
+ObserverBase::StateVector WaikoHumanoid::oneStepEstimation_()
 {
-  computeStateDynamics_(it);
-  addCorrectionTerms(it);
-  integrateState_(it);
-  return (*(it))();
+  computeStateDynamics_();
+  addCorrectionTerms();
+  integrateState_();
+  return getCurrentEstimatedState();
 }
 
 } // namespace stateObservation

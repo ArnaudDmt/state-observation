@@ -40,13 +40,14 @@ struct InputWaiko : public InputBase
     double tau_;
     double eta_;
   };
+  InputWaiko(const Vector3 & yv, const Vector3 & ya, const Vector3 & yg) : yv_(yv), ya_(ya), yg_(yg) {}
 
   // local linear velocity measurement
-  Vector3 yv;
+  Vector3 yv_;
   // accelerometer measurement
-  Vector3 ya;
+  Vector3 ya_;
   // gyrometer measurement
-  Vector3 yg;
+  Vector3 yg_;
   // IMU position measurements from contacts
   std::vector<ContactInput> contact_inputs_;
 };
@@ -94,15 +95,9 @@ public:
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer
   ///  \li withGyroBias  : indicates if the gyrometer bias must be used in the estimation
-  WaikoHumanoid(double dt,
-                double alpha,
-                double beta,
-                double gamma,
-                double rho,
-                unsigned long bufferCapacity = 2,
-                bool withGyroBias = true);
+  WaikoHumanoid(double dt, double alpha, double beta, double gamma, double rho, bool withGyroBias = true);
 
-  /// @brief Destroy the Kinetics Observer
+  /// @brief Destroys the observer
   ///
   virtual ~WaikoHumanoid();
 
@@ -144,6 +139,9 @@ public:
                 TimeIndex k,
                 bool resetImuLocVelHat = false);
 
+  /// @brief sets the input from a contact
+  void addContactInput(const InputWaiko::ContactInput & contactInput, TimeIndex k);
+
   using ZeroDelayObserver::setInput;
 
   /// set the gain of x1_hat variable
@@ -184,6 +182,16 @@ public:
   double getRho()
   {
     return rho_;
+  }
+
+  /// set the sampling time of the measurements
+  void setSamplingTime(const double dt)
+  {
+    dt_ = dt;
+  }
+  double getSamplingTime() const
+  {
+    return dt_;
   }
 
   const Eigen::VectorBlock<ObserverBase::StateVector, sizeX1> getEstimatedLocLinVel()
@@ -237,6 +245,9 @@ protected:
   double alpha_, beta_, gamma_, rho_;
   bool withGyroBias_;
   Vector dx_hat_;
+  kine::LocalKinematics state_kine_;
+  // sampling time
+  double dt_;
 };
 
 } // namespace stateObservation

@@ -18,12 +18,10 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-observer.hpp
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-observer.hxx
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-complem-filter.hpp
-    ${PROJECT_INCLUDE_DIR}/observer/waiko.hpp
     ${PROJECT_INCLUDE_DIR}/observer/waiko-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/viking.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator-humanoid.hpp
-    ${PROJECT_INCLUDE_DIR}/observer/tilt-visual-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/extended-kalman-filter.hpp
     ${PROJECT_INCLUDE_DIR}/observer/kalman-filter-base.hpp
     ${PROJECT_INCLUDE_DIR}/observer/linear-kalman-filter.hpp
@@ -81,13 +79,11 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/examples/offline-model-base-flex-estimation.hxx)
 
 set(SRC
-    waiko.cpp
     waiko-humanoid.cpp
     viking.cpp
     delayed-measurements-observer.cpp
     tilt-estimator.cpp
     tilt-estimator-humanoid.cpp
-    tilt-visual-humanoid.cpp
     kalman-filter-base.cpp
     observer-base.cpp
     extended-kalman-filter.cpp

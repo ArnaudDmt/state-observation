@@ -28,6 +28,7 @@ add_so_test(test-analytical-jacobians)
 add_so_test(test-viking)
 add_so_test(test-tilt-observer)
 add_so_test(test-delayed-meas-observers)
+add_so_test(test-waiko)
 
 #add_so_test(test-waiko)
 

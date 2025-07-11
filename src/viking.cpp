@@ -114,6 +114,7 @@ ObserverBase::StateVector & Viking::computeStateDynamics_(StateIterator it)
   Eigen::VectorBlock<const ObserverBase::StateVector, sizeGyroBias> b_hat = x_hat.segment<sizeGyroBias>(gyroBiasIndex);
   Eigen::VectorBlock<const ObserverBase::StateVector, sizeOri> q_hat = x_hat.segment<sizeOri>(oriIndex);
   Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
+
   state_kine_.position = pl_hat;
   state_kine_.orientation.fromVector4(q_hat);
 
@@ -130,11 +131,13 @@ ObserverBase::StateVector & Viking::computeStateDynamics_(StateIterator it)
   }
 
   // we compute the state dynamics
-  Eigen::Ref<Vector3> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
-  Eigen::Ref<Vector3> x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
-  Eigen::Ref<Vector3> b_hat_dot = dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
-  Eigen::Ref<Vector3> w_l = dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l)
-  Eigen::Ref<Vector3> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
+  Eigen::VectorBlock<Vector, sizeX1Tangent> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
+  Eigen::VectorBlock<Vector, sizeX2Tangent> x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
+  Eigen::VectorBlock<Vector, sizeGyroBiasTangent> b_hat_dot =
+      dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
+  Eigen::VectorBlock<Vector, sizeOriTangent> w_l =
+      dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l)
+  Eigen::VectorBlock<Vector, sizePosTangent> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
 
   x1_hat_dot = x1_hat.cross(unbiased_yg) - cst::gravityConstant * x2_hat + ya + alpha_ * (yv - x1_hat); // x1
   x2_hat_dot = x2_hat.cross(unbiased_yg) - beta_ / cst::gravityConstant * (yv - x1_hat); // x2
@@ -162,11 +165,13 @@ void Viking::addCorrectionTerms(StateIterator it)
   Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
 
   // we add the correction terms compute the state dynamics
-  Eigen::Ref<Vector3> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
-  Eigen::Ref<Vector3> x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
-  Eigen::Ref<Vector3> b_hat_dot = dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
-  Eigen::Ref<Vector3> w_l = dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l * dt)
-  Eigen::Ref<Vector3> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
+  Eigen::VectorBlock<Vector, sizeX1Tangent> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
+  Eigen::VectorBlock<Vector, sizeX2Tangent> x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
+  Eigen::VectorBlock<Vector, sizeGyroBiasTangent> b_hat_dot =
+      dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
+  Eigen::VectorBlock<Vector, sizeOriTangent> w_l =
+      dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l * dt)
+  Eigen::VectorBlock<Vector, sizePosTangent> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
 
   AsynchronousInputViking & async_input =
       convert_async_data<AsynchronousInputViking>(u_asynchronous_->getElement(prevIter->getTime()));
@@ -219,10 +224,11 @@ void Viking::integrateState_(StateIterator it)
   ObserverBase::StateVector & newState = (*prevIter)();
   const VikingInput & synced_Input = convert_input<VikingInput>((*u_)[prevIter->getTime()]);
 
-  Eigen::Ref<Vector3> x1_hat = newState.segment<sizeX1>(x1Index);
-  Eigen::Ref<Vector3> x2_hat = newState.segment<sizeX2>(x2Index);
-  Eigen::Ref<Vector3> b_hat = newState.segment<sizeGyroBias>(gyroBiasIndex);
-  Eigen::Ref<Vector3> pl_hat = newState.segment<sizePos>(posIndex);
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeX1Tangent> x1_hat = newState.segment<sizeX1>(x1Index);
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeX2Tangent> x2_hat = newState.segment<sizeX2>(x2Index);
+  Eigen::VectorBlock<ObserverBase::StateVector, sizeGyroBiasTangent> b_hat =
+      newState.segment<sizeGyroBias>(gyroBiasIndex);
+  Eigen::VectorBlock<ObserverBase::StateVector, sizePosTangent> pl_hat = newState.segment<sizePos>(posIndex);
 
   // we add the correction terms compute the state dynamics
   const auto & x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);

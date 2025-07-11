@@ -691,7 +691,7 @@ protected:
 class InputBase
 {
 protected:
-  InputBase(){};
+  InputBase() {};
 
 public:
   virtual ~InputBase() = default;

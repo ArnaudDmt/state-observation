@@ -148,7 +148,7 @@ const ObserverBase::StateVector & ZeroDelayObserver::getEstimatedState(TimeIndex
   for(TimeIndex i = k0; i < k; ++i)
   {
     oneStepEstimation_();
-    if(y_.getFirstIndex() < k) y_.popFront();
+    if(y_.size() > 0 && y_.getFirstIndex() < k) y_.popFront();
 
     if(u_->size() > 0 && u_->getFirstIndex() < k) u_->popFront();
   }
@@ -162,6 +162,12 @@ const ObserverBase::StateVector & ZeroDelayObserver::getCurrentEstimatedState() 
   return x_();
 }
 
+ObserverBase::StateVector & ZeroDelayObserver::getCurrentEstimatedState()
+{
+  BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
+  return x_();
+}
+
 TimeIndex ZeroDelayObserver::getCurrentTime() const
 {
   BOOST_ASSERT(stateIsSet() && "The state vector has not been set");
@@ -169,6 +175,12 @@ TimeIndex ZeroDelayObserver::getCurrentTime() const
 }
 
 const InputBase & ZeroDelayObserver::getInput(TimeIndex k) const
+{
+  BOOST_ASSERT(u_ && "The input has not been initialized yet.");
+  return (*u_)[k];
+}
+
+InputBase & ZeroDelayObserver::getInput(TimeIndex k)
 {
   BOOST_ASSERT(u_ && "The input has not been initialized yet.");
   return (*u_)[k];

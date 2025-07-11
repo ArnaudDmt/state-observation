@@ -73,7 +73,7 @@ public:
   }
 
   /// Destructor
-  virtual ~ZeroDelayObserver(){};
+  virtual ~ZeroDelayObserver() {};
 
   /// @brief Set the value of the state vector at time index k.
   ///
@@ -172,11 +172,18 @@ public:
   /// @return ObserverBase::StateVector
   virtual const ObserverBase::StateVector & getCurrentEstimatedState() const;
 
+  /// @brief Get the Current Estimated State
+  /// @return ObserverBase::StateVector
+  virtual ObserverBase::StateVector & getCurrentEstimatedState();
+
   /// Get the value of the time index of the current state estimation
   virtual TimeIndex getCurrentTime() const;
 
   /// Get the value of the input of the time index k
   const InputBase & getInput(TimeIndex k) const;
+
+  /// Get the value of the input of the time index k
+  InputBase & getInput(TimeIndex k);
 
   /// Get the number of available inputs
   virtual TimeSize getInputsNumber() const;

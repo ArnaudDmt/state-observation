@@ -87,7 +87,10 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
 
   x1_hat_dot = x1_hat.cross(unbiased_yg) - cst::gravityConstant * x2_hat + ya + alpha_ * (yv - x1_hat); // x1
   x2_hat_dot = x2_hat.cross(unbiased_yg) - beta_ / cst::gravityConstant * (yv - x1_hat); // x2
-  b_hat_dot = rho_ * x1_hat.cross(yv); // using b_dot = rho * S(x1_hat) * yv
+  if(withGyroBias_)
+  {
+    b_hat_dot = rho_ * x1_hat.cross(yv); // using b_dot = rho * S(x1_hat) * yv
+  }
   // using R_dot = RS(w_l) and w_l = yg - gamma * S(R_hat^T ez) x2_hat
   w_l = unbiased_yg + gamma_ * x2_hat.cross(state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ());
   // using pl_dot = -S(yg) pl + x1
@@ -147,6 +150,7 @@ void WaikoHumanoid::addCorrectionTerms()
 
     x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
     x2_hat_dot += contactInput.tau_ * (meas_tilt - x2_hat);
+
     if(withGyroBias_)
     {
       // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
@@ -181,7 +185,10 @@ void WaikoHumanoid::integrateState_()
   // discrete-time integration of x1_hat, x2_hat and b_hat
   x1_hat += x1_hat_dot * dt_;
   x2_hat += x2_hat_dot * dt_;
-  b_hat += b_hat_dot * dt_;
+  if(withGyroBias_)
+  {
+    b_hat += b_hat_dot * dt_;
+  }
   pl_hat += v_l * dt_;
 
   // discrete-time integration of p and R

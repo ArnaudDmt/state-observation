@@ -18,40 +18,6 @@
 namespace stateObservation
 {
 
-struct InputWaiko : public InputBase
-{
-  /// @brief Input coming from a contact: IMU pose with the associated correction gains
-  struct ContactInput
-  {
-    /// @param pos position measurement.
-    /// @param ori orientation measurement.
-    /// @param mu gain associated with the linear velocity correction from the pose measurement.
-    /// @param lambda gain associated with the yaw correction from the orientation measurement.
-    /// @param tau gain associated with the tilt correction from the orientation measurement.
-    /// @param eta gain associated with the position correction from the pose measurement.
-    ContactInput(Matrix3 ori, Vector3 pos, double mu, double lambda, double tau, double eta)
-    : ori_(ori), pos_(pos), mu_(mu), lambda_(lambda), tau_(tau), eta_(eta)
-    {
-    }
-    Matrix3 ori_;
-    Vector3 pos_;
-    double mu_;
-    double lambda_;
-    double tau_;
-    double eta_;
-  };
-  InputWaiko(const Vector3 & yv, const Vector3 & ya, const Vector3 & yg) : yv_(yv), ya_(ya), yg_(yg) {}
-
-  // local linear velocity measurement
-  Vector3 yv_;
-  // accelerometer measurement
-  Vector3 ya_;
-  // gyrometer measurement
-  Vector3 yg_;
-  // IMU position measurements from contacts
-  std::vector<ContactInput> contact_inputs_;
-};
-
 /**
  * \class  WaikoHumanoid
  * \brief
@@ -60,7 +26,42 @@ struct InputWaiko : public InputBase
 
 class STATE_OBSERVATION_DLLAPI WaikoHumanoid : public ZeroDelayObserver
 {
+
 public:
+  struct InputWaiko : public InputBase
+  {
+    /// @brief Input coming from a contact: IMU pose with the associated correction gains
+    struct ContactInput
+    {
+      /// @param pos position measurement.
+      /// @param ori orientation measurement.
+      /// @param mu gain associated with the linear velocity correction from the pose measurement.
+      /// @param lambda gain associated with the yaw correction from the orientation measurement.
+      /// @param tau gain associated with the tilt correction from the orientation measurement.
+      /// @param eta gain associated with the position correction from the pose measurement.
+      ContactInput(Matrix3 ori, Vector3 pos, double mu, double lambda, double tau, double eta)
+      : ori_(ori), pos_(pos), mu_(mu), lambda_(lambda), tau_(tau), eta_(eta)
+      {
+      }
+      Matrix3 ori_;
+      Vector3 pos_;
+      double mu_;
+      double lambda_;
+      double tau_;
+      double eta_;
+    };
+    InputWaiko(const Vector3 & yv, const Vector3 & ya, const Vector3 & yg) : yv_(yv), ya_(ya), yg_(yg) {}
+
+    // local linear velocity measurement
+    Vector3 yv_;
+    // accelerometer measurement
+    Vector3 ya_;
+    // gyrometer measurement
+    Vector3 yg_;
+    // IMU position measurements from contacts
+    std::vector<ContactInput> contact_inputs_;
+  };
+
   inline static constexpr Index sizeX1 = 3;
   inline static constexpr Index sizeX2 = 3;
   inline static constexpr Index sizeGyroBias = 3;
@@ -185,13 +186,19 @@ public:
   }
 
   /// set the sampling time of the measurements
-  void setSamplingTime(const double dt)
+  void setSamplingTime(double dt)
   {
     dt_ = dt;
   }
   double getSamplingTime() const
   {
     return dt_;
+  }
+
+  /// set the sampling time of the measurements
+  void setWithGyroBias(bool withGyroBias)
+  {
+    withGyroBias_ = withGyroBias;
   }
 
   const Eigen::VectorBlock<ObserverBase::StateVector, sizeX1> getEstimatedLocLinVel()

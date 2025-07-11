@@ -70,17 +70,18 @@ int testLeggedOdometry(int errorcode)
     Kinematics zeroKine = Kinematics::zeroKinematics(Kinematics::Flags::pose);
     stateObservation::odometry::LeggedOdometryManager::ContactInputData test(zeroKine, 1.0);
 
-    std::unordered_map<std::string, stateObservation::odometry::LeggedOdometryManager::ContactInputData> contactData;
+    std::unordered_set<std::string> contactList;
     if(i % 2 == 0)
     {
-      contactData.insert({"Contact1", test});
+      contactList.insert("Contact1");
     }
     else
     {
-      contactData.insert({"Contact2", test});
+      contactList.insert("Contact2");
     }
 
-    odometryManager_.initLoop(stateObservation::odometry::LeggedOdometryManager::ContactUpdateParameters(contactData));
+    odometryManager_.initLoop(contactList,
+                              stateObservation::odometry::LeggedOdometryManager::ContactUpdateFunctions<>());
 
     odometryManager_.run(
         odometry::LeggedOdometryManager::KineParams(kine).attitudeMeas(traj.kine.orientation.toMatrix3()));

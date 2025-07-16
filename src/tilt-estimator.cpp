@@ -49,10 +49,10 @@ ObserverBase::StateVector TiltEstimator::oneStepEstimation_()
   Vector3 ya = getMeasurement(k + 1).segment<3>(3);
   Vector3 yg = getMeasurement(k + 1).tail<3>();
 
-  ObserverBase::StateVector x_hat = getCurrentEstimatedState();
-  x1_hat_ = x_hat.segment<3>(0);
-  x2_hat_prime_ = x_hat.segment<3>(3);
-  x2_hat_ = x_hat.segment<3>(6);
+  ObserverBase::StateVector & x_hat = getCurrentEstimatedState();
+  Eigen::VectorBlock<ObserverBase::StateVector, 3> x1_hat_ = x_hat.segment<3>(0);
+  Eigen::VectorBlock<ObserverBase::StateVector, 3> x2_hat_prime_ = x_hat.segment<3>(3);
+  Eigen::VectorBlock<ObserverBase::StateVector, 3> x2_hat_ = x_hat.segment<3>(6);
 
   Vector dx_hat(9);
   dx_hat.segment<3>(0) = x1_hat_.cross(yg) - cst::gravityConstant * x2_hat_prime_ + ya + alpha_ * (yv - x1_hat_);

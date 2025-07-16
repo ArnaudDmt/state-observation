@@ -113,13 +113,6 @@ protected:
   /// Sampling time
   double dt_;
 
-  /// variables used for the computation
-  Vector3 x1_;
-  Vector3 x1_hat_;
-  Vector3 x2_hat_prime_;
-  Vector3 x2_hat_;
-  Vector3 dx1_hat;
-
   /// The tilt estimator loop
   virtual StateVector oneStepEstimation_();
 };

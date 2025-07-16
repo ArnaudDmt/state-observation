@@ -87,7 +87,7 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
 
   x1_hat_dot = x1_hat.cross(unbiased_yg) - cst::gravityConstant * x2_hat + ya + alpha_ * (yv - x1_hat); // x1
   x2_hat_dot = x2_hat.cross(unbiased_yg) - beta_ / cst::gravityConstant * (yv - x1_hat); // x2
-  if(withGyroBias_)
+  if(withGyroBias_ && input.contact_inputs_.size() > 1)
   {
     b_hat_dot = rho_ * x1_hat.cross(yv); // using b_dot = rho * S(x1_hat) * yv
   }
@@ -105,7 +105,7 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
 
     x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
     x2_hat_dot += contactInput.tau_ * (meas_tilt - x2_hat);
-    if(withGyroBias_)
+    if(withGyroBias_ && input.contact_inputs_.size() > 1)
     {
       // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
       // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
@@ -151,7 +151,7 @@ void WaikoHumanoid::addCorrectionTerms()
     x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
     x2_hat_dot += contactInput.tau_ * (meas_tilt - x2_hat);
 
-    if(withGyroBias_)
+    if(withGyroBias_ && input.contact_inputs_.size() > 1)
     {
       // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
       // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py

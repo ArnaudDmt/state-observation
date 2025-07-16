@@ -256,7 +256,8 @@ int testWithPosAndOriMeasurement(int errorcode, double threshold)
     Vector3 yg = currentIter.getYg() + Vector3::Random() / 1000;
 
     waiko.setInput(yv, ya, yg, i);
-    waiko.addContactInput(InputWaiko::ContactInput(currentIter.getOri(), currentIter.getPos(), 1, 1, 1, 1), i);
+    waiko.addContactInput(
+        WaikoHumanoid::InputWaiko::ContactInput(currentIter.getOri(), currentIter.getPos(), 1, 1, 1, 1), i);
     waiko.getEstimatedState(i + 1);
 
     Eigen::VectorBlock<ObserverBase::StateVector, WaikoHumanoid::sizeX1> x1_hat = waiko.getEstimatedLocLinVel();
@@ -343,7 +344,8 @@ int testWithGyroBias(int errorcode, double threshold)
 
     waiko.setInput(yv, ya, yg, i);
 
-    waiko.addContactInput(InputWaiko::ContactInput(currentIter.getOri(), currentIter.getPos(), 1, 1, 1, 1), i);
+    waiko.addContactInput(
+        WaikoHumanoid::InputWaiko::ContactInput(currentIter.getOri(), currentIter.getPos(), 1, 1, 1, 1), i);
     waiko.getEstimatedState(i + 1);
 
     Eigen::VectorBlock<ObserverBase::StateVector, WaikoHumanoid::sizeX1> x1_hat = waiko.getEstimatedLocLinVel();

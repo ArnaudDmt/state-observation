@@ -49,17 +49,6 @@ public:
   /// @details Avoid discontinuities when the computation mode of the anchor point changes
   void resetImuLocVelHat();
 
-/// prevent c++ overloaded virtual function warning
-#if defined(__clang__)
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Woverloaded-virtual"
-#else
-#  if defined(__GNUC__)
-#    pragma GCC diagnostic push
-#    pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#  endif
-#endif
-
   // we also want to use the function setMeasurement from the TiltEstimator class, that is hidden by the following
   using TiltEstimator::setMeasurement;
   /// @brief sets the measurement (accelero and gyro stacked in one vector)
@@ -75,15 +64,9 @@ public:
                       const Vector3 & yg_k,
                       TimeIndex k);
 
-#if defined(__clang__)
-#  pragma clang diagnostic pop
-#else
-#  if defined(__GNUC__)
-#    pragma GCC diagnostic pop
-#  endif
-#endif
+protected:
+  Vector3 x1_;
 };
-
 } // namespace stateObservation
 
 #endif // TILTESTIMATORHUMANOIDHPP

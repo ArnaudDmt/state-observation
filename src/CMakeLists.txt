@@ -20,6 +20,7 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-complem-filter.hpp
     ${PROJECT_INCLUDE_DIR}/observer/waiko-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/viking.hpp
+    ${PROJECT_INCLUDE_DIR}/observer/vanyt-estimator.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/extended-kalman-filter.hpp
@@ -81,6 +82,7 @@ set(HEADERS
 set(SRC
     waiko-humanoid.cpp
     viking.cpp
+    vanyt-estimator.cpp
     delayed-measurements-observer.cpp
     tilt-estimator.cpp
     tilt-estimator-humanoid.cpp

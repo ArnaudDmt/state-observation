@@ -103,7 +103,7 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
     Matrix3 R_tilde = contactInput.ori_ * state_kine_.orientation.toMatrix3().transpose();
     Vector3 R_tilde_vec = kine::skewSymmetricToRotationVector(R_tilde - R_tilde.transpose()) / 2.0;
 
-    x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
+    // x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
     x2_hat_dot += contactInput.tau_ * (meas_tilt - x2_hat);
     if(withGyroBias_ && input.contact_inputs_.size() > 1)
     {
@@ -114,8 +114,13 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
                          / beta_ * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec
                    + rho_ * contactInput.mu_ * pl_hat.cross(meas_pl);
     }
+
+    Vector3 imuContactPos =
+        state_kine_.orientation.toMatrix3().transpose() * contactInput.worldContactPos_ - state_kine_.position();
+
     w_l += contactInput.lambda_ * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
-           * Vector3::UnitZ().transpose() * R_tilde_vec;
+               * Vector3::UnitZ().transpose() * R_tilde_vec
+           + 2 * (contactInput.imuContactPos_ - imuContactPos);
     v_l += contactInput.eta_ * (meas_pl - pl_hat);
   }
 

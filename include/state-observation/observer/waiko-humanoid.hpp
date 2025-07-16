@@ -39,12 +39,22 @@ public:
       /// @param lambda gain associated with the yaw correction from the orientation measurement.
       /// @param tau gain associated with the tilt correction from the orientation measurement.
       /// @param eta gain associated with the position correction from the pose measurement.
-      ContactInput(Matrix3 ori, Vector3 pos, double mu, double lambda, double tau, double eta)
-      : ori_(ori), pos_(pos), mu_(mu), lambda_(lambda), tau_(tau), eta_(eta)
+      ContactInput(const Matrix3 & ori,
+                   const Vector3 & pos,
+                   const Vector3 & imuContactPos,
+                   const Vector3 & worldContactPos,
+                   double mu,
+                   double lambda,
+                   double tau,
+                   double eta)
+      : ori_(ori), pos_(pos), imuContactPos_(imuContactPos), worldContactPos_(worldContactPos), mu_(mu),
+        lambda_(lambda), tau_(tau), eta_(eta)
       {
       }
       Matrix3 ori_;
       Vector3 pos_;
+      Vector3 imuContactPos_;
+      Vector3 worldContactPos_;
       double mu_;
       double lambda_;
       double tau_;
@@ -222,6 +232,22 @@ public:
     return x_().segment<sizePos>(posIndex);
   }
 
+  // correction of the position coming from the contact positions, passed as a local linear velocity.
+  inline const stateObservation::Vector3 & getPosCorrectionFromContactPos()
+  {
+    return posCorrFromContactPos_;
+  }
+  // correction of the orientation coming from the contact positions, passed as a local angular velocity.
+  inline const stateObservation::Vector3 & geOriCorrectionFromContactPos()
+  {
+    return oriCorrFromContactPos_;
+  }
+  // correction of the orientation coming from direct orientation measurements, passed as a local angular velocity.
+  inline const stateObservation::Vector3 & getOriCorrFromOriMeas()
+  {
+    return oriCorrFromOriMeas_;
+  }
+
 protected:
   /// @brief Runs one loop of the estimator.
   /// @details Calls \ref computeStateDynamics_ then \ref integrateState_
@@ -255,6 +281,13 @@ protected:
   kine::LocalKinematics state_kine_;
   // sampling time
   double dt_;
+
+  // correction of the orientation coming from the contact orientations, passed as a local angular velocity.
+  Vector3 oriCorrFromOriMeas_ = Vector3::Zero();
+  // correction of the position coming from the contact positions, passed as a local linear velocity.
+  Vector3 posCorrFromContactPos_ = Vector3::Zero();
+  // correction of the orientation coming from the contact positions, passed as a local angular velocity.
+  Vector3 oriCorrFromContactPos_ = Vector3::Zero();
 };
 
 } // namespace stateObservation

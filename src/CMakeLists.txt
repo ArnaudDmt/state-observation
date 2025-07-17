@@ -46,11 +46,14 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/tools/rigid-body-kinematics.hxx
     ${PROJECT_INCLUDE_DIR}/tools/logger.hpp
     ${PROJECT_INCLUDE_DIR}/tools/logger.hxx
+    ${PROJECT_INCLUDE_DIR}/tools/odometry/legged-odometry-manager.hpp
+    ${PROJECT_INCLUDE_DIR}/tools/odometry/legged-odometry-manager.hxx
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/Contact.hpp
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/ContactsManager.hpp
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/ContactsManager.hxx
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/IMU.hpp
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/Sensor.hpp
+    ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/measurements.hpp
     ${PROJECT_INCLUDE_DIR}/tools/state-vector-arithmetics.hpp
     ${PROJECT_INCLUDE_DIR}/dynamical-system/dynamical-system-functor-base.hpp
     ${PROJECT_INCLUDE_DIR}/dynamical-system/dynamical-system-simulator.hpp
@@ -80,6 +83,7 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/examples/offline-model-base-flex-estimation.hxx)
 
 set(SRC
+    legged-odometry-manager.cpp
     waiko-humanoid.cpp
     viking.cpp
     vanyt-estimator.cpp

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CONTACTHPP
+#define CONTACTHPP
 #include <boost/assert.hpp>
 #include <Eigen/Core>
 #include <string>
@@ -12,8 +13,6 @@ namespace stateObservation::measurements
 
 struct Contact
 {
-protected:
-  inline Contact() = default;
   // constructor if the contact is not associated to a surface
   inline Contact(unsigned id, std::string_view name) : id_(id), name_(name) {}
   // constructor if the contact is associated to a surface
@@ -21,6 +20,9 @@ protected:
   {
     setSurface(surface);
   }
+
+protected:
+  inline Contact() = default;
   inline bool operator<(const Contact & rhs) const noexcept
   {
     return (id() < rhs.id_);
@@ -77,3 +79,5 @@ protected:
   std::string surface_;
 };
 } // namespace stateObservation::measurements
+
+#endif // CONTACTHPP

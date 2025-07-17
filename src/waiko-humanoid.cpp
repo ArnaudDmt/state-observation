@@ -4,9 +4,9 @@
 namespace stateObservation
 {
 
-WaikoHumanoid::WaikoHumanoid(double dt, double alpha, double beta, double gamma, double rho, bool withGyroBias)
-: ZeroDelayObserver(16, 0, std::make_shared<IndexedInputArrayT<InputWaiko>>()), alpha_(alpha), beta_(beta),
-  gamma_(gamma), rho_(rho), withGyroBias_(withGyroBias), dt_(dt)
+    WaikoHumanoid::WaikoHumanoid(double dt, double alpha, double beta, double rho, bool withGyroBias)
+: ZeroDelayObserver(16, 0, std::make_shared<IndexedInputArrayT<InputWaiko>>()), alpha_(alpha), beta_(beta), rho_(rho),
+  withGyroBias_(withGyroBias), dt_(dt)
 {
   dx_hat_.resize(15);
 }
@@ -50,6 +50,7 @@ void WaikoHumanoid::startNewIteration_() {}
 ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
 {
   dx_hat_.setZero();
+
   TimeIndex k = this->x_.getTime();
   BOOST_ASSERT(u_ && u_->checkIndex(k) && "ERROR: The input is not set");
 
@@ -61,8 +62,7 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
   Eigen::VectorBlock<const ObserverBase::StateVector, sizeOri> q_hat = x_hat.segment<sizeOri>(oriIndex);
   Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
 
-  state_kine_.position = pl_hat;
-  state_kine_.orientation.fromVector4(q_hat);
+  state_ori_.fromVector4(q_hat);
 
   // we fetch the input from the previous iteration
   const InputWaiko & input = convert_input<InputWaiko>(getInput(k));
@@ -71,10 +71,10 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
   const Vector3 & yg = input.yg_;
 
   Vector3 unbiased_yg = yg;
-  if(withGyroBias_)
-  {
-    unbiased_yg -= b_hat;
-  }
+  // if(withGyroBias_)
+  // {
+  //   unbiased_yg -= b_hat;
+  // }
 
   // we compute the state dynamics
   Eigen::VectorBlock<Vector, sizeX1> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
@@ -86,49 +86,25 @@ ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
   Eigen::VectorBlock<Vector, sizePosTangent> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
 
   x1_hat_dot = x1_hat.cross(unbiased_yg) - cst::gravityConstant * x2_hat + ya + alpha_ * (yv - x1_hat); // x1
-  x2_hat_dot = x2_hat.cross(unbiased_yg) - beta_ / cst::gravityConstant * (yv - x1_hat); // x2
-  if(withGyroBias_ && input.contact_inputs_.size() > 1)
-  {
-    b_hat_dot = rho_ * x1_hat.cross(yv); // using b_dot = rho * S(x1_hat) * yv
-  }
+  x2_hat_dot = x2_hat.cross(unbiased_yg) - beta_ * (yv - x1_hat); // x2
+  // if(withGyroBias_ && input.contact_inputs_.size() > 1)
+  // {
+  //   b_hat_dot += gamma_ * x1_hat.cross(yv); // using b_dot = rho * S(x1_hat) * yv
+  // }
   // using R_dot = RS(w_l) and w_l = yg - gamma * S(R_hat^T ez) x2_hat
-  w_l = unbiased_yg + gamma_ * x2_hat.cross(state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ());
+  w_l = unbiased_yg + rho_ * x2_hat.cross(state_ori_.toMatrix3().transpose() * Vector3::UnitZ());
   // using pl_dot = -S(yg) pl + x1
   v_l = x1_hat + pl_hat.cross(unbiased_yg);
-
-  for(const InputWaiko::ContactInput & contactInput : input.contact_inputs_)
-  {
-    Vector3 meas_pl = contactInput.ori_.transpose() * contactInput.pos_;
-    Vector3 meas_tilt = contactInput.ori_.transpose() * Vector3::UnitZ();
-    Matrix3 R_tilde = contactInput.ori_ * state_kine_.orientation.toMatrix3().transpose();
-    Vector3 R_tilde_vec = kine::skewSymmetricToRotationVector(R_tilde - R_tilde.transpose()) / 2.0;
-
-    // x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
-    x2_hat_dot += contactInput.tau_ * (meas_tilt - x2_hat);
-    if(withGyroBias_ && input.contact_inputs_.size() > 1)
-    {
-      // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
-      // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
-      b_hat_dot += cst::gravityConstant * rho_ / beta_ * x2_hat.cross(meas_tilt)
-                   - cst::gravityConstant / 4.0 * rho_ * contactInput.tau_ * std::min(gamma_, contactInput.lambda_)
-                         / beta_ * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec
-                   + rho_ * contactInput.mu_ * pl_hat.cross(meas_pl);
-    }
-
-    Vector3 imuContactPos =
-        state_kine_.orientation.toMatrix3().transpose() * contactInput.worldContactPos_ - state_kine_.position();
-
-    w_l += contactInput.lambda_ * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
-               * Vector3::UnitZ().transpose() * R_tilde_vec
-           + 2 * (contactInput.imuContactPos_ - imuContactPos);
-    v_l += contactInput.eta_ * (meas_pl - pl_hat);
-  }
 
   return dx_hat_;
 }
 
 void WaikoHumanoid::addCorrectionTerms()
 {
+  oriCorrFromOriMeas_.setZero();
+  oriCorrFromContactPos_.setZero();
+  posCorrFromContactPos_.setZero();
+
   TimeIndex k = this->x_.getTime();
   BOOST_ASSERT(u_ && u_->checkIndex(k) && "ERROR: The input is not set");
 
@@ -150,25 +126,43 @@ void WaikoHumanoid::addCorrectionTerms()
   {
     Vector3 meas_pl = contactInput.ori_.transpose() * contactInput.pos_;
     Vector3 meas_tilt = contactInput.ori_.transpose() * Vector3::UnitZ();
-    Matrix3 R_tilde = contactInput.ori_ * state_kine_.orientation.toMatrix3().transpose();
+    Matrix3 R_tilde = contactInput.ori_ * state_ori_.toMatrix3().transpose();
     Vector3 R_tilde_vec = kine::skewSymmetricToRotationVector(R_tilde - R_tilde.transpose()) / 2.0;
 
-    x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
-    x2_hat_dot += contactInput.tau_ * (meas_tilt - x2_hat);
+    // x1_hat_dot += contactInput.mu_ * (meas_pl - pl_hat);
+    // x2_hat_dot += contactInput.tau_ * (meas_tilt - x2_hat);
 
-    if(withGyroBias_ && input.contact_inputs_.size() > 1)
-    {
-      // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
-      // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
-      b_hat_dot += cst::gravityConstant * rho_ / beta_ * x2_hat.cross(meas_tilt)
-                   - cst::gravityConstant / 4.0 * rho_ * contactInput.tau_ * std::min(gamma_, contactInput.lambda_)
-                         / beta_ * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec
-                   + rho_ * contactInput.mu_ * pl_hat.cross(meas_pl);
-    }
-    w_l += contactInput.lambda_ * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
-           * Vector3::UnitZ().transpose() * R_tilde_vec;
-    v_l += contactInput.eta_ * (meas_pl - pl_hat);
+    // if(withGyroBias_ && input.contact_inputs_.size() > 1)
+    // {
+    //   // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma,
+    //   lambda)
+    //   // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
+    //   b_hat_dot += cst::gravityConstant * gamma_ / beta_ * x2_hat.cross(meas_tilt)
+    //                - cst::gravityConstant / 4.0 * gamma_ * contactInput.tau_ * std::min(rho_, contactInput.lambda_)
+    //                      / beta_ * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec
+    //                + gamma_ * contactInput.mu_ * pl_hat.cross(meas_pl);
+    // }
+
+    Vector3 imuContactPos = state_ori_.toMatrix3().transpose() * contactInput.worldContactPos_ - pl_hat;
+
+    // w_l += contactInput.mu_ * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ()
+    //        * Vector3::UnitZ().transpose() * R_tilde_vec;
+    // v_l += contactInput.lambda_ * (meas_pl - pl_hat);
+
+    oriCorrFromOriMeas_ += contactInput.mu_ * state_ori_.toMatrix3().transpose() * Vector3::UnitZ()
+                           * Vector3::UnitZ().transpose() * R_tilde_vec;
+    // oriCorrFromContactPos_ += contactInput.gamma_ * imuContactPos.cross(contactInput.imuContactPos_);
+    // oriCorrFromContactPos_ += contactInput.gamma_ * (imuContactPos - contactInput.imuContactPos_);
+    // oriCorrFromContactPos_ +=
+    //     contactInput.gamma_ * (meas_pl + contactInput.imuContactPos_).cross(contactInput.imuContactPos_ + pl_hat);
+
+    // posCorrFromContactPos_ -= contactInput.lambda_ * (contactInput.imuContactPos_ - imuContactPos);
+
+    posCorrFromContactPos_ += contactInput.lambda_ * (meas_pl - pl_hat);
   }
+
+  w_l += oriCorrFromOriMeas_ + oriCorrFromContactPos_;
+  v_l += posCorrFromContactPos_;
 }
 
 void WaikoHumanoid::integrateState_()
@@ -196,15 +190,10 @@ void WaikoHumanoid::integrateState_()
   }
   pl_hat += v_l * dt_;
 
-  // discrete-time integration of p and R
-  state_kine_.linVel = v_l;
-  state_kine_.angVel = w_l;
+  // discrete-time integration of R
+  state_ori_.integrateRightSide(w_l * dt_);
 
-  state_kine_.orientation.integrateRightSide(w_l * dt_);
-  state_kine_.position = pl_hat;
-
-  x_hat.segment<sizeOri>(oriIndex) = state_kine_.orientation.toVector4();
-  x_hat.segment<sizePos>(posIndex) = state_kine_.position();
+  x_hat.segment<sizeOri>(oriIndex) = state_ori_.toVector4();
 
   setState(x_hat, getCurrentTime() + 1);
 }

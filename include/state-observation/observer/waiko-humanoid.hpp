@@ -45,10 +45,9 @@ public:
                    const Vector3 & worldContactPos,
                    double mu,
                    double lambda,
-                   double tau,
-                   double eta)
+                   double gamma)
       : ori_(ori), pos_(pos), imuContactPos_(imuContactPos), worldContactPos_(worldContactPos), mu_(mu),
-        lambda_(lambda), tau_(tau), eta_(eta)
+        lambda_(lambda), gamma_(gamma)
       {
       }
       Matrix3 ori_;
@@ -57,8 +56,8 @@ public:
       Vector3 worldContactPos_;
       double mu_;
       double lambda_;
-      double tau_;
-      double eta_;
+      double gamma_;
+      // double eta_;
     };
     InputWaiko(const Vector3 & yv, const Vector3 & ya, const Vector3 & yg) : yv_(yv), ya_(ya), yg_(yg) {}
 
@@ -101,12 +100,12 @@ public:
   ///  \li alpha : parameter related to the convergence of the linear velocity
   ///              of the IMU expressed in the control frame
   ///  \li beta  : parameter related to the fast convergence of the tilt
-  ///  \li gamma  : parameter related to the orthogonality
-  ///  \li rho  : parameter related to the correction of the bias by the linear velocity measurement.
+  ///  \li rho  : parameter related to the orthogonality
+  ////  \li gamma  : parameter related to the correction of the bias by the linear velocity measurement.
   ///  \li dt  : timestep between each iteration
   ///  \li bufferCapacity  : capacity of the iteration buffer
   ///  \li withGyroBias  : indicates if the gyrometer bias must be used in the estimation
-  WaikoHumanoid(double dt, double alpha, double beta, double gamma, double rho, bool withGyroBias = true);
+  WaikoHumanoid(double dt, double alpha, double beta, double rho, bool withGyroBias = true);
 
   /// @brief Destroys the observer
   ///
@@ -175,16 +174,6 @@ public:
     return beta_;
   }
 
-  /// set gamma
-  void setGamma(const double gamma)
-  {
-    gamma_ = gamma;
-  }
-  double getGamma()
-  {
-    return gamma_;
-  }
-
   /// set rho
   void setRho(const double rho)
   {
@@ -193,6 +182,16 @@ public:
   double getRho()
   {
     return rho_;
+  }
+
+  /// set gamma
+  void setGamma(const double gamma)
+  {
+    gamma_ = gamma;
+  }
+  double getGamma()
+  {
+    return gamma_;
   }
 
   /// set the sampling time of the measurements
@@ -273,13 +272,14 @@ protected:
   ///  \li alpha : parameter related to the convergence of the linear velocity
   ///              of the IMU expressed in the control frame
   ///  \li beta  : parameter related to the fast convergence of the tilt
-  ///  \li gamma  : parameter related to the orthogonality
-  ///  \li rho  : parameter related to the correction of the bias by the linear velocity measurement.
-  double alpha_, beta_, gamma_, rho_;
+  ///  \li rho  : parameter related to the orthogonality
+  ///  \li gamma  : parameter related to the correction of the bias by the linear velocity measurement.
+  double alpha_, beta_, rho_, gamma_;
   bool withGyroBias_;
   Vector dx_hat_;
-  kine::LocalKinematics state_kine_;
-  // sampling time
+  kine::Orientation state_ori_;
+  // kine::LocalKinematics state_kine_;
+  //  sampling time
   double dt_;
 
   // correction of the orientation coming from the contact orientations, passed as a local angular velocity.

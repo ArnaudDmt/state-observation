@@ -35,28 +35,9 @@ public:
     {
       /// @param pos position measurement.
       /// @param ori orientation measurement.
-      /// @param mu gain associated with the linear velocity correction from the pose measurement.
-      /// @param lambda gain associated with the yaw correction from the orientation measurement.
-      /// @param tau gain associated with the tilt correction from the orientation measurement.
-      /// @param eta gain associated with the position correction from the pose measurement.
-      ContactInput(const Matrix3 & ori,
-                   const Vector3 & pos,
-                   const Vector3 & imuContactPos,
-                   const Vector3 & worldContactPos,
-                   double mu,
-                   double lambda,
-                   double gamma)
-      : ori_(ori), pos_(pos), imuContactPos_(imuContactPos), worldContactPos_(worldContactPos), mu_(mu),
-        lambda_(lambda), gamma_(gamma)
-      {
-      }
+      ContactInput(const Matrix3 & ori, const Vector3 & pos) : ori_(ori), pos_(pos) {}
       Matrix3 ori_;
       Vector3 pos_;
-      Vector3 imuContactPos_;
-      Vector3 worldContactPos_;
-      double mu_;
-      double lambda_;
-      double gamma_;
       // double eta_;
     };
     InputWaiko(const Vector3 & yv, const Vector3 & ya, const Vector3 & yg) : yv_(yv), ya_(ya), yg_(yg) {}
@@ -73,39 +54,33 @@ public:
 
   inline static constexpr Index sizeX1 = 3;
   inline static constexpr Index sizeX2 = 3;
-  inline static constexpr Index sizeGyroBias = 3;
   inline static constexpr Index sizeOri = 4;
   inline static constexpr Index sizePos = 3;
 
   inline static constexpr Index sizeX1Tangent = 3;
   inline static constexpr Index sizeX2Tangent = 3;
-  inline static constexpr Index sizeGyroBiasTangent = 3;
   inline static constexpr Index sizeOriTangent = 3;
   inline static constexpr Index sizePosTangent = 3;
 
   inline static constexpr Index x1Index = 0;
   inline static constexpr Index x2Index = sizeX1;
-  inline static constexpr Index gyroBiasIndex = x2Index + sizeX2;
-  inline static constexpr Index oriIndex = gyroBiasIndex + sizeGyroBias;
-  inline static constexpr Index posIndex = oriIndex + sizeOri;
+  inline static constexpr Index posIndex = x2Index + sizeX2;
 
   inline static constexpr Index x1IndexTangent = 0;
   inline static constexpr Index x2IndexTangent = sizeX1Tangent;
-  inline static constexpr Index gyroBiasIndexTangent = x2IndexTangent + sizeX2Tangent;
-  inline static constexpr Index oriIndexTangent = gyroBiasIndexTangent + sizeGyroBiasTangent;
+  inline static constexpr Index oriIndexTangent = x2IndexTangent + sizeX2Tangent;
   inline static constexpr Index posIndexTangent = oriIndexTangent + sizeOriTangent;
 
 public:
   /// The constructor
+  ///  \li dt  : timestep between each iteration
   ///  \li alpha : parameter related to the convergence of the linear velocity
   ///              of the IMU expressed in the control frame
   ///  \li beta  : parameter related to the fast convergence of the tilt
   ///  \li rho  : parameter related to the orthogonality
-  ////  \li gamma  : parameter related to the correction of the bias by the linear velocity measurement.
-  ///  \li dt  : timestep between each iteration
-  ///  \li bufferCapacity  : capacity of the iteration buffer
-  ///  \li withGyroBias  : indicates if the gyrometer bias must be used in the estimation
-  WaikoHumanoid(double dt, double alpha, double beta, double rho, bool withGyroBias = true);
+  ///  \li lambda  : parameter related to the correction of the position by the position measurement
+  ///  \li mu  : parameter related to the correction of the orientation by the orientation measurement
+  WaikoHumanoid(double dt, double alpha, double beta, double rho, double lambda, double mu);
 
   /// @brief Destroys the observer
   ///
@@ -115,11 +90,7 @@ public:
   /// @param x1 The initial local linear velocity of the IMU.
   /// @param x2_p The initial value of the intermediate estimate of the IMU's tilt.
   /// @param x2 The initial tilt of the IMU.
-  void initEstimator(const Vector3 & x1,
-                     const Vector3 & x2,
-                     const Vector3 & gyro_bias,
-                     const Vector4 & ori,
-                     const Vector3 & pos);
+  void initEstimator(const Vector3 & x1, const Vector3 & x2, const Vector4 & ori, const Vector3 & pos);
 
   /// @brief sets the input
   /// @details version that computes yv from the kinematics of the anchor frame in the IMU frame
@@ -184,14 +155,24 @@ public:
     return rho_;
   }
 
-  /// set gamma
-  void setGamma(const double gamma)
+  /// set lambda
+  void setLambda(const double lambda)
   {
-    gamma_ = gamma;
+    lambda_ = lambda;
   }
-  double getGamma()
+  double geLambda()
   {
-    return gamma_;
+    return lambda_;
+  }
+
+  /// set mu
+  void setMu(const double mu)
+  {
+    mu_ = mu;
+  }
+  double getMu()
+  {
+    return mu_;
   }
 
   /// set the sampling time of the measurements
@@ -204,29 +185,19 @@ public:
     return dt_;
   }
 
-  /// set the sampling time of the measurements
-  void setWithGyroBias(bool withGyroBias)
-  {
-    withGyroBias_ = withGyroBias;
-  }
-
   const Eigen::VectorBlock<ObserverBase::StateVector, sizeX1> getEstimatedLocLinVel()
   {
     return x_().segment<sizeX1>(x1Index);
   }
-  Eigen::VectorBlock<ObserverBase::StateVector, sizeX2> getEstimatedTilt()
+  const Eigen::VectorBlock<ObserverBase::StateVector, sizeX2> getEstimatedTilt()
   {
     return x_().segment<sizeX2>(x2Index);
   }
-  Eigen::VectorBlock<ObserverBase::StateVector, sizeGyroBias> getEstimatedGyroBias()
+  Matrix3 getEstimatedOrientation() const
   {
-    return x_().segment<sizeGyroBias>(gyroBiasIndex);
+    return state_ori_.toMatrix3();
   }
-  Eigen::VectorBlock<ObserverBase::StateVector, sizeOri> getEstimatedOrientation()
-  {
-    return x_().segment<sizeOri>(oriIndex);
-  }
-  Eigen::VectorBlock<ObserverBase::StateVector, sizePos> getEstimatedLocPosition()
+  const Eigen::VectorBlock<ObserverBase::StateVector, sizePos> getEstimatedLocPosition()
   {
     return x_().segment<sizePos>(posIndex);
   }
@@ -273,9 +244,9 @@ protected:
   ///              of the IMU expressed in the control frame
   ///  \li beta  : parameter related to the fast convergence of the tilt
   ///  \li rho  : parameter related to the orthogonality
-  ///  \li gamma  : parameter related to the correction of the bias by the linear velocity measurement.
-  double alpha_, beta_, rho_, gamma_;
-  bool withGyroBias_;
+  ///  \li lambda  : parameter related to the correction of the position by the position measurement
+  ///  \li mu  : parameter related to the correction of the orientation by the orientation measurement
+  double alpha_, beta_, rho_, lambda_, mu_;
   Vector dx_hat_;
   kine::Orientation state_ori_;
   // kine::LocalKinematics state_kine_;

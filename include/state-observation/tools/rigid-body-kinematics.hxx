@@ -315,8 +315,15 @@ inline Matrix3 skewSymmetric2(const Vector3 & v)
 inline Matrix3 v_matrix(const Vector3 & rotVec)
 {
   double rotVec_norm = rotVec.norm();
-  return Matrix3::Identity() + (1 - cos(rotVec_norm)) / rotVec.squaredNorm() * skewSymmetric(rotVec)
-         + (rotVec_norm - sin(rotVec_norm)) / pow(rotVec_norm, 3) * skewSymmetric2(rotVec);
+  if(rotVec_norm > cst::epsilonAngle)
+  {
+    return Matrix3::Identity() + (1 - cos(rotVec_norm)) / rotVec.squaredNorm() * skewSymmetric(rotVec)
+           + (rotVec_norm - sin(rotVec_norm)) / pow(rotVec_norm, 3) * skewSymmetric2(rotVec);
+  }
+  else
+  {
+    return Matrix3::Identity();
+  }
 }
 
 /// transforms a homogeneous matrix into 6d vector (position theta mu)

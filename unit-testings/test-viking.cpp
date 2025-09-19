@@ -144,64 +144,89 @@ struct Traj
   {
     LocalKinematics newKine = iterations_.at(iter).getKine();
 
-    // Random jerk like before
-    Vector3 linJerk = tools::ProbabilityLawSimulation::getUniformMatrix(3, 1, -0.2, 0.2) * 10.0;
-    Vector3 angJerk = tools::ProbabilityLawSimulation::getUniformMatrix(3, 1, -0.2, 0.2) * 10.0;
-
-    // ---- Limits (tune to your system) ----
-    const double maxLinAcc = 1.0; // m/s^2
-    const double maxAngAcc = 6.0; // rad/s^2
-    const double maxLinVel = 0.3; // m/s
-    const double maxAngVel = 0.3; // rad/s
-    const double c_lin = 2; // viscous damping (s^-1)
-    const double c_ang = 2; // viscous damping (s^-1)
-
-    // ---- Acceleration update ----
-    if(inMotion_)
+    t_since_rw_ += dt;
+    if(t_since_rw_ >= rw_update_T_)
     {
-      newKine.linAcc() += linJerk * dt;
-      newKine.angAcc() += angJerk * dt;
-    }
-    else
-    {
-      // Stop mode: we’ll decay velocity directly (stable), so zero acc here
-      newKine.linAcc().setZero();
-      newKine.angAcc().setZero();
-    }
+      Vector3 u_v = tools::ProbabilityLawSimulation::getUniformMatrix(3, 1, -1.0, 1.0);
+      Vector3 u_a = tools::ProbabilityLawSimulation::getUniformMatrix(3, 1, -1.0, 1.0);
+      double s = std::sqrt(rw_update_T_);
 
-    // Clamp accelerations component-wise
-    newKine.linAcc() = newKine.linAcc().cwiseMax(-maxLinAcc).cwiseMin(maxLinAcc);
-    newKine.angAcc() = newKine.angAcc().cwiseMax(-maxAngAcc).cwiseMin(maxAngAcc);
+      // ---- Speed target (random walk with mild pull to cruise) ----
+      double D_speed = 0.20;
+      double v_cruise = 0.35;
+      double pull_v = 0.8;
+      speed_ref_ += D_speed * s * u_v.x();
+      speed_ref_ += pull_v * rw_update_T_ * (v_cruise - speed_ref_);
 
-    // ---- Semi-implicit Euler on velocities ----
-    Vector3 v_lin = newKine.linVel() + newKine.linAcc() * dt;
-    Vector3 v_ang = newKine.angVel() + newKine.angAcc() * dt;
+      // Smoothly keep speed within [0.1, 0.6]
+      auto smoothSat = [](double x, double lim) -> double { return lim * std::tanh(x / lim); };
+      double speed_hi = 0.60, speed_lo = 0.10;
+      double speed_mid = 0.5 * (speed_hi + speed_lo);
+      double speed_rad = 0.5 * (speed_hi - speed_lo);
+      speed_ref_ = speed_mid + smoothSat(speed_ref_ - speed_mid, speed_rad);
 
-    // Viscous damping (prevents random-walk blow-up)
-    v_lin *= std::exp(-c_lin * dt);
-    v_ang *= std::exp(-c_ang * dt);
+      // ---- Roll/Pitch/Yaw targets as angles (bounded random walks) ----
+      double D_rp = 0.35; // rad / sqrt(s)
+      double D_yaw = 0.25; // rad / sqrt(s)
+      rpy_ref_.x() += D_rp * s * u_a.x(); // roll
+      rpy_ref_.y() += D_rp * s * u_a.y(); // pitch
+      rpy_ref_.z() += D_yaw * s * u_a.z(); // yaw (angle target; we'll track rate toward it)
 
-    // In stop mode, add stronger exact decay (stable for any dt)
-    if(!inMotion_)
-    {
-      const double Kd = 20.0; // s^-1 (your old K, but used safely)
-      const double decay = std::exp(-Kd * dt);
-      v_lin *= decay;
-      v_ang *= decay;
+      // Soft-limit roll/pitch to ±30° (angle targets, not rates)
+      double lim = maxTiltRad_;
+      rpy_ref_.x() = smoothSat(rpy_ref_.x(), lim);
+      rpy_ref_.y() = smoothSat(rpy_ref_.y(), lim);
+
+      t_since_rw_ = 0.0;
     }
 
-    // Clamp velocity magnitudes
-    v_lin = clampNorm(v_lin, maxLinVel);
-    v_ang = clampNorm(v_ang, maxAngVel);
+    // ---- Build velocity target in BODY frame: forward along x with speed_ref_ ----
+    Vector3 v_target(speed_ref_, 0.0, 0.0);
 
-    // Write back clamped velocities
-    newKine.linVel() = v_lin;
-    newKine.angVel() = v_ang;
+    // ---- First-order tracking (no PD oscillation) ----
+    double T_v = 0.10;
+    double kv = dt / std::max(1e-12, T_v);
+    if(kv > 1.0) kv = 1.0;
 
-    // Integrate pose using *clamped* velocities (your existing integrate)
+    Vector3 v_cur = newKine.linVel();
+    Vector3 v_next = v_cur + kv * (v_target - v_cur);
+
+    // ---- Angle tracking: drive current RPY to rpy_ref_ with first-order law ----
+    Vector3 rpy_now = newKine.orientation.toRollPitchYaw();
+    Vector3 rpy_err = rpy_ref_ - rpy_now;
+
+    // Map angle error to angular-velocity target (critically damped first-order)
+    double bw_rp = 2.0; // rad/s for roll/pitch
+    double bw_yaw = 1.5; // rad/s for yaw
+    Vector3 w_target(bw_rp * rpy_err.x(), bw_rp * rpy_err.y(), bw_yaw * rpy_err.z());
+
+    double T_w = 0.10;
+    double kw = dt / std::max(1e-12, T_w);
+    if(kw > 1.0) kw = 1.0;
+
+    Vector3 w_cur = newKine.angVel();
+    Vector3 w_next = w_cur + kw * (w_target - w_cur);
+
+    // ---- Write accelerations implied by the first-order updates (for logging) ----
+    newKine.linAcc() = (v_next - v_cur) / std::max(1e-12, dt);
+    newKine.angAcc() = (w_next - w_cur) / std::max(1e-12, dt);
+
+    // ---- Commit vel/angvel and integrate ----
+    newKine.linVel() = v_next;
+    newKine.angVel() = w_next;
+
     newKine.integrate(dt);
 
-    // Optional: clean tiny noise
+    // Final soft saturation on tilt in case numerical drift crosses 30°
+    auto smoothSat = [](double x, double lim) -> double { return lim * std::tanh(x / lim); };
+    Vector3 rpy = newKine.orientation.toRollPitchYaw();
+    if(std::abs(rpy.x()) > maxTiltRad_ || std::abs(rpy.y()) > maxTiltRad_)
+    {
+      rpy.x() = smoothSat(rpy.x(), maxTiltRad_);
+      rpy.y() = smoothSat(rpy.y(), maxTiltRad_);
+      newKine.orientation = Orientation(rpy.x(), rpy.y(), rpy.z());
+    }
+
     if(newKine.linVel().squaredNorm() < 1e-12) newKine.linVel().setZero();
     if(newKine.angVel().squaredNorm() < 1e-12) newKine.angVel().setZero();
 
@@ -233,11 +258,30 @@ struct Traj
   }
 
 protected:
+  Vector3 jerk_lin_ref_{Vector3::Zero()};
+  Vector3 jerk_ang_ref_{Vector3::Zero()};
   double dt_{0.0};
   bool inMotion_{true};
   double duration_{0.0};
   std::map<int, Iteration> iterations_;
   std::map<int, Iteration>::const_iterator prevIter_;
+
+  Vector3 v_ref_{Vector3::Zero()};
+  Vector3 w_ref_{Vector3::Zero()};
+  Vector3 v_des_body_{Vector3::Zero()};
+  double w_des_z_{0.0};
+  double t_since_update_{0.0};
+  double target_update_T_{1.5};
+  double maxTiltRad_{30.0 * M_PI / 180.0};
+  double rw_update_T_{0.10};
+  double t_since_rw_{0.0};
+  double Dv_{0.05};
+  double Dw_x_{0.02};
+  double Dw_y_{0.02};
+  double Dw_z_{0.05};
+
+  double speed_ref_{0.35};
+  Vector3 rpy_ref_{Vector3::Zero()}; // (roll, pitch, yaw) targets (rad)
 };
 
 // ===================== Tests =====================
@@ -383,9 +427,9 @@ int testWithGyroBias(int errorcode, double threshold)
 
 int testWithNonzeroLinAcc(int errorcode, double threshold)
 {
-  const double simTime = 100.0;
-  const double sim_dt = 1e-3;
-  const double est_dt = 1e-3;
+  const double simTime = 150.0;
+  const double sim_dt = 5e-4;
+  const double est_dt = 5e-4;
   const int N = int(std::lround(est_dt / sim_dt));
   BOOST_ASSERT(std::abs(est_dt - N * sim_dt) < 1e-12 && "est_dt must be an integer multiple of sim_dt");
 
@@ -394,7 +438,7 @@ int testWithNonzeroLinAcc(int errorcode, double threshold)
   Traj localTraj;
   localTraj.init(sim_dt, simTime, true);
 
-  Viking viking(3, 5, 3, 3, 3, est_dt);
+  Viking viking(3, 5, 3, 3, 5, est_dt);
 
   // True gyro bias (unknown to estimator)
   const Vector3 b_true = Vector3::Random();

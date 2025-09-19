@@ -99,7 +99,7 @@ ObserverBase::StateVector Viking::oneStepEstimation_()
   double epsilon = 1e-10;
   const double sqrt_term = std::sqrt(alpha_ * alpha_ + 4.0 * cst::gravityConstant * beta_);
   const double A = (-alpha_ + sqrt_term) / ((2.0 - epsilon) * cst::gravityConstant);
-  const double C = (cst::gravityConstant * sqrt_term + alpha_) / beta_;
+  const double D = ((-alpha_ + sqrt_term) / (2.0 - epsilon) + alpha_) / beta_;
   const double min_gm = std::min(gamma_, mu_);
 
   // Error terms
@@ -119,9 +119,8 @@ ObserverBase::StateVector Viking::oneStepEstimation_()
 
   Vector3 db_hat =
       A * x1_hat_.cross(yv) + x2_hat_.cross(yv) + x1_hat_.cross(Ry.transpose() * Vector3::UnitZ())
-      + C * x2_hat_.cross(Ry.transpose() * Vector3::UnitZ())
-      - 0.25 * (cst::gravityConstant * min_gm / (gamma_ * gamma_)) * (R_hat_.toMatrix3().transpose() * logR)
-      - alpha_ * rho_ * sqrt_term * (p_l_y.cross(p_l_hat_));
+      + D * x2_hat_.cross(Ry.transpose() * Vector3::UnitZ())
+      - 0.25 * (cst::gravityConstant * min_gm / (gamma_ * gamma_)) * (R_hat_.toMatrix3().transpose() * logR);
 
   // std::cout << std::endl << "alpha_ * rho_ * c_ab: " << alpha_ * rho_ * c_ab << std::endl;
   // std::cout << std::endl

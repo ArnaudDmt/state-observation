@@ -1,277 +1,159 @@
+#include "state-observation/tools/definitions.hpp"
+#include "state-observation/tools/rigid-body-kinematics.hxx"
+#include <cmath>
+#include <iostream>
 #include <state-observation/observer/viking.hpp>
-#include <state-observation/tools/definitions.hpp>
+
 namespace stateObservation
 {
 
-Viking::Viking(double dt,
-               double alpha,
-               double beta,
-               double gamma,
-               double rho,
-               unsigned long bufferCapacity,
-               bool withGyroBias)
-: DelayedMeasurementComplemFilter(dt,
-                                  16,
-                                  15,
-                                  9,
-                                  bufferCapacity,
-                                  std::make_shared<IndexedInputArrayT<VikingInput>>(),
-                                  std::make_shared<AsynchronousDataMapT<AsynchronousInputViking>>()),
-  alpha_(alpha), beta_(beta), gamma_(gamma), rho_(rho), withGyroBias_(withGyroBias)
+Viking::Viking() : ZeroDelayObserver(12, 21, std::make_shared<IndexedInputArrayT<>>()) {}
+
+Viking::Viking(double alpha, double beta, double gamma, double mu, double rho, double dt)
+: Viking(alpha, beta, gamma, mu, rho, 12, 21, dt)
 {
 }
 
-Viking::~Viking() {}
-
-void Viking::setInput(const Vector3 & yv_k,
-                      const Vector3 & ya_k,
-                      const Vector3 & yg_k,
-                      TimeIndex k,
-                      bool resetImuLocVelHat)
+Viking::Viking(double alpha, double beta, double gamma, double mu, double rho, int n, int m, double dt)
+: ZeroDelayObserver(n, m, std::make_shared<IndexedInputArrayT<>>()), alpha_(alpha), beta_(beta), gamma_(gamma), mu_(mu),
+  rho_(rho), dt_(dt)
 {
-  setInput(VikingInput(yv_k, ya_k, yg_k), k);
-
-  if(resetImuLocVelHat)
-  {
-    xBuffer_.front()().segment<3>(0) = yv_k;
-  }
 }
 
-void Viking::startNewIteration_() {}
-
-void Viking::addDelayedPosOriMeasurement(const Vector3 & pos,
-                                         const Matrix3 & ori,
-                                         double mu,
-                                         double lambda,
-                                         double tau,
-                                         double eta,
-                                         double delay)
+void Viking::initEstimator(Vector & x)
 {
-  // we start from the latest iteration then lookbackwards for the iteration such that the cumulated dt is the closest
-  // to delay
-  StateIterator prevIter = xBuffer_.begin();
-  StateIterator currentIter = prevIter;
-  double time_interval = 0.0;
-  double prev_time_interval = 0.0;
-  Index measIndex;
-
-  BOOST_ASSERT(false && "FIX THIS");
-
-  while(time_interval < delay)
-  {
-    prevIter = currentIter;
-    currentIter += 1;
-    prev_time_interval = time_interval;
-    time_interval += convert_input<VikingInput>((*u_)[prevIter->getTime()]).dt_;
-  }
-  if(delay - prev_time_interval < time_interval - delay)
-  {
-    measIndex = prevIter->getTime();
-  }
-  else
-  {
-    measIndex = currentIter->getTime();
-  }
-
-  pushAsyncInput(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), measIndex);
-}
-
-void Viking::addDelayedOriMeasurement(const Matrix3 & ori, double lambda, double tau, double delay)
-{
-  BOOST_ASSERT(false && "FIX THIS");
-  // TimeIndex itersDelay = TimeIndex(std::round(delay / dt));
-  // TimeIndex measTime = getCurrentTime() - itersDelay;
-
-  // pushAsyncInput(AsynchronousInputViking(ori, lambda, tau), measTime);
-}
-
-void Viking::addPosOriMeasurement(const Vector3 & pos,
-                                  const Matrix3 & ori,
-                                  double mu,
-                                  double lambda,
-                                  double tau,
-                                  double eta)
-{
-  pushAsyncInput(AsynchronousInputViking(pos, ori, mu, lambda, tau, eta), getCurrentTime());
-}
-
-void Viking::addOriMeasurement(const Matrix3 & ori, double lambda, double tau)
-{
-  pushAsyncInput(AsynchronousInputViking(ori, lambda, tau), getCurrentTime());
-}
-
-ObserverBase::StateVector & Viking::computeStateDynamics_(StateIterator it)
-{
-  dx_hat_.setZero();
-  StateIterator prevIter = it + 1;
-
-  BOOST_ASSERT(u_ && u_->checkIndex(prevIter->getTime()) && "ERROR: The input is not set");
-
-  // we fetch the estimated state from the previous iteration
-  const ObserverBase::StateVector & x_hat = (*prevIter)();
-  Eigen::VectorBlock<const ObserverBase::StateVector, sizeX1> x1_hat = x_hat.segment<sizeX1>(x1Index);
-  Eigen::VectorBlock<const ObserverBase::StateVector, sizeX2> x2_hat = x_hat.segment<sizeX2>(x2Index);
-  Eigen::VectorBlock<const ObserverBase::StateVector, sizeGyroBias> b_hat = x_hat.segment<sizeGyroBias>(gyroBiasIndex);
-  Eigen::VectorBlock<const ObserverBase::StateVector, sizeOri> q_hat = x_hat.segment<sizeOri>(oriIndex);
-  Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
-  state_kine_.position = pl_hat;
-  state_kine_.orientation.fromVector4(q_hat);
-
-  // we fetch the input from the previous iteration
-  const VikingInput & synced_Input = convert_input<VikingInput>((*u_)[prevIter->getTime()]);
-  const Vector3 & yv = synced_Input.yv_k;
-  const Vector3 & ya = synced_Input.ya_k;
-  const Vector3 & yg = synced_Input.yg_k;
-
-  Vector3 unbiased_yg = yg;
-  if(withGyroBias_)
-  {
-    unbiased_yg -= b_hat;
-  }
-
-  // we compute the state dynamics
-  Eigen::Ref<Vector3> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
-  Eigen::Ref<Vector3> x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
-  Eigen::Ref<Vector3> b_hat_dot = dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
-  Eigen::Ref<Vector3> w_l = dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l)
-  Eigen::Ref<Vector3> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
-
-  x1_hat_dot = x1_hat.cross(unbiased_yg) - cst::gravityConstant * x2_hat + ya + alpha_ * (yv - x1_hat); // x1
-  x2_hat_dot = x2_hat.cross(unbiased_yg) - beta_ / cst::gravityConstant * (yv - x1_hat); // x2
-  b_hat_dot = rho_ * x1_hat.cross(yv); // using b_dot = rho * S(x1_hat) * yv
-  // using R_dot = RS(w_l) and w_l = yg - gamma * S(R_hat^T ez) x2_hat
-  w_l = unbiased_yg + gamma_ * x2_hat.cross(state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ());
-  // using pl_dot = -S(yg) pl + x1
-  v_l = x1_hat + pl_hat.cross(unbiased_yg);
-
-  return dx_hat_;
-}
-
-void Viking::addCorrectionTerms(StateIterator it)
-{
-  // we fetch the state and input from the previous iteration
-  StateIterator prevIter = it + 1;
-  if(!u_asynchronous_->checkIndex(prevIter->getTime()))
-  {
-    return;
-  }
-
-  // we fetch the estimated state from the previous iteration
-  const ObserverBase::StateVector & x_hat = (*prevIter)();
-  Eigen::VectorBlock<const ObserverBase::StateVector, sizeX2> x2_hat = x_hat.segment<sizeX2>(x2Index);
-  Eigen::VectorBlock<const ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
-
-  // we add the correction terms compute the state dynamics
-  Eigen::Ref<Vector3> x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
-  Eigen::Ref<Vector3> x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
-  Eigen::Ref<Vector3> b_hat_dot = dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
-  Eigen::Ref<Vector3> w_l = dx_hat_.segment<sizeOriTangent>(oriIndexTangent); // using R_dot = RS(w_l * dt)
-  Eigen::Ref<Vector3> v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
-
-  AsynchronousInputViking & async_input =
-      convert_async_data<AsynchronousInputViking>(u_asynchronous_->getElement(prevIter->getTime()));
-
-  for(auto & [posMeas, oriMeas, mu, lambda, tau, eta] : async_input.pos_ori_measurements_)
-  {
-    Vector3 meas_pl = oriMeas.transpose() * posMeas;
-    Vector3 meas_tilt = oriMeas.transpose() * Vector3::UnitZ();
-    Matrix3 R_tilde = oriMeas * state_kine_.orientation.toMatrix3().transpose();
-    Vector3 R_tilde_vec = kine::skewSymmetricToRotationVector(R_tilde - R_tilde.transpose()) / 2.0;
-
-    x1_hat_dot += mu * (meas_pl - pl_hat);
-    x2_hat_dot += tau * (meas_tilt - x2_hat);
-    if(withGyroBias_)
-    {
-      // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
-      // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
-      b_hat_dot += cst::gravityConstant * rho_ / beta_ * x2_hat.cross(meas_tilt)
-                   - cst::gravityConstant / 4.0 * rho_ * tau * std::min(gamma_, lambda) / beta_
-                         * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec
-                   + rho_ * mu * pl_hat.cross(meas_pl);
-    }
-    w_l += lambda * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ() * Vector3::UnitZ().transpose()
-           * R_tilde_vec;
-    v_l += eta * (meas_pl - pl_hat);
-  }
-  for(auto & [oriMeas, lambda, tau] : async_input.ori_measurements_)
-  {
-    Vector3 meas_tilt = oriMeas.transpose() * Vector3::UnitZ();
-    Matrix3 R_tilde = oriMeas * state_kine_.orientation.toMatrix3().transpose();
-    Vector3 R_tilde_vec = kine::skewSymmetricToRotationVector(R_tilde - R_tilde.transpose()) / 2.0;
-
-    x2_hat_dot += tau * (meas_tilt - x2_hat);
-    if(withGyroBias_)
-    {
-      // b_hat_dot = rho * S(x1_hat) * yv + g0 * (rho / beta) * S(x2_hat)Ry^T ez - g0/4 * rho * tau * min(gamma, lambda)
-      // / beta * R_hat^T vec(Pa(R_tilde)) + rho * mu * S(pl_hat) Ry^T py
-      b_hat_dot += cst::gravityConstant * rho_ / beta_ * x2_hat.cross(meas_tilt)
-                   - cst::gravityConstant / 4.0 * rho_ * tau * std::min(gamma_, lambda) / beta_
-                         * state_kine_.orientation.toMatrix3().transpose() * R_tilde_vec;
-    }
-    w_l += lambda * state_kine_.orientation.toMatrix3().transpose() * Vector3::UnitZ() * Vector3::UnitZ().transpose()
-           * R_tilde_vec;
-  }
-}
-
-void Viking::integrateState_(StateIterator it)
-{
-  StateIterator prevIter = it + 1;
-  ObserverBase::StateVector & newState = (*prevIter)();
-  const VikingInput & synced_Input = convert_input<VikingInput>((*u_)[prevIter->getTime()]);
-
-  Eigen::Ref<Vector3> x1_hat = newState.segment<sizeX1>(x1Index);
-  Eigen::Ref<Vector3> x2_hat = newState.segment<sizeX2>(x2Index);
-  Eigen::Ref<Vector3> b_hat = newState.segment<sizeGyroBias>(gyroBiasIndex);
-  Eigen::Ref<Vector3> pl_hat = newState.segment<sizePos>(posIndex);
-
-  // we add the correction terms compute the state dynamics
-  const auto & x1_hat_dot = dx_hat_.segment<sizeX1Tangent>(x1IndexTangent);
-  const auto & x2_hat_dot = dx_hat_.segment<sizeX2Tangent>(x2IndexTangent);
-  const auto & b_hat_dot = dx_hat_.segment<sizeGyroBiasTangent>(gyroBiasIndexTangent);
-  const auto & w_l = dx_hat_.segment<sizeOriTangent>(oriIndexTangent);
-  const auto & v_l = dx_hat_.segment<sizePosTangent>(posIndexTangent);
-
-  // discrete-time integration of x1_hat, x2_hat and b_hat
-  double dt = synced_Input.dt_;
-  x1_hat += x1_hat_dot * dt;
-  x2_hat += x2_hat_dot * dt;
-  b_hat += b_hat_dot * dt;
-  pl_hat += v_l * dt;
-
-  // discrete-time integration of p and R
-  state_kine_.linVel = v_l;
-  state_kine_.angVel = w_l;
-
-  state_kine_.orientation.integrateRightSide(w_l * dt);
-  state_kine_.position = pl_hat;
-
-  newState.segment<sizeOri>(oriIndex) = state_kine_.orientation.toVector4();
-  newState.segment<sizePos>(posIndex) = state_kine_.position();
+  setState(x, 0);
 }
 
 void Viking::initEstimator(const Vector3 & x1,
                            const Vector3 & x2,
-                           const Vector3 & gyro_bias,
-                           const Vector4 & ori,
-                           const Vector3 & pos)
+                           const Vector3 & b,
+                           const Matrix3 & R,
+                           const Vector3 & p_l)
 {
-  Eigen::VectorXd initStateVector = Eigen::VectorXd::Zero(getStateSize());
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(getStateSize());
+  x0.segment<3>(0) = x1;
+  x0.segment<3>(3) = x2;
+  x0.segment<3>(6) = b;
+  R_hat_ = R;
+  x0.segment<3>(9) = p_l;
 
-  initStateVector.segment<sizeX1>(x1Index) = x1;
-  initStateVector.segment<sizeX2>(x2Index) = x2;
-  initStateVector.segment<sizeGyroBias>(gyroBiasIndex) = gyro_bias;
-  initStateVector.segment<sizeOri>(oriIndex) = ori;
-  initStateVector.segment<sizePos>(posIndex) = pos;
-
-  initEstimator(initStateVector);
+  setState(x0, 0);
 }
 
-ObserverBase::StateVector Viking::oneStepEstimation_(StateIterator it)
+// ===== Measurement =====
+
+void Viking::setMeasurement(const Vector3 & yv_k,
+                            const Vector3 & ya_k,
+                            const Vector3 & yg_k,
+                            const Matrix3 & Ry_k,
+                            const Vector3 & p_l_y_k,
+                            TimeIndex k)
 {
-  computeStateDynamics_(it);
-  addCorrectionTerms(it);
-  integrateState_(it);
-  return (*(it))();
+  // Measurement layout: [ yv(3) ; ya(3) ; yg(3) ; vec(Ry)(9 col-major) ; p_l,y(3) ]
+  ObserverBase::MeasureVector y_k(21);
+
+  y_k.segment<3>(0) = yv_k;
+  y_k.segment<3>(3) = ya_k;
+  y_k.segment<3>(6) = yg_k;
+  Eigen::Map<const Eigen::Matrix<double, 9, 1>> Ryvec(Ry_k.data()); // column-major flatten
+  y_k.segment<9>(9) = Ryvec;
+  y_k.segment<3>(18) = p_l_y_k;
+
+  ZeroDelayObserver::setMeasurement(y_k, k);
+}
+
+// ===== Core step =====
+
+ObserverBase::StateVector Viking::oneStepEstimation_()
+{
+  using Vec = Eigen::VectorXd;
+
+  const TimeIndex k = this->x_.getTime();
+
+  BOOST_ASSERT(this->y_.size() > 0 && this->y_.checkIndex(k + 1) && "ERROR: The measurement vector is not set");
+
+  // Unpack measurement at time k+1
+  const Vec y = getMeasurement(k + 1);
+  const Vector3 yv = y.segment<3>(0);
+  const Vector3 ya = y.segment<3>(3);
+  const Vector3 yg = y.segment<3>(6);
+  Matrix3 Ry;
+  {
+    Eigen::Map<const Eigen::Matrix<double, 3, 3, Eigen::ColMajor>> RyMap(y.segment<9>(9).data());
+    Ry = RyMap;
+  }
+  const Vector3 p_l_y = y.segment<3>(18);
+
+  // Current estimate x_hat(k)
+  ObserverBase::StateVector xhat = getCurrentEstimatedState();
+
+  // Unpack state
+  x1_hat_ = xhat.segment<3>(0);
+  x2_hat_ = xhat.segment<3>(3);
+  b_hat_ = xhat.segment<3>(6);
+  p_l_hat_ = xhat.segment<3>(9);
+
+  // Precompute
+  const Vector3 omega_hat = yg - b_hat_; // yg - b
+  double epsilon = 1e-10;
+  const double sqrt_term = std::sqrt(alpha_ * alpha_ + 4.0 * cst::gravityConstant * beta_);
+  const double A = (-alpha_ + sqrt_term) / ((2.0 - epsilon) * cst::gravityConstant);
+  const double C = (cst::gravityConstant * sqrt_term + alpha_) / beta_;
+  const double min_gm = std::min(gamma_, mu_);
+
+  // Error terms
+  const Matrix3 Rtilde_y = Ry * R_hat_.toMatrix3().transpose();
+  const Vector3 RT_ez = R_hat_.toMatrix3().transpose() * Vector3::UnitZ();
+  const Vector3 logR = kine::skewSymmetricToRotationVector(Rtilde_y - Rtilde_y.transpose()) / 2.0;
+
+  // Sigma (Eq. for sigma)
+  const Vector3 sigma = gamma_ * (RT_ez.cross(x2_hat_)) - mu_ * (RT_ez * Vector3::UnitZ().dot(logR));
+
+  // Delta (Eq. for delta)
+  const Vector3 delta = -rho_ * (p_l_y - p_l_hat_);
+
+  // Dynamics (continuous-time)
+  Vector3 dx1_hat = x1_hat_.cross(omega_hat) - cst::gravityConstant * x2_hat_ + ya + alpha_ * (yv - x1_hat_);
+  Vector3 dx2_hat = x2_hat_.cross(omega_hat) - beta_ * (yv - x1_hat_);
+
+  Vector3 db_hat =
+      A * x1_hat_.cross(yv) + x2_hat_.cross(yv) + x1_hat_.cross(Ry.transpose() * Vector3::UnitZ())
+      + C * x2_hat_.cross(Ry.transpose() * Vector3::UnitZ())
+      - 0.25 * (cst::gravityConstant * min_gm / (gamma_ * gamma_)) * (R_hat_.toMatrix3().transpose() * logR)
+      - alpha_ * rho_ * sqrt_term * (p_l_y.cross(p_l_hat_));
+
+  // std::cout << std::endl << "alpha_ * rho_ * c_ab: " << alpha_ * rho_ * c_ab << std::endl;
+  // std::cout << std::endl
+  //           << "-alpha_ * rho_ * c_ab * (p_l_y.cross(p_l_hat_)): "
+  //           << (-alpha_ * rho_ * c_ab * (p_l_y.cross(p_l_hat_))).transpose() << std::endl;
+  Vector3 dp_l_hat = x1_hat_ + p_l_hat_.cross(omega_hat) - delta;
+
+  // Forward Euler integration
+  x1_hat_ += dx1_hat * dt_;
+  x2_hat_ += dx2_hat * dt_;
+  b_hat_ += db_hat * dt_;
+  R_hat_.integrateRightSide((omega_hat - sigma) * dt_);
+  p_l_hat_ += dp_l_hat * dt_;
+
+  // std::cout << std::endl << " p_l_hat_.transpose(): " << p_l_hat_.transpose() << std::endl;
+  // std::cout << std::endl << " p_l_y.transpose(): " << p_l_y.transpose() << std::endl;
+
+  // std::cout << std::endl << " x1_hat_.transpose(): " << x1_hat_.transpose() << std::endl;
+  // std::cout << std::endl << " x2_hat_.transpose(): " << x2_hat_.transpose() << std::endl;
+  // std::cout << std::endl << " b_hat_.transpose(): " << b_hat_.transpose() << std::endl;
+  // std::cout << std::endl << " (omega_hat - sigma) * dt_: " << (omega_hat - sigma) * dt_ << std::endl;
+
+  // Pack state back
+  xhat.segment<3>(0) = x1_hat_;
+  xhat.segment<3>(3) = x2_hat_;
+  xhat.segment<3>(6) = b_hat_;
+  xhat.segment<3>(9) = p_l_hat_;
+
+  // Commit state at k+1
+  setState(xhat, k + 1);
+
+  return xhat;
 }
 
 } // namespace stateObservation

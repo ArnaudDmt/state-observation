@@ -99,7 +99,7 @@ public:
                             const Vector3 & addForce,
                             const Vector3 & addMoment);
 
-  stateObservation::Vector computeAccelerations(const Vector & x, const Vector & u);
+  stateObservation::Vector computeAccelerations(const Vector & x, const InputBase & input);
 
   // computation of the acceleration linear
   virtual void computeAccelerations(const Vector3 & positionCom,
@@ -127,15 +127,7 @@ public:
 
   /// Description of the state dynamics
   virtual stateObservation::Vector stateDynamics(const stateObservation::Vector & x,
-                                                 const stateObservation::Vector & u,
-                                                 TimeIndex k);
-
-  /// compute the jacobien of the state dynamics at the last computed value
-  stateObservation::Matrix stateDynamicsJacobian();
-
-  /// compute the jacobien of the state dynamics at a given state
-  stateObservation::Matrix stateDynamicsJacobian(const stateObservation::Vector & x,
-                                                 const stateObservation::Vector & u,
+                                                 const InputBase & input,
                                                  TimeIndex k);
 
   /// sets the finite differences derivation step vector
@@ -143,15 +135,7 @@ public:
 
   /// Description of the sensor's dynamics
   virtual stateObservation::Vector measureDynamics(const stateObservation::Vector & x,
-                                                   const stateObservation::Vector & u,
-                                                   TimeIndex k);
-
-  /// compute the Jacobien of the measurements dynamics at the last computed value
-  stateObservation::Matrix measureDynamicsJacobian();
-
-  /// compute the Jacobien of the measurements dynamics at a given state value
-  stateObservation::Matrix measureDynamicsJacobian(const stateObservation::Vector & x,
-                                                   const stateObservation::Vector & u,
+                                                   const InputBase & input,
                                                    TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
@@ -246,14 +230,14 @@ public:
                                Vector & fc,
                                Vector & tc);
 
-  virtual void computeForcesAndMoments(const Vector & x, const Vector & u);
+  virtual void computeForcesAndMoments(const Vector & x, const InputBase & u);
 
   virtual Vector getForcesAndMoments();
 
-  virtual Vector getForcesAndMoments(const Vector & x, const Vector & u);
+  virtual Vector getForcesAndMoments(const Vector & x, const InputBase & u);
 
-  virtual Vector getMomentaDotFromForces(const Vector & x, const Vector & u);
-  virtual Vector getMomentaDotFromKinematics(const Vector & x, const Vector & u);
+  virtual Vector getMomentaDotFromForces(const Vector & x, const InputBase & u);
+  virtual Vector getMomentaDotFromKinematics(const Vector & x, const InputBase & u);
 
   virtual void iterateDynamicsEuler(const Vector3 & positionCom,
                                     const Vector3 & velocityCom,
@@ -325,6 +309,15 @@ public:
   virtual double getRobotMass() const;
 
 protected:
+  /// Gives a boolean answer on whether or not the vector is correctly sized to be an input vector
+  bool checkInputvector(const Vector &);
+
+  inline void assertInputVector_(const Vector & v)
+  {
+    (void)v; // avoid warning
+    BOOST_ASSERT(checkInputvector(v) && "ERROR: The input vector has the wrong size");
+  }
+
   bool printed_;
 
   stateObservation::AccelerometerGyrometer sensor_;
@@ -351,13 +344,8 @@ protected:
 
   Vector dx_;
 
-  Vector xk1_;
-  Vector xk_;
-  Vector uk_;
-
   Vector xk_fory_;
   Vector yk_;
-  Vector uk_fory_;
 
   Index measurementSize_;
 

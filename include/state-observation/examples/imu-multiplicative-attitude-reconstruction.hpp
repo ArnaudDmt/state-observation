@@ -53,7 +53,7 @@ namespace examples
  */
 
 IndexedVectorArray imuMultiplicativeAttitudeReconstruction(const IndexedVectorArray & y,
-                                                           const IndexedVectorArray & u,
+                                                           const IndexedInputVectorArray & u,
                                                            const Vector & xh0,
                                                            const Matrix & p,
                                                            const Matrix & q,

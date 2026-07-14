@@ -2,53 +2,32 @@
 
 namespace stateObservation
 {
-ExtendedKalmanFilter::ExtendedKalmanFilter(Index n, Index m)
-: KalmanFilterBase(n, m, 0), directInputOutputFeedthrough_(false), directInputStateProcessFeedthrough_(false), f_(0x0)
-
-{
-#ifdef STATEOBSERVATION_VERBOUS_CONSTRUCTORS
-  std::cout << std::endl << "ExtendedKalmanFilter Constructor" << std::endl;
-#endif // STATEOBSERVATION_VERBOUS_CONSTRUCTOR
-}
-
 ExtendedKalmanFilter::ExtendedKalmanFilter(Index n,
                                            Index m,
-                                           Index p,
                                            bool directInputOutputFeedthrough,
-                                           bool directInputStateProcessFeedthrough)
-: KalmanFilterBase(n, m, p), directInputOutputFeedthrough_(directInputOutputFeedthrough),
+                                           bool directInputStateProcessFeedthrough,
+                                           const std::shared_ptr<IndexedInputArrayInterface> input)
+: KalmanFilterBase(n, m, input), directInputOutputFeedthrough_(directInputOutputFeedthrough),
   directInputStateProcessFeedthrough_(directInputStateProcessFeedthrough), f_(0x0)
 {
 #ifdef STATEOBSERVATION_VERBOUS_CONSTRUCTORS
   std::cout << std::endl << "ExtendedKalmanFilter Constructor" << std::endl;
 #endif // STATEOBSERVATION_VERBOUS_CONSTRUCTOR
-
-  if(p == 0)
-  {
-    directInputOutputFeedthrough_ = false;
-    directInputStateProcessFeedthrough_ = false;
-  }
 }
 
 ExtendedKalmanFilter::ExtendedKalmanFilter(Index n,
                                            Index nt,
                                            Index m,
                                            Index mt,
-                                           Index p,
                                            bool directInputOutputFeedthrough,
-                                           bool directInputStateProcessFeedthrough)
-: KalmanFilterBase(n, nt, m, mt, p), directInputOutputFeedthrough_(directInputOutputFeedthrough),
+                                           bool directInputStateProcessFeedthrough,
+                                           const std::shared_ptr<IndexedInputArrayInterface> input)
+: KalmanFilterBase(n, nt, m, mt, input), directInputOutputFeedthrough_(directInputOutputFeedthrough),
   directInputStateProcessFeedthrough_(directInputStateProcessFeedthrough), f_(0x0)
 {
 #ifdef STATEOBSERVATION_VERBOUS_CONSTRUCTORS
   std::cout << std::endl << "ExtendedKalmanFilter Constructor" << std::endl;
 #endif // STATEOBSERVATION_VERBOUS_CONSTRUCTOR
-
-  if(p == 0)
-  {
-    directInputOutputFeedthrough_ = false;
-    directInputStateProcessFeedthrough_ = false;
-  }
 }
 
 void ExtendedKalmanFilter::setFunctor(DynamicalSystemFunctorBase * f)
@@ -69,36 +48,30 @@ void ExtendedKalmanFilter::clearFunctor()
 
 void ExtendedKalmanFilter::setDirectInputOutputFeedthrough(bool b)
 {
-  if(p_ > 0)
-  {
-    directInputOutputFeedthrough_ = b;
-  }
+
+  directInputOutputFeedthrough_ = b;
 }
 
 void ExtendedKalmanFilter::setDirectInputStateFeedthrough(bool b)
 {
-  if(p_ > 0)
-  {
-    directInputStateProcessFeedthrough_ = b;
-  }
+
+  directInputStateProcessFeedthrough_ = b;
 }
 
 ObserverBase::StateVector ExtendedKalmanFilter::prediction_(TimeIndex k)
 {
   if(!xbar_.isSet() || xbar_.getTime() != k)
   {
-    if((p_ > 0) && (directInputStateProcessFeedthrough_))
+    BOOST_ASSERT(f_ != 0x0 && "ERROR: The Kalman filter functor is not set");
+    if(directInputStateProcessFeedthrough_)
     {
-
-      BOOST_ASSERT(this->u_.size() > 0 && this->u_.checkIndex(k - 1) && "ERROR: The input vector is not set");
-      opt.u_ = this->u_[k - 1];
+      BOOST_ASSERT(this->u_->size() > 0 && this->u_->checkIndex(k - 1) && "ERROR: The input vector is not set");
+      xbar_.set(f_->stateDynamics(this->x_(), (*u_)[k - 1], this->x_.getTime()), k);
     }
     else
     {
-      opt.u_ = inputVectorZero();
+      xbar_.set(f_->stateDynamics(this->x_(), InputT<>(), this->x_.getTime()), k);
     }
-    BOOST_ASSERT(f_ != 0x0 && "ERROR: The Kalman filter functor is not set");
-    xbar_.set(f_->stateDynamics(this->x_(), opt.u_, this->x_.getTime()), k);
   }
 
   return xbar_();
@@ -119,27 +92,19 @@ ObserverBase::MeasureVector ExtendedKalmanFilter::simulateSensor_(const Observer
 {
   BOOST_ASSERT(f_ != 0x0 && "ERROR: The Kalman filter functor is not set");
 
-  if(p_ > 0)
+  if(directInputOutputFeedthrough_)
   {
-    if(directInputOutputFeedthrough_)
-    {
-      BOOST_ASSERT(u_.checkIndex(k) && "ERROR: The input feedthrough of the measurements is not set \
+    BOOST_ASSERT(u_->checkIndex(k) && "ERROR: The input feedthrough of the measurements is not set \
 (the measurement at time k needs the input at time k which was not given) \
 if you don't need the input in the computation of measurement, you \
 must set directInputOutputFeedthrough to 'false' in the constructor");
-    }
-
-    if(u_.checkIndex(k))
-    {
-      opt.u_ = u_[k];
-    }
-    else
-    {
-      opt.u_ = inputVectorZero();
-    }
+    IndexedInputArrayInterface & uArray = *u_;
+    return f_->measureDynamics(x, uArray[k], k);
   }
-
-  return f_->measureDynamics(x, opt.u_, k);
+  else
+  {
+    return f_->measureDynamics(x, InputT<>(), k);
+  }
 }
 
 KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
@@ -151,22 +116,18 @@ KalmanFilterBase::Amatrix // ExtendedKalmanFilter<n,m,p>::Amatrix does not work
 
   opt.x_ = this->x_();
   opt.dx_.resize(nt_);
-  if(p_ > 0)
-  {
-    if(directInputStateProcessFeedthrough_)
-      opt.u_ = this->u_[k];
-    else
-      opt.u_ = inputVectorZero();
-  }
+
   for(Index i = 0; i < nt_; ++i)
   {
-    // std::cout << std::endl << "col: " << std::endl << i << std::endl;
     opt.dx_.setZero();
     opt.dx_[i] = dx[i];
 
     arithm_->stateSum(this->x_(), opt.dx_, opt.x_);
 
-    opt.xp_ = f_->stateDynamics(opt.x_, opt.u_, k);
+    if(directInputStateProcessFeedthrough_)
+      opt.xp_ = f_->stateDynamics(opt.x_, (*u_)[k], k);
+    else
+      opt.xp_ = f_->stateDynamics(opt.x_, InputT<>(), k);
 
     arithm_->stateDifference(opt.xp_, xbar_(), opt.dx_);
 

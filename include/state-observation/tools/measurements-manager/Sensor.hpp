@@ -1,0 +1,41 @@
+#ifndef SENSORHPP
+#define SENSORHPP
+#include <string>
+namespace stateObservation
+{
+namespace measurements
+{
+/**
+ * Object making easier the handling of sensors within the observers.
+ **/
+
+/// @brief Class containing the information of a sensor to facilitate its handling.
+struct Sensor
+{
+
+protected:
+  inline Sensor() = default;
+  inline Sensor(size_t id, std::string_view name) : id_(id), name_(name) {}
+
+  inline bool operator<(const Sensor & rhs) const noexcept
+  {
+    return (id() < rhs.id_);
+  }
+
+public:
+  inline size_t id() const noexcept
+  {
+    return id_;
+  }
+  inline const std::string & name() const noexcept
+  {
+    return name_;
+  }
+
+protected:
+  size_t id_;
+  std::string name_;
+};
+} // namespace measurements
+} // namespace stateObservation
+#endif // SENSORHPP

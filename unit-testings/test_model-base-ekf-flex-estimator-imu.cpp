@@ -47,7 +47,7 @@ int test()
   // State initialization => not used here because it is set in model-base-ekf-flex-estimator-imu
 
   // Input initialization
-  Vector u0 = Vector::Zero(inputSize - 6 * contactNbr, 1);
+  VectorInput u0 = Vector::Zero(inputSize - 6 * contactNbr, 1);
   // clang-format off
   u0 <<  0.0135673,
          0.001536,
@@ -182,7 +182,7 @@ int test()
   for(Index k = kinit + 2; k < kmax; ++k)
   {
     est.setMeasurement(y[k]);
-    est.setMeasurementInput(u[k]);
+    est.setMeasurementInput(VectorInput(u[k]));
 
     stopwatch.start();
 

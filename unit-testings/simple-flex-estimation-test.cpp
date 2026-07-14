@@ -26,7 +26,7 @@ int test()
   /// The array containing all the states, the measurements and the inputs
   IndexedVectorArray x;
   IndexedVectorArray y;
-  IndexedVectorArray u;
+  IndexedInputVectorArray u;
   IndexedVectorArray z;
 
   IndexedVectorArray ino;
@@ -98,7 +98,7 @@ int test()
       velCtrl += accCtrl * dt;
       accCtrl << 0.12 * sin(0.018 * id), 0.08 * sin(0.035 * id), 0.3 * sin(0.027 * id);
 
-      Vector Ui(Vector::Zero(inputSize, 1));
+      VectorInput Ui(Vector::Zero(inputSize, 1));
       Ui.segment(indexes::pos, 3) = posCtrl;
       Ui.segment(indexes::ori, 3) = aaCtrl.angle() * aaCtrl.axis();
       Ui.segment(indexes::linVel, 3) = velCtrl;

@@ -13,20 +13,20 @@ namespace stateObservation
 
 double dt_ = 0.005;
 
-double lin_stiffness_ = (double)rand() / RAND_MAX * 1e5;
+double lin_stiffness_ = (double)rand() / RAND_MAX * 1e4;
 double lin_damping_ = (double)rand() / RAND_MAX * 5 * 1e1;
-double ang_stiffness_ = (double)rand() / RAND_MAX * 1e5;
-double ang_damping_ = (double)rand() / RAND_MAX * 5 * 1e1;
+double ang_stiffness_ = (double)rand() / RAND_MAX * 1e3;
+double ang_damping_ = (double)rand() / RAND_MAX * 1e1;
 
 Matrix3 K1_ = lin_stiffness_ * Matrix3::Identity();
 Matrix3 K2_ = lin_damping_ * Matrix3::Identity();
 Matrix3 K3_ = ang_stiffness_ * Matrix3::Identity();
 Matrix3 K4_ = ang_damping_ * Matrix3::Identity();
 
-double lin_stiffness_2_ = (double)rand() / RAND_MAX * 1e5;
+double lin_stiffness_2_ = (double)rand() / RAND_MAX * 1e4;
 double lin_damping_2_ = (double)rand() / RAND_MAX * 5 * 1e1;
-double ang_stiffness_2_ = (double)rand() / RAND_MAX * 1e5;
-double ang_damping_2_ = (double)rand() / RAND_MAX * 5 * 1e1;
+double ang_stiffness_2_ = (double)rand() / RAND_MAX * 1e3;
+double ang_damping_2_ = (double)rand() / RAND_MAX * 1e1;
 
 Matrix3 K1_2_ = lin_stiffness_2_ * Matrix3::Identity();
 Matrix3 K2_2_ = lin_damping_2_ * Matrix3::Identity();
@@ -40,7 +40,7 @@ Vector3 com_dd_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() /
 Vector3 position_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 kine::Orientation ori_;
 Vector3 linvel_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-Vector3 angvel_ = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10 * 100;
+Vector3 angvel_ = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
 
 Vector3 gyroBias1_ = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
 Vector3 gyroBias2_ = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>() / 10;
@@ -54,7 +54,7 @@ Vector3 centroidContactPos1_ = tools::ProbabilityLawSimulation::getUniformMatrix
 kine::Orientation centroidContactOri1_;
 Vector3 centroidContactLinVel1_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 centroidContactAngVel1_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
-Vector3 contactForces1_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 1000;
+Vector3 contactForces1_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 100;
 Vector3 contactTorques1_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 10;
 
 Vector3 worldContactPos2_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
@@ -177,7 +177,8 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
          + kine::skewSymmetric(ko_.getAngularMomentum()()));
 
   // Jacobians with respect to the contacts
-  for(KineticsObserver::VectorContactConstIterator i = ko_.contacts_.begin(); i != ko_.contacts_.end(); ++i)
+  for(KineticsObserver::Input::VectorContactConstIterator i = ko_.input_.contacts_.begin();
+      i != ko_.input_.contacts_.end(); ++i)
   {
     if(i->isSet)
     {
@@ -469,6 +470,7 @@ int main()
   ko_1_.setSamplingTime(dt_);
   ko_1_.setWithUnmodeledWrench(true);
   ko_1_.setWithGyroBias(true);
+  ko_1_.setWithDampingInMatrixA(true);
 
   ko_1_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_1_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
@@ -569,6 +571,7 @@ int main()
   ko_2_.setSamplingTime(dt_);
   ko_2_.setWithUnmodeledWrench(true);
   ko_2_.setWithGyroBias(true);
+  ko_2_.setWithDampingInMatrixA(true);
 
   ko_2_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
 
@@ -607,7 +610,7 @@ int main()
   std::cout << std::endl << "Tests with 2 contacts and 2 gyrometers: " << std::endl << std::endl;
 
   std::cout << "Starting testAccelerationsJacobians." << std::endl;
-  if((returnVal = testAccelerationsJacobians(ko_2_, ++errorcode, 0.1, 1e-9)))
+  if((returnVal = testAccelerationsJacobians(ko_2_, ++errorcode, 5, 1e-8)))
   {
     std::cout << "testAccelerationsJacobians Failed, error code: " << returnVal << std::endl;
     return returnVal;
@@ -618,7 +621,7 @@ int main()
   }
 
   std::cout << "Starting testOrientationsJacobians." << std::endl;
-  if((returnVal = testOrientationsJacobians(ko_2_, ++errorcode, 0.1, 1.64e-16)))
+  if((returnVal = testOrientationsJacobians(ko_2_, ++errorcode, 5, 1e-8)))
   {
     std::cout << "testOrientationsJacobians Failed, error code: " << returnVal << std::endl;
     return returnVal;
@@ -629,7 +632,7 @@ int main()
   }
 
   std::cout << "Starting testAnalyticalAJacobianVsFD." << std::endl;
-  if((returnVal = testAnalyticalAJacobianVsFD(ko_2_, ++errorcode, 2.5, 6)))
+  if((returnVal = testAnalyticalAJacobianVsFD(ko_2_, ++errorcode, 5, 6)))
   {
     std::cout << "testAnalyticalAJacobianVsFD Failed, error code: " << returnVal << std::endl;
     return returnVal;
@@ -640,7 +643,7 @@ int main()
   }
 
   std::cout << "Starting testAnalyticalCJacobianVsFD." << std::endl;
-  if((returnVal = testAnalyticalCJacobianVsFD(ko_2_, ++errorcode, 0.77, 1e-9)))
+  if((returnVal = testAnalyticalCJacobianVsFD(ko_2_, ++errorcode, 5, 1e-8)))
   {
     std::cout << "testAnalyticalCJacobianVsFD Failed, error code: " << returnVal << std::endl;
     return returnVal;

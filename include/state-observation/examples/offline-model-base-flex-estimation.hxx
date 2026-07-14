@@ -12,7 +12,7 @@ typedef flexibilityEstimation::IMUElasticLocalFrameDynamicalSystem::state state;
 
 stateObservation::IndexedVectorArray offlineModelBaseFlexEstimation(
     const stateObservation::IndexedVectorArray & y,
-    const stateObservation::IndexedVectorArray & u,
+    const stateObservation::IndexedInputVectorArray & u,
     const Matrix & xh0,
     const stateObservation::IndexedVectorArray numberOfContacts,
     double dt,

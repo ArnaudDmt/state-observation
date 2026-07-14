@@ -19,6 +19,7 @@ columns).
 */
 
 const int sizeState = 100;
+const int sizeMeas = 10;
 
 class MyFixture : public benchmark::Fixture
 {
@@ -43,8 +44,40 @@ public:
   Eigen::MatrixXd A =
       stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, sizeState, sizeState>>()
       / 10;
+  Eigen::MatrixXd K =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, sizeState, sizeMeas>>()
+      / 10;
+  Eigen::MatrixXd C =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, sizeMeas, sizeState>>()
+      / 10;
+  Eigen::MatrixXd R =
+      stateObservation::tools::ProbabilityLawSimulation::getUniformMatrix<Eigen::Matrix<double, sizeMeas, sizeMeas>>()
+      / 10;
   Eigen::MatrixXd B;
 };
+
+BENCHMARK_F(MyFixture, josephFormula)(benchmark::State & st)
+{
+  Eigen::MatrixXd P_prime = P.triangularView<Eigen::Upper>();
+  // (I-KC) has the same size than Q so we use it
+  for(auto _ : st)
+  {
+    // This code gets timed
+    P.triangularView<Eigen::Upper>() =
+        Q * P_prime.selfadjointView<Eigen::Upper>() * Q.transpose() + K * R * K.transpose();
+  }
+}
+
+BENCHMARK_F(MyFixture, otherP_Formula)(benchmark::State & st)
+{
+  Eigen::MatrixXd P_prime = P.triangularView<Eigen::Upper>();
+  // (I-KC) has the same size than Q so we use it
+  for(auto _ : st)
+  {
+    // This code gets timed
+    P.triangularView<Eigen::Upper>() = (Q * P_prime.selfadjointView<Eigen::Upper>()).eval();
+  }
+}
 
 BENCHMARK_F(MyFixture, meth1_Adj_Upper_APAt)(benchmark::State & st)
 {

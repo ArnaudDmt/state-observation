@@ -62,6 +62,7 @@ project(
 set(DOXYGEN_USE_MATHJAX "YES")
 set(DOXYGEN_EXAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/doc")
 
+option(BUILD_STATE_OBSERVATION_CSV_READERS "Build csv readers for standalone execution of estimators" OFF)
 option(BUILD_STATE_OBSERVATION_BENCHMARKS "Build state-observation benchmarks" OFF)
 option(BUILD_STATE_OBSERVATION_TOOLS "Build state-observation tools" ON)
 
@@ -101,4 +102,8 @@ if(BUILD_TESTING)
 endif()
 if(BUILD_STATE_OBSERVATION_TOOLS)
   add_subdirectory(misc-tools)
+endif()
+
+if(BUILD_STATE_OBSERVATION_CSV_READERS)
+  add_subdirectory(csv_readers)
 endif()

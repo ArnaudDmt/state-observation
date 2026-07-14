@@ -21,9 +21,4 @@ bool DynamicalSystemFunctorBase::checkStateVector(const Vector & v)
   return (v.rows() == getStateSize() && v.cols() == 1);
 }
 
-bool DynamicalSystemFunctorBase::checkInputvector(const Vector & v)
-{
-  return (v.rows() == getInputSize() && v.cols() == 1);
-}
-
 } // namespace stateObservation

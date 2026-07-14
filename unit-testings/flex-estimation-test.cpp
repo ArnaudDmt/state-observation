@@ -24,7 +24,7 @@ int testConstant()
 
   /// The array containing all the states, the measurements and the inputs
   IndexedVectorArray y;
-  IndexedVectorArray u;
+  IndexedInputVectorArray u;
 
   Vector3 contact(Vector3::Zero());
 
@@ -35,7 +35,7 @@ int testConstant()
   Vector yConstant = Vector::Zero(measurementSize, 1);
   yConstant[1] = 9.8;
 
-  Vector uConstant = Vector::Zero(inputSize, 1);
+  VectorInput uConstant = VectorInput::Zero(inputSize, 1);
   uConstant[2] = 1.8;
 
   {
@@ -99,7 +99,7 @@ int test()
   /// The array containing all the states, the measurements and the inputs
   IndexedVectorArray x;
   IndexedVectorArray y;
-  IndexedVectorArray u;
+  IndexedInputVectorArray u;
 
   /// The covariance matrix of the process noise and the measurement noise
   Matrix q;
@@ -148,7 +148,7 @@ int test()
 
     sim.setState(x0, 0);
 
-    Vector uk = Vector::Zero(imu.getInputSize(), 1);
+    VectorInput uk = VectorInput::Zero(imu.getInputSize(), 1);
 
     int i;
     /// construction of the input
@@ -184,7 +184,7 @@ int test()
       /// give the input to the simulator
       /// we only need to give one value and the
       /// simulator takes automatically the appropriate value
-      sim.setInput(uk, 10 * i);
+      sim.setInput(std::make_shared<VectorInput>(uk), 10 * i);
     }
 
     /// Last sample needed
@@ -294,6 +294,5 @@ int test()
 
 int main()
 {
-
   return test();
 }

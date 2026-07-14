@@ -13,7 +13,7 @@ typedef IMUElasticLocalFrameDynamicalSystem::state state;
 ModelBaseEKFFlexEstimatorIMU::ModelBaseEKFFlexEstimatorIMU(double dt)
 : EKFFlexibilityEstimatorBase(stateSize,
                               measurementSizeBase_,
-                              inputSizeBase_,
+                              std::make_shared<IndexedInputVectorArray>(),
                               Matrix::Constant(stateSize, 1, dxFactor)),
   functor_(dt), stateSize_(stateSize), unmodeledForceVariance_(1e-6), forceVariance_(Matrix::Identity(6, 6) * 1e-4),
   absPosVariance_(1e-4), useFTSensors_(false), withAbsolutePos_(false), withComBias_(false),
@@ -21,7 +21,6 @@ ModelBaseEKFFlexEstimatorIMU::ModelBaseEKFFlexEstimatorIMU(double dt)
 {
   ekf_.setMeasureSize(functor_.getMeasurementSize());
   ekf_.setStateSize(stateSize_);
-  ekf_.setInputSize(functor_.getInputSize());
   inputSize_ = functor_.getInputSize();
 
   ModelBaseEKFFlexEstimatorIMU::resetCovarianceMatrices();
@@ -132,8 +131,7 @@ void ModelBaseEKFFlexEstimatorIMU::setContactsNumber(unsigned i)
 {
   functor_.setContactsNumber(i);
 
-  inputSize_ = functor_.getInputSize();
-  ekf_.setInputSize(inputSize_);
+  setInputSize(functor_.getInputSize());
 
   if(useFTSensors_)
   {
@@ -308,7 +306,16 @@ Index ModelBaseEKFFlexEstimatorIMU::getStateSize() const
 
 Index ModelBaseEKFFlexEstimatorIMU::getInputSize() const
 {
-  return ekf_.getInputSize();
+  return inputSize_;
+}
+
+void ModelBaseEKFFlexEstimatorIMU::setInputSize(Index p)
+{
+  if(p != getInputSize())
+  {
+    inputSize_ = p;
+    ekf_.clearInputs();
+  }
 }
 
 Index ModelBaseEKFFlexEstimatorIMU::getMeasurementSize() const
@@ -362,10 +369,8 @@ const Vector & ModelBaseEKFFlexEstimatorIMU::getFlexibilityVector()
         {
           ekf_.updateStateAndMeasurementPrediction();
 
-          // ekf_.setA(ekf_.getAMatrixFD(dx_));
-          // ekf_.setC(ekf_.getCMatrixFD(dx_));
-          ekf_.setA(functor_.stateDynamicsJacobian());
-          ekf_.setC(functor_.measureDynamicsJacobian());
+          ekf_.setA(ekf_.getAMatrixFD(dx_));
+          ekf_.setC(ekf_.getCMatrixFD(dx_));
         }
 
         ekf_.getEstimatedState(i);
@@ -546,7 +551,6 @@ void ModelBaseEKFFlexEstimatorIMU::setWithUnmodeledForces(bool b)
   {
     functor_.setWithUnmodeledForces(b);
     ekf_.setMeasureSize(functor_.getMeasurementSize());
-    ekf_.setInputSize(functor_.getInputSize());
     withUnmodeledForces_ = b;
     updateMeasurementCovarianceMatrix_();
   }

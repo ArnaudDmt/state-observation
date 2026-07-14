@@ -1,5 +1,5 @@
 IndexedVectorArray imuMultiplicativeAttitudeReconstruction(const IndexedVectorArray & y,
-                                                           const IndexedVectorArray & u,
+                                                           const IndexedInputVectorArray & u,
                                                            const Vector & xh0,
                                                            const Matrix & p,
                                                            const Matrix & q,
@@ -14,8 +14,8 @@ IndexedVectorArray imuMultiplicativeAttitudeReconstruction(const IndexedVectorAr
   typedef kine::indexes<kine::rotationVector> indexesTangent;
 
   /// initialization of the extended Kalman filter
-  ExtendedKalmanFilter filter(stateSize, indexesTangent::size, measurementSize, measurementSize, inputSize, false,
-                              true);
+  ExtendedKalmanFilter filter(stateSize, indexesTangent::size, measurementSize, measurementSize, false, true,
+                              std::make_shared<stateObservation::IndexedInputVectorArray>());
 
   /// initalization of the functor
   IMUMltpctiveDynamicalSystem imuFunctor;
@@ -91,10 +91,11 @@ IndexedVectorArray imuMultiplicativeAttitudeReconstruction(const IndexedVectorAr
   const Index inputSize = 6;
 
   /// initialization of a zero input
-  IndexedVectorArray u;
+  stateObservation::IndexedInputVectorArray u;
   for(TimeIndex k = y.getFirstIndex() - 1; k < y.getNextIndex(); ++k)
   {
-    u.setValue(Vector::Zero(inputSize, 1), k);
+    VectorInput uk = VectorInput::Zero(inputSize, 1);
+    u.setValue(uk, k);
   }
 
   return imuMultiplicativeAttitudeReconstruction(y, u, xh0, p, q, r, dt);

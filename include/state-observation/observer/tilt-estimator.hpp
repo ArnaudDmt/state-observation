@@ -40,51 +40,63 @@ public:
   ///              of the IMU expressed in the control frame
   ///  \li beta  : parameter related to the fast convergence of the tilt
   ///  \li gamma : parameter related to the orthogonality
-  ///  \li dt    : sampling time
   TiltEstimator(double alpha, double beta, double gamma, double dt);
+
+  /// Constructor that allows to initialize the estimator's parameters afterwards. Handle with care.
+  TiltEstimator();
+
+protected:
+  // constructor that allows to use custom sizes for the state and measurement vectors. Might be useful for other
+  // estimators inheriting from this one.
+  TiltEstimator(double alpha, double beta, double gamma, int n, int m, double dt);
+
+public:
+  /// @brief initializes the state vector.
+  /// @param xInit The initial state vector
+  virtual void initEstimator(Vector & x);
 
   /// @brief initializes the state vector.
   /// @param x1 The initial local linear velocity of the IMU.
   /// @param x2_p The initial value of the intermediate estimate of the IMU's tilt.
   /// @param x2 The initial tilt of the IMU.
-  void initEstimator(Vector3 x1 = Vector3::Zero(), Vector3 x2_prime = Vector3::UnitZ(), Vector3 x2 = Vector3::UnitZ());
+  virtual void initEstimator(Vector3 & x1, Vector3 & x2_prime, Vector3 & x2);
 
   /// set the gain of x1_hat variable
-  void setAlpha(const double alpha)
+  inline void setAlpha(const double alpha)
   {
     alpha_ = alpha;
   }
-  double getAlpha() const
+  inline double getAlpha() const
   {
     return alpha_;
   }
 
   /// set the gain of x2prime_hat variable
-  void setBeta(const double beta)
+  inline void setBeta(const double beta)
   {
     beta_ = beta;
   }
-  double getBeta() const
+  inline double getBeta() const
   {
     return beta_;
   }
 
   /// set the gain of x2_hat variable
-  void setGamma(const double gamma)
+  inline void setGamma(const double gamma)
   {
     gamma_ = gamma;
   }
-  double getGamma() const
+  inline double getGamma() const
   {
     return gamma_;
   }
 
   /// set the sampling time of the measurements
-  void setSamplingTime(const double dt)
+  inline void setSamplingTime(const double dt)
   {
     dt_ = dt;
   }
-  double getSamplingTime() const
+  inline double getSamplingTime() const
   {
     return dt_;
   }
@@ -93,6 +105,19 @@ public:
   void setMeasurement(const Vector3 & yv_k, const Vector3 & ya_k, const Vector3 & yg_k, TimeIndex k);
 
   using ZeroDelayObserver::setMeasurement;
+
+  inline const Eigen::VectorBlock<ObserverBase::StateVector, 3> getEstimatedLocLinVel()
+  {
+    return x_().segment<3>(0);
+  }
+  inline const Eigen::VectorBlock<ObserverBase::StateVector, 3> getEstimatedIntermediaryTilt()
+  {
+    return x_().segment<3>(3);
+  }
+  inline const Eigen::VectorBlock<ObserverBase::StateVector, 3> getEstimatedTilt()
+  {
+    return x_().segment<3>(6);
+  }
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -103,15 +128,8 @@ protected:
   /// Sampling time
   double dt_;
 
-  /// variables used for the computation
-  Vector3 x1_;
-  Vector3 x1_hat_;
-  Vector3 x2_hat_prime_;
-  Vector3 x2_hat_;
-  Vector3 dx1_hat;
-
   /// The tilt estimator loop
-  StateVector oneStepEstimation_();
+  virtual StateVector oneStepEstimation_();
 };
 
 } // namespace stateObservation

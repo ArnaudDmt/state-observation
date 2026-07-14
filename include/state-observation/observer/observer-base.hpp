@@ -45,15 +45,14 @@ public:
   typedef Vector MeasureVector;
 
   /// InputVector is the type of the input vector
-  typedef Vector InputVector;
+  // typedef Vector InputVector;
 
   /// constructor
   ///      \li n : size of the state vector
   ///      \li m : size of the measurements vector
-  ///      \li p : size of the input vector
-  ObserverBase(Index n, Index m, Index p = 0);
+  ObserverBase(Index n, Index m);
 
-  /// default constructor (default values for n,m,p are zero)
+  /// default constructor (default values for n,m are zero)
   ObserverBase();
 
   /// Destructor
@@ -71,12 +70,6 @@ public:
   /// gets the size of the measurement vector
   virtual Index getMeasureSize() const;
 
-  /// Changes the size of the input vector
-  virtual void setInputSize(Index p);
-
-  /// gets the size of the input vector
-  virtual Index getInputSize() const;
-
   /// Set the value of the state vector at time index k
   virtual void setState(const StateVector & x_k, TimeIndex k) = 0;
 
@@ -90,7 +83,7 @@ public:
   virtual void clearMeasurements() = 0;
 
   /// Set the value of the input vector at time index k
-  virtual void setInput(const InputVector & x_k, TimeIndex k) = 0;
+  virtual void setInput(const InputBase & u_k, TimeIndex k) = 0;
 
   /// Remove all the given values of the inputs
   virtual void clearInputs() = 0;
@@ -100,7 +93,7 @@ public:
 
   /// Run the observer loop and gets the state estimation of the state at
   /// instant k
-  virtual StateVector getEstimatedState(TimeIndex k) = 0;
+  virtual const StateVector & getEstimatedState(TimeIndex k) = 0;
 
   /// Reinitializes the whole observer
   /// default behavior is to call the three "ObserverBase::clear*" methods
@@ -132,27 +125,12 @@ public:
   /// Tells whether or not the vector has the dimensions of a measurement vector
   virtual bool checkMeasureVector(const MeasureVector &) const;
 
-  /// Gives a vector of input vector size having duplicated "c" value
-  virtual InputVector inputVectorConstant(double c) const;
-
-  /// Gives a vector of input vector size having random values
-  virtual InputVector inputVectorRandom() const;
-
-  /// Gives a vector of input vector size having zero values
-  virtual InputVector inputVectorZero() const;
-
-  /// Tells whether or not the vector has the dimensions of a input vector
-  virtual bool checkInputVector(const InputVector &) const;
-
 protected:
   /// stateSize is the size of the state vector
   Index n_;
 
   /// measureSize is the size of measurements vector
   Index m_;
-
-  /// inputSize is the size of the input vector
-  Index p_;
 };
 
 } // namespace stateObservation

@@ -21,7 +21,7 @@ IMUFixedContactDynamicalSystem::~IMUFixedContactDynamicalSystem()
   // dtor
 }
 
-Vector IMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const Vector &, TimeIndex)
+Vector IMUFixedContactDynamicalSystem::stateDynamics(const Vector & x, const InputBase &, TimeIndex)
 {
   assertStateVector_(x);
 
@@ -67,7 +67,7 @@ Quaternion IMUFixedContactDynamicalSystem::computeQuaternion_(const Vector3 & x)
   return quaternion_;
 }
 
-Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const Vector & u, TimeIndex k)
+Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const InputBase & input, TimeIndex k)
 {
   assertStateVector_(x);
 
@@ -82,6 +82,7 @@ Vector IMUFixedContactDynamicalSystem::measureDynamics(const Vector & x, const V
   Quaternion qFlex(computeQuaternion_(orientationFlexV));
   Matrix3 rFlex(qFlex.toRotationMatrix());
 
+  const VectorInput & u = convert_input<VectorInput>(input);
   assertInputVector_(u);
 
   Vector3 positionControl(u.segment(indexes::pos, 3));
@@ -157,6 +158,11 @@ Index IMUFixedContactDynamicalSystem::getStateSize() const
 Index IMUFixedContactDynamicalSystem::getInputSize() const
 {
   return inputSize_;
+}
+
+bool IMUFixedContactDynamicalSystem::checkInputvector(const Vector & v)
+{
+  return (v.rows() == getInputSize() && v.cols() == 1);
 }
 
 Index IMUFixedContactDynamicalSystem::getMeasurementSize() const

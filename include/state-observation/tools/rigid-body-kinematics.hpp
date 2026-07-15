@@ -678,7 +678,7 @@ struct Kinematics : public internal::KinematicsInternal<Kinematics>
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
-  Vector3 tempVec_;
+  Vector3 tempVec_ = Vector3::Zero();
 };
 
 /// @brief Class facilitating the manipulation of the local kinematics of a frame within another and the associated
@@ -777,11 +777,11 @@ struct LocalKinematics : public internal::KinematicsInternal<LocalKinematics>
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
-  Vector3 tempVec_;
-  Vector3 tempVec_2;
-  Vector3 tempVec_3;
-  Vector3 tempVec_4;
-  Vector3 tempVec_5;
+  Vector3 tempVec_ = Vector3::Zero();
+  Vector3 tempVec_2 = Vector3::Zero();
+  Vector3 tempVec_3 = Vector3::Zero();
+  Vector3 tempVec_4 = Vector3::Zero();
+  Vector3 tempVec_5 = Vector3::Zero();
 };
 
 } // namespace kine

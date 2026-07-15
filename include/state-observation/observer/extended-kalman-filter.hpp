@@ -50,11 +50,12 @@ public:
   ///  the input u_k \li The parameter directInputStateProcessFeedthrough defines whether (true) or not (false) the
   ///  state x_{k+1} requires the input u_k
 
-  ExtendedKalmanFilter(Index n,
-                       Index m,
-                       bool directInputOutputFeedthrough,
-                       bool directInputStateProcessFeedthrough,
-                       const std::shared_ptr<IndexedInputArrayInterface> input);
+  ExtendedKalmanFilter(
+      Index n,
+      Index m,
+      bool directInputOutputFeedthrough,
+      bool directInputStateProcessFeedthrough,
+      const std::shared_ptr<IndexedInputArrayInterface> input = std::make_shared<IndexedInputArrayT<VectorInput>>());
 
   /// The constructor.
   ///  \li n : size of the state vector
@@ -64,13 +65,14 @@ public:
   ///  the input u_k \li The parameter directInputStateProcessFeedthrough defines whether (true) or not (false) the
   ///  state x_{k+1} requires the input u_k
 
-  ExtendedKalmanFilter(Index n,
-                       Index nt,
-                       Index m,
-                       Index mt,
-                       bool directInputOutputFeedthrough,
-                       bool directInputStateProcessFeedthrough,
-                       const std::shared_ptr<IndexedInputArrayInterface> input);
+  ExtendedKalmanFilter(
+      Index n,
+      Index nt,
+      Index m,
+      Index mt,
+      bool directInputOutputFeedthrough,
+      bool directInputStateProcessFeedthrough,
+      const std::shared_ptr<IndexedInputArrayInterface> input = std::make_shared<IndexedInputArrayT<VectorInput>>());
 
   /// Set a pointer to the functor that defines the dynamics of the states
   /// and the measurement the user is responsible for the validity of the

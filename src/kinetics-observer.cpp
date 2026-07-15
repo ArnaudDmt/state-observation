@@ -1888,7 +1888,7 @@ void KineticsObserver::endIteration_()
   {
     ++k_est_; // the timestamp of the state we estimated
 
-    nb_prevContacts_ = getNumberOfSetContacts();
+    nb_prevContacts_ = static_cast<unsigned int>(getNumberOfSetContacts());
 
     removedContacts_.clear();
   }

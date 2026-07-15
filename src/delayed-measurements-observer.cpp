@@ -16,7 +16,7 @@ DelayedMeasurementObserver::DelayedMeasurementObserver(double dt,
   y_asynchronous_ = async_meas;
   currentIterIndex_ = 0;
 
-  setStateCapacity(unsigned(std::round(bufferCapacity / dt)));
+  setStateCapacity(unsigned(std::round(double(bufferCapacity) / dt)));
   setSamplingTime(dt);
 }
 

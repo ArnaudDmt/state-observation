@@ -494,13 +494,13 @@ inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::getFirstIndex() con
 }
 
 template<typename ObjectType, typename Allocator>
-inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::setLastIndex(int index)
+inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::setLastIndex(TimeIndex index)
 {
-  return k_ = index - (v_.size() + 1);
+  return k_ = index - (TimeIndex(v_.size()) + 1);
 }
 
 template<typename ObjectType, typename Allocator>
-inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::setFirstIndex(int index)
+inline TimeIndex IndexedObjectArrayT<ObjectType, Allocator>::setFirstIndex(TimeIndex index)
 {
   return k_ = index;
 }
@@ -600,7 +600,7 @@ IndexedObjectArrayT<ObjectType, Allocator>::IndexedObjectArrayT() : IndexedObjec
 
 template<typename ObjectType, typename Allocator>
 IndexedObjectArrayT<ObjectType, Allocator>::IndexedObjectArrayT(TimeSize size, TimeIndex initial)
-: v_(size), IndexedObjectArrayBase(initial)
+: IndexedObjectArrayBase(initial), v_(size)
 {
 }
 
@@ -702,13 +702,13 @@ inline TimeIndex IndexedInputArrayT<InputType, Allocator>::getFirstIndex() const
 }
 
 template<typename InputType, typename Allocator>
-inline TimeIndex IndexedInputArrayT<InputType, Allocator>::setLastIndex(int index)
+inline TimeIndex IndexedInputArrayT<InputType, Allocator>::setLastIndex(TimeIndex index)
 {
-  return k_ = index - (v_.size() + 1);
+  return k_ = index - (TimeIndex(v_.size()) + 1);
 }
 
 template<typename InputType, typename Allocator>
-inline TimeIndex IndexedInputArrayT<InputType, Allocator>::setFirstIndex(int index)
+inline TimeIndex IndexedInputArrayT<InputType, Allocator>::setFirstIndex(TimeIndex index)
 {
   return k_ = index;
 }

@@ -1,4 +1,4 @@
-# Copyright 2013, CNRS
+# Copyright 2013-2026, CNRS
 #
 # Author: Mehdi Benallegue
 #
@@ -15,7 +15,7 @@
 # received a copy of the GNU Lesser General Public License along with
 # state-observation. If not, see <http://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.22)
 if(POLICY CMP0063)
   cmake_policy(SET CMP0063 NEW)
 endif()
@@ -23,18 +23,36 @@ endif()
 set(PROJECT_NAME state-observation)
 set(PROJECT_DESCRIPTION "General implementation of observers.")
 set(PROJECT_URL "https://github.com/jrl-umi3218/state-observation")
-set(PROJECT_VERSION 1.6.1)
+set(PROJECT_VERSION 1.7.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CXX_DISABLE_WERROR TRUE)
 set(PROJECT_USE_CMAKE_EXPORT TRUE)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set_property(GLOBAL PROPERTY USE_FOLDERS OFF)
 
-include(cmake/base.cmake)
-#INCLUDE(cmake/eigen.cmake)
-include(cmake/msvc-specific.cmake)
-list(APPEND CMAKE_MODULE_PATH "C:/devel/install/share/eigen3/cmake")
-message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+# Check if the submodule cmake have been initialized
+set(JRL_CMAKE_MODULES "${CMAKE_CURRENT_LIST_DIR}/cmake")
+if(EXISTS "${JRL_CMAKE_MODULES}/base.cmake")
+  message(STATUS "JRL cmakemodules found in 'cmake/' git submodule")
+else()
+  find_package(jrl-cmakemodules QUIET CONFIG)
+  if(jrl-cmakemodules_FOUND)
+    get_property(
+      JRL_CMAKE_MODULES
+      TARGET jrl-cmakemodules::jrl-cmakemodules
+      PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+    message(STATUS "JRL cmakemodules found on system at ${JRL_CMAKE_MODULES}")
+  else()
+    message(STATUS "JRL cmakemodules not found. Let's fetch it.")
+    include(FetchContent)
+    FetchContent_Declare("jrl-cmakemodules" GIT_REPOSITORY "https://github.com/jrl-umi3218/jrl-cmakemodules.git")
+    FetchContent_MakeAvailable("jrl-cmakemodules")
+    FetchContent_GetProperties("jrl-cmakemodules" SOURCE_DIR JRL_CMAKE_MODULES)
+  endif()
+endif()
+
+include(${JRL_CMAKE_MODULES}/base.cmake)
+include(${JRL_CMAKE_MODULES}/msvc-specific.cmake)
 
 project(
   ${PROJECT_NAME}

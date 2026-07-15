@@ -56,10 +56,11 @@ int testLeggedOdometry(int errorcode)
   int nbIters = int(simTime / dt);
   Traj traj;
 
-  stateObservation::odometry::LeggedOdometryManager odometryManager_(dt); // manager for the legged odometry
-
-  odometry::LeggedOdometryManager::Configuration odomConfig(measurements::stringToOdometryType("6D"));
-  odometryManager_.init(odomConfig, traj.kine.toVector(Kinematics::Flags::pose));
+  stateObservation::odometry::LeggedOdometryManager odometryManager =
+      stateObservation::odometry::LeggedOdometryManager(); // manager for the legged odometry
+  odometryManager.setSamplingTime(dt);
+  odometry::LeggedOdometryManager::Configuration odomConfig(stateObservation::odometry::stringToOdometryType("6D"));
+  odometryManager.init(odomConfig, traj.kine.toVector(Kinematics::Flags::pose));
 
   Kinematics kine;
   kine.position = Vector3(0.0, 0.0, 0.8);
@@ -80,11 +81,26 @@ int testLeggedOdometry(int errorcode)
       contactList.insert("Contact2");
     }
 
-    odometryManager_.initLoop(contactList,
-                              stateObservation::odometry::LeggedOdometryManager::ContactUpdateFunctions<>());
+    auto onNewContactOdom = [](stateObservation::odometry::LoContact & newContact)
+    {
+      newContact.bodyContactKine_ = Kinematics::zeroKinematics(Kinematics::Flags::pose);
+      newContact.lambda(0.5);
+    };
 
-    odometryManager_.run(
-        odometry::LeggedOdometryManager::KineParams(kine).attitudeMeas(traj.kine.orientation.toMatrix3()));
+    auto onMaintainedContactOdom = [](stateObservation::odometry::LoContact & maintainedContact)
+    {
+      maintainedContact.bodyContactKine_ = Kinematics::zeroKinematics(Kinematics::Flags::pose);
+      maintainedContact.lambda(0.5);
+    };
+
+    auto contactUpdateFunctions = stateObservation::odometry::LeggedOdometryManager::ContactUpdateFunctions()
+                                      .onNewContact(onNewContactOdom)
+                                      .onMaintainedContact(onMaintainedContactOdom);
+
+    odometryManager.initLoop(contactList, contactUpdateFunctions);
+
+    odometryManager.run(
+        odometry::LeggedOdometryManager::KineParams(kine).attitudeMeasurement(traj.kine.orientation.toMatrix3()));
   }
 
   return 0;

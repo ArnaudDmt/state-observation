@@ -392,7 +392,9 @@ const Vector & KineticsObserver::update()
 
   if(k_est_ != k_data_)
   {
+
     updateMeasurements();
+
     updateContactCovariances();
 
     ekf_.updateStateAndMeasurementPrediction();
@@ -424,6 +426,7 @@ const Vector & KineticsObserver::update()
 
     // update of worldCentroidStateKinematics_ and of the contacts pose with the newly estimated state
     worldCentroidStateKinematics_.reset();
+
     updateLocalKineAndContacts_();
     if(withAccelerationEstimation_)
     {
@@ -448,7 +451,7 @@ stateObservation::TimeIndex KineticsObserver::getStateVectorTimeIndex() const
   return ekf_.getCurrentTime();
 }
 
-kine::LocalKinematics KineticsObserver::getLocalCentroidKinematics() const
+const kine::LocalKinematics & KineticsObserver::getLocalCentroidKinematics() const
 {
   return worldCentroidStateKinematics_;
 }
@@ -1885,7 +1888,7 @@ void KineticsObserver::endIteration_()
   {
     ++k_est_; // the timestamp of the state we estimated
 
-    nb_prevContacts_ = getNumberOfSetContacts();
+    nb_prevContacts_ = static_cast<unsigned int>(getNumberOfSetContacts());
 
     removedContacts_.clear();
   }
@@ -2858,7 +2861,7 @@ Vector KineticsObserver::stateDynamics(const Vector & xInput, const InputBase & 
 
 Vector6 KineticsObserver::getCurrentViscoElasticWrench(Index numContact)
 {
-  BOOST_ASSERT(!input_.contacts_[numContact].isSet
+  BOOST_ASSERT(input_.contacts_[numContact].isSet
                && "The contact doesn't exist, the associated visco-elastic wrench cannot be computed.");
 
   const Input::Contact & contact = input_.contacts_.at(static_cast<size_t>(numContact));

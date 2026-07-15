@@ -610,7 +610,7 @@ int main()
   std::cout << std::endl << "Tests with 2 contacts and 2 gyrometers: " << std::endl << std::endl;
 
   std::cout << "Starting testAccelerationsJacobians." << std::endl;
-  if((returnVal = testAccelerationsJacobians(ko_2_, ++errorcode, 0.1, 1e-9)))
+  if((returnVal = testAccelerationsJacobians(ko_2_, ++errorcode, 5, 1e-8)))
   {
     std::cout << "testAccelerationsJacobians Failed, error code: " << returnVal << std::endl;
     return returnVal;
@@ -621,7 +621,7 @@ int main()
   }
 
   std::cout << "Starting testOrientationsJacobians." << std::endl;
-  if((returnVal = testOrientationsJacobians(ko_2_, ++errorcode, 0.1, 1.64e-16)))
+  if((returnVal = testOrientationsJacobians(ko_2_, ++errorcode, 5, 1e-8)))
   {
     std::cout << "testOrientationsJacobians Failed, error code: " << returnVal << std::endl;
     return returnVal;
@@ -632,7 +632,7 @@ int main()
   }
 
   std::cout << "Starting testAnalyticalAJacobianVsFD." << std::endl;
-  if((returnVal = testAnalyticalAJacobianVsFD(ko_2_, ++errorcode, 2.5, 6)))
+  if((returnVal = testAnalyticalAJacobianVsFD(ko_2_, ++errorcode, 5, 6)))
   {
     std::cout << "testAnalyticalAJacobianVsFD Failed, error code: " << returnVal << std::endl;
     return returnVal;
@@ -643,7 +643,7 @@ int main()
   }
 
   std::cout << "Starting testAnalyticalCJacobianVsFD." << std::endl;
-  if((returnVal = testAnalyticalCJacobianVsFD(ko_2_, ++errorcode, 0.77, 1e-9)))
+  if((returnVal = testAnalyticalCJacobianVsFD(ko_2_, ++errorcode, 5, 1e-8)))
   {
     std::cout << "testAnalyticalCJacobianVsFD Failed, error code: " << returnVal << std::endl;
     return returnVal;

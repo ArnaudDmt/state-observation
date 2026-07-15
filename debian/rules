@@ -1,10 +1,10 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
-
-TMP = $(CURDIR)/debian/tmp
+export DH_VERBOSE=1
 
 %:
 	dh $@ --parallel
+
+override_dh_auto_configure:
+	dh_auto_configure -- -DFETCHCONTENT_FULLY_DISCONNECTED=OFF

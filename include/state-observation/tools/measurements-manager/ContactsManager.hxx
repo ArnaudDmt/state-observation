@@ -38,11 +38,13 @@ void ContactsManager<ContactT>::updateContacts(const std::unordered_set<std::str
       new_contact_set += contactName;
     }
   }
-  for(auto prevContactName : currentContactsList_)
+  for(auto & prevContactName : currentContactsList_)
   {
-    if(currentContactsList_.find(prevContactName) == currentContactsList_.end())
+    if(latestContactList.find(prevContactName) == latestContactList.end())
     {
-      onRemovedContact(*findContact(prevContactName));
+      ContactT & removedContact = *findContact(prevContactName);
+      removedContact.isSet(false);
+      onRemovedContact(removedContact);
       if(!removed_contact_set.empty())
       {
         removed_contact_set += ", ";

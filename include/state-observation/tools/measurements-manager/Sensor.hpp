@@ -15,7 +15,7 @@ struct Sensor
 
 protected:
   inline Sensor() = default;
-  inline Sensor(int id, std::string_view name) : id_(id), name_(name) {}
+  inline Sensor(size_t id, std::string_view name) : id_(id), name_(name) {}
 
   inline bool operator<(const Sensor & rhs) const noexcept
   {
@@ -23,7 +23,7 @@ protected:
   }
 
 public:
-  inline int id() const noexcept
+  inline size_t id() const noexcept
   {
     return id_;
   }
@@ -33,7 +33,7 @@ public:
   }
 
 protected:
-  int id_;
+  size_t id_;
   std::string name_;
 };
 } // namespace measurements

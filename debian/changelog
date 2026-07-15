@@ -1,3 +1,9 @@
+state-observation (1.7.0-1debian1) unstable; urgency=medium
+
+  * Update upsteream version
+
+ -- Arnaud TANGUY <arn.tanguy+ppa@gmail.com>  Mon, 24 Nov 2025 10:00:00 +0000
+
 state-observation (1.6.1-1debian1) unstable; urgency=medium
 
   * Disable bionic i386 packaging

@@ -18,11 +18,9 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-observer.hpp
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-observer.hxx
     ${PROJECT_INCLUDE_DIR}/observer/delayed-measurements-complem-filter.hpp
-    ${PROJECT_INCLUDE_DIR}/observer/waiko.hpp
-    ${PROJECT_INCLUDE_DIR}/observer/viking.hpp
+    ${PROJECT_INCLUDE_DIR}/observer/waiko-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator.hpp
     ${PROJECT_INCLUDE_DIR}/observer/tilt-estimator-humanoid.hpp
-    ${PROJECT_INCLUDE_DIR}/observer/tilt-visual-humanoid.hpp
     ${PROJECT_INCLUDE_DIR}/observer/extended-kalman-filter.hpp
     ${PROJECT_INCLUDE_DIR}/observer/kalman-filter-base.hpp
     ${PROJECT_INCLUDE_DIR}/observer/linear-kalman-filter.hpp
@@ -53,7 +51,6 @@ set(HEADERS
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/ContactsManager.hxx
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/IMU.hpp
     ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/Sensor.hpp
-    ${PROJECT_INCLUDE_DIR}/tools/measurements-manager/measurements.hpp
     ${PROJECT_INCLUDE_DIR}/tools/state-vector-arithmetics.hpp
     ${PROJECT_INCLUDE_DIR}/dynamical-system/dynamical-system-functor-base.hpp
     ${PROJECT_INCLUDE_DIR}/dynamical-system/dynamical-system-simulator.hpp
@@ -84,12 +81,10 @@ set(HEADERS
 
 set(SRC
     legged-odometry-manager.cpp
-    waiko.cpp
-    viking.cpp
+    waiko-humanoid.cpp
     delayed-measurements-observer.cpp
     tilt-estimator.cpp
     tilt-estimator-humanoid.cpp
-    tilt-visual-humanoid.cpp
     kalman-filter-base.cpp
     observer-base.cpp
     extended-kalman-filter.cpp
@@ -130,8 +125,9 @@ add_library(${LIBRARY_NAME} SHARED ${SRC} ${HEADERS})
 set_target_properties(${LIBRARY_NAME} PROPERTIES COMPILE_FLAGS "-DSTATE_OBSERVATION_EXPORTS")
 set_target_properties(${LIBRARY_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR} VERSION ${PROJECT_VERSION})
 target_include_directories(
-  ${LIBRARY_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include
-                         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>/$<CONFIG>/include $<INSTALL_INTERFACE:include>)
+  ${LIBRARY_NAME}
+  PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/$<CONFIG>/include>
+         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_link_libraries(${LIBRARY_NAME} PUBLIC Boost::timer Boost::disable_autolinking)
 if(TARGET Eigen3::Eigen)

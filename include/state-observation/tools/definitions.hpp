@@ -551,13 +551,13 @@ protected:
   virtual TimeIndex getNextIndex() const = 0;
 
   /// Set the time index of the last element
-  virtual TimeIndex setLastIndex(int index) = 0;
+  virtual TimeIndex setLastIndex(TimeIndex index) = 0;
 
   /// Get the time index
   virtual TimeIndex getFirstIndex() const = 0;
 
   /// set the time index of the first element
-  virtual TimeIndex setFirstIndex(int index) = 0;
+  virtual TimeIndex setFirstIndex(TimeIndex index) = 0;
 
   virtual TimeSize size() const = 0;
 
@@ -617,13 +617,13 @@ public:
   inline TimeIndex getNextIndex() const override;
 
   /// Set the time index of the last element
-  inline TimeIndex setLastIndex(int index) override;
+  inline TimeIndex setLastIndex(TimeIndex index) override;
 
   /// Get the time index
   inline TimeIndex getFirstIndex() const override;
 
   /// set the time index of the first element
-  inline TimeIndex setFirstIndex(int index) override;
+  inline TimeIndex setFirstIndex(TimeIndex index) override;
 
   inline TimeSize size() const override;
 
@@ -750,13 +750,13 @@ public:
   virtual TimeIndex getNextIndex() const override = 0;
 
   /// Set the time index of the last element
-  virtual TimeIndex setLastIndex(int index) override = 0;
+  virtual TimeIndex setLastIndex(TimeIndex index) override = 0;
 
   /// Get the time index
   virtual TimeIndex getFirstIndex() const override = 0;
 
   /// set the time index of the first element
-  virtual TimeIndex setFirstIndex(int index) override = 0;
+  virtual TimeIndex setFirstIndex(TimeIndex index) override = 0;
 
   virtual TimeSize size() const override = 0;
 
@@ -829,7 +829,6 @@ public:
 
   /// @brief Construct a new IndexedInputArrayT with a predifined size
   ///
-  /// @param size is the size of the array
   /// @param initTime is the index of the initial time. It is zero by default
   IndexedInputArrayT(TimeIndex initTime);
 
@@ -846,13 +845,13 @@ public:
   inline TimeIndex getNextIndex() const override;
 
   /// Set the time index of the last element
-  inline TimeIndex setLastIndex(int index) override;
+  inline TimeIndex setLastIndex(TimeIndex index) override;
 
   /// Get the time index
   inline TimeIndex getFirstIndex() const override;
 
   /// set the time index of the first element
-  inline TimeIndex setFirstIndex(int index) override;
+  inline TimeIndex setFirstIndex(TimeIndex index) override;
 
   inline TimeSize size() const override;
 

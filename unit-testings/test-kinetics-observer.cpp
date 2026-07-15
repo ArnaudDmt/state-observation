@@ -114,7 +114,6 @@ int testKineticsObserverCodeAccessor(int errorcode)
   o.setStateUnmodeledWrench(wrench);
 
   Vector x = o.getCurrentStateVector();
-  stateObservation::TimeIndex index = o.getStateVectorTimeIndex();
 
   Kinematics contactKine;
   contactKine.position.set() << 0, 0.1, 0;
@@ -429,7 +428,7 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
   {
     std::cout << std::endl
               << "1: The process covariance matrix is not positive definite at the beginning!" << std::endl;
-    auto eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
+    Eigen::VectorXd eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
     std::cout << "\nNegative eigenvalues: ";
     for(int i = 0; i < eigvals.size(); ++i)
       if(eigvals[i] < 0) std::cout << eigvals[i] << " ";
@@ -471,7 +470,7 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
   if(!(ko_2_.getEKF().getQ().eigenvalues().real().array() > -1e-8).all())
   {
     std::cout << std::endl << "2: The process covariance matrix is no longer positive definite!" << std::endl;
-    auto eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
+    Eigen::VectorXd eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
     std::cout << "\nNegative eigenvalues: ";
     for(int i = 0; i < eigvals.size(); ++i)
       if(eigvals[i] < 0) std::cout << eigvals[i] << " ";
@@ -591,7 +590,7 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
   if(!(ko_2_.getEKF().getQ().eigenvalues().real().array() > -1e-8).all())
   {
     std::cout << std::endl << "3: The process covariance matrix is no longer positive definite!" << std::endl;
-    auto eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
+    Eigen::VectorXd eigvals = ko_2_.getEKF().getQ().eigenvalues().real();
     std::cout << "\nNegative eigenvalues: ";
     for(int i = 0; i < eigvals.size(); ++i)
       if(eigvals[i] < 0) std::cout << eigvals[i] << " ";

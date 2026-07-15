@@ -15,8 +15,6 @@
 
 #include <boost/circular_buffer.hpp>
 #include <map>
-#include <optional>
-#include <set>
 #include <state-observation/api.h>
 #include <state-observation/observer/observer-base.hpp>
 

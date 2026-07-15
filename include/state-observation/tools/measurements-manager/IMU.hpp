@@ -15,11 +15,11 @@ namespace measurements
 struct IMU : public Sensor
 {
 public:
-  inline IMU(int id, std::string_view name) : Sensor(id, name) {}
+  inline IMU(size_t id, std::string_view name) : Sensor(id, name) {}
 
 public:
   Eigen::Vector3d gyroBias = Eigen::Vector3d::Zero();
-  stateObservation::kine::Kinematics fbImuKine;
+  stateObservation::kine::Kinematics bodyImuKine;
 };
 } // namespace measurements
 } // namespace stateObservation

@@ -12,7 +12,6 @@ namespace measurements
 /// and updates the list of the detected contacts, newly removed contacts, etc., to apply the appropriate functions on
 /// them.
 /// @details The template allows to define other kinds of contacts and thus add custom parameters to them.
-/// @tparam ContactT Contact, associated to a sensor.
 template<typename ContactT>
 struct STATE_OBSERVATION_DLLAPI ContactsManager
 {
@@ -48,7 +47,7 @@ public:
 
   /// @brief Get the map of all the contacts
   ///
-  /// @return std::unordered_map<std::string, contactsWithSensorT>&
+  /// @return std::unordered_map<std::string, ContactT>&
   inline std::unordered_map<std::string, ContactT> & contacts()
   {
     return listContacts_;
@@ -60,7 +59,7 @@ public:
     return contactsDetected_;
   }
 
-  /// @brief Accessor for the a contact associated to a sensor contained in
+  /// @brief Accessor for the a contact associated to a surface contained in
   /// the map
   /// @details Returns a null pointer if the contact does not exist
   /// @param name The name of the contact to access

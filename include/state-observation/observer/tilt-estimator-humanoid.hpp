@@ -34,6 +34,7 @@ public:
   ///              of the IMU expressed in the control frame
   ///  \li beta  : parameter related to the fast convergence of the tilt
   ///  \li gamma : parameter related to the orthogonality
+  ///  \li dt : sampling time
   TiltEstimatorHumanoid(double alpha, double beta, double gamma, double dt);
 
   /// Constructor that allows to initialize the estimator's parameters afterwards. Handle with care.
@@ -48,17 +49,6 @@ public:
   /// @brief Resets x1hat (the estimate of the local linear velocity of the IMU in the world)
   /// @details Avoid discontinuities when the computation mode of the anchor point changes
   void resetImuLocVelHat();
-
-/// prevent c++ overloaded virtual function warning
-#if defined(__clang__)
-#  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Woverloaded-virtual"
-#else
-#  if defined(__GNUC__)
-#    pragma GCC diagnostic push
-#    pragma GCC diagnostic ignored "-Woverloaded-virtual"
-#  endif
-#endif
 
   // we also want to use the function setMeasurement from the TiltEstimator class, that is hidden by the following
   using TiltEstimator::setMeasurement;
@@ -75,15 +65,9 @@ public:
                       const Vector3 & yg_k,
                       TimeIndex k);
 
-#if defined(__clang__)
-#  pragma clang diagnostic pop
-#else
-#  if defined(__GNUC__)
-#    pragma GCC diagnostic pop
-#  endif
-#endif
+protected:
+  Vector3 x1_;
 };
-
 } // namespace stateObservation
 
 #endif // TILTESTIMATORHUMANOIDHPP

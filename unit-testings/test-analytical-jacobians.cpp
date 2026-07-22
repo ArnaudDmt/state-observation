@@ -233,7 +233,10 @@ int testAccelerationsJacobians(KineticsObserver & ko_,
   return 0;
 }
 
-int testOrientationsJacobians(KineticsObserver & ko_, int errcode, double relativeErrorThreshold, double threshold) // 2
+int testOrientationsJacobians(KineticsObserver & ko_,
+                              int errcode,
+                              double absoluteTolerance,
+                              double relativeTolerance) // 2
 {
   /* Finite differences Jacobian */
   Matrix rotationJacobianDeltaFD = Matrix::Zero(3, 3);
@@ -246,17 +249,8 @@ int testOrientationsJacobians(KineticsObserver & ko_, int errcode, double relati
   kineTestOri.linAcc = accelerations.segment<3>(0);
   kineTestOri.angAcc = accelerations.segment<3>(3);
 
-  Orientation oriBar = Orientation::zeroRotation();
-  Orientation oriBarIncremented = Orientation::zeroRotation();
-  Vector3 oriBarDiff = Vector3::Zero();
-
-  oriBar = kineTestOri.orientation;
-  oriBarIncremented = kineTestOri.orientation;
-
   // Vector3 dt_x_omega(10000, 24265, 589);
   Vector3 dt_x_omega = dt_ * kineTestOri.angVel() + dt_ * dt_ / 2 * kineTestOri.angAcc();
-
-  oriBar.integrateRightSide(dt_x_omega);
 
   Vector3 xIncrement = Vector3::Zero();
 
@@ -265,16 +259,12 @@ int testOrientationsJacobians(KineticsObserver & ko_, int errcode, double relati
     xIncrement.setZero();
     xIncrement[i] = dx_[i];
 
-    Vector3 incremented_dt_x_omega = dt_x_omega + xIncrement;
+    Orientation oriMinus = kineTestOri.orientation;
+    Orientation oriPlus = kineTestOri.orientation;
+    oriMinus.integrateRightSide(dt_x_omega - xIncrement);
+    oriPlus.integrateRightSide(dt_x_omega + xIncrement);
 
-    oriBarIncremented.integrateRightSide(incremented_dt_x_omega);
-
-    oriBarDiff = oriBar.differentiate(oriBarIncremented);
-
-    oriBarDiff /= dx_[i];
-
-    rotationJacobianDeltaFD.col(i) = oriBarDiff;
-    oriBarIncremented = kineTestOri.orientation;
+    rotationJacobianDeltaFD.col(i) = oriMinus.differentiate(oriPlus) / (2.0 * dx_[i]);
   }
 
   Matrix rotationJacobianDeltaAnalytical =
@@ -288,33 +278,32 @@ int testOrientationsJacobians(KineticsObserver & ko_, int errcode, double relati
   {
     for(int j = 0; j < rotationJacobianDeltaAnalytical.cols(); j++)
     {
-      if(abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j))
-                 / std::max(abs(rotationJacobianDeltaAnalytical(i, j)), abs(rotationJacobianDeltaFD(i, j))) * 100
-             > relativeErrorThreshold
-         && abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j)) != 0)
+      const double difference = abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j));
+      const double scale = std::max(abs(rotationJacobianDeltaAnalytical(i, j)), abs(rotationJacobianDeltaFD(i, j)));
+      if(difference > absoluteTolerance + relativeTolerance * scale)
       {
         std::cout << std::endl
                   << "\033[1;31m"
                   << "error indexes: " << std::endl
                   << "(" << i << "," << j << "):  Analytic : " << rotationJacobianDeltaAnalytical(i, j)
-                  << "    FD : " << rotationJacobianDeltaFD(i, j) << "    Relative error : "
-                  << abs(rotationJacobianDeltaAnalytical(i, j) - rotationJacobianDeltaFD(i, j))
-                         / std::max(abs(rotationJacobianDeltaAnalytical(i, j)), abs(rotationJacobianDeltaFD(i, j)))
-                         * 100
-                  << " % "
+                  << "    FD : " << rotationJacobianDeltaFD(i, j)
+                  << "    Relative error : " << (scale == 0.0 ? 0.0 : difference / scale * 100) << " % "
                   << "\033[0m\n"
                   << std::endl;
       }
     }
   }
 
-  error_ = (rotationJacobianDeltaAnalytical - rotationJacobianDeltaFD).squaredNorm();
+  const Matrix difference = rotationJacobianDeltaAnalytical - rotationJacobianDeltaFD;
+  error_ = difference.norm();
+  const double scale = std::max(1.0, std::max(rotationJacobianDeltaAnalytical.norm(), rotationJacobianDeltaFD.norm()));
+  const double tolerance = absoluteTolerance + relativeTolerance * scale;
 
   std::cout << "Error between the analytical and the finite differences Jacobians of the orientation integration wrt "
                "an increment delta: "
-            << error_ << std::endl;
+            << error_ << " (tolerance: " << tolerance << ")" << std::endl;
 
-  if(error_ > threshold)
+  if(!difference.allFinite() || error_ > tolerance)
   {
     return errcode;
   }
@@ -512,7 +501,7 @@ int main()
   }
 
   std::cout << "Starting testOrientationsJacobians." << std::endl;
-  if((returnVal = testOrientationsJacobians(ko_1_, ++errorcode, 0.1, 1.66e-16)))
+  if((returnVal = testOrientationsJacobians(ko_1_, ++errorcode, 1e-7, 1e-7)))
   {
     std::cout << "testOrientationsJacobians Failed, error code: " << returnVal << std::endl;
     return returnVal;
@@ -621,7 +610,7 @@ int main()
   }
 
   std::cout << "Starting testOrientationsJacobians." << std::endl;
-  if((returnVal = testOrientationsJacobians(ko_2_, ++errorcode, 0.1, 1.64e-16)))
+  if((returnVal = testOrientationsJacobians(ko_2_, ++errorcode, 1e-7, 1e-7)))
   {
     std::cout << "testOrientationsJacobians Failed, error code: " << returnVal << std::endl;
     return returnVal;

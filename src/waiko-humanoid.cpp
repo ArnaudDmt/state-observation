@@ -75,8 +75,9 @@ void WaikoHumanoid::addContactPosInput(const Vector3 & refPose,
   }
 
   const Matrix3 R_hat = state_ori_.toMatrix3();
-  const Vector3 posMeas = R_hat.transpose() * refPose - imuContactPos;
-  const Vector3 jacobian = -R_hat.transpose() * Vector3::UnitZ().cross(refPose);
+  const Vector3 anchoredRefPose = refPose - positionAnchor_;
+  const Vector3 posMeas = R_hat.transpose() * anchoredRefPose - imuContactPos;
+  const Vector3 jacobian = -R_hat.transpose() * Vector3::UnitZ().cross(anchoredRefPose);
 
   input.contact_pos_input_->pos_meas_.push_back(posMeas);
   input.contact_pos_input_->jacobians_.push_back(jacobian);
@@ -86,6 +87,25 @@ void WaikoHumanoid::addContactPosInput(const Vector3 & refPose,
 }
 
 void WaikoHumanoid::startNewIteration_() {}
+
+void WaikoHumanoid::resetPositionAnchor(const Vector3 & newPositionAnchor)
+{
+  ObserverBase::StateVector & x_hat = getCurrentEstimatedState();
+  Eigen::VectorBlock<ObserverBase::StateVector, sizePos> pl_hat = x_hat.segment<sizePos>(posIndex);
+
+  const Vector3 worldPositionBefore = positionAnchor_ + state_ori_.toMatrix3() * pl_hat;
+  lastPositionAnchorResetLocalNormBefore_ = pl_hat.norm();
+
+  // Translation-only world-origin reset: keep R, x1 and x2 unchanged and
+  // shift the local position so the reconstructed world position is continuous.
+  pl_hat += state_ori_.toMatrix3().transpose() * (positionAnchor_ - newPositionAnchor);
+  positionAnchor_ = newPositionAnchor;
+
+  const Vector3 worldPositionAfter = positionAnchor_ + state_ori_.toMatrix3() * pl_hat;
+  lastPositionAnchorResetJump_ = (worldPositionAfter - worldPositionBefore).norm();
+  lastPositionAnchorResetLocalNormAfter_ = pl_hat.norm();
+  ++positionAnchorResetCount_;
+}
 
 ObserverBase::StateVector & WaikoHumanoid::computeStateDynamics_()
 {
@@ -235,6 +255,11 @@ void WaikoHumanoid::initEstimator(const Vector3 & x1, const Vector3 & x2, const 
   initStateVector.segment<sizeX2>(x2Index) = x2;
   state_ori_.fromVector4(ori);
   initStateVector.segment<sizePos>(posIndex) = pos;
+  positionAnchor_.setZero();
+  lastPositionAnchorResetJump_ = 0.0;
+  lastPositionAnchorResetLocalNormBefore_ = 0.0;
+  lastPositionAnchorResetLocalNormAfter_ = pos.norm();
+  positionAnchorResetCount_ = 0;
 
   setState(initStateVector, 0);
 }

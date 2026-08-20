@@ -241,6 +241,31 @@ public:
   {
     return x_().segment<sizePos>(posIndex);
   }
+  Vector3 getEstimatedWorldPosition()
+  {
+    return positionAnchor_ + state_ori_.toMatrix3() * x_().segment<sizePos>(posIndex);
+  }
+  const Vector3 & getPositionAnchor() const
+  {
+    return positionAnchor_;
+  }
+  void resetPositionAnchor(const Vector3 & newPositionAnchor);
+  double getLastPositionAnchorResetJump() const
+  {
+    return lastPositionAnchorResetJump_;
+  }
+  double getLastPositionAnchorResetLocalNormBefore() const
+  {
+    return lastPositionAnchorResetLocalNormBefore_;
+  }
+  double getLastPositionAnchorResetLocalNormAfter() const
+  {
+    return lastPositionAnchorResetLocalNormAfter_;
+  }
+  std::size_t getPositionAnchorResetCount() const
+  {
+    return positionAnchorResetCount_;
+  }
 
   // correction of the position coming from the contact positions, passed as a
   // local linear velocity.
@@ -298,6 +323,11 @@ protected:
   double alpha_, beta_, gamma_, rho_, mu_, psi_;
   Vector dx_hat_;
   kine::Orientation state_ori_;
+  Vector3 positionAnchor_ = Vector3::Zero();
+  double lastPositionAnchorResetJump_ = 0.0;
+  double lastPositionAnchorResetLocalNormBefore_ = 0.0;
+  double lastPositionAnchorResetLocalNormAfter_ = 0.0;
+  std::size_t positionAnchorResetCount_ = 0;
 
   // correction of the orientation coming from the contact orientations, passed
   // as a local angular velocity.

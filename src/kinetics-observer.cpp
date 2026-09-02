@@ -703,39 +703,29 @@ void KineticsObserver::getOdometryWorldContactRest_(const Vector3 & contactForce
   // flexibility. We remove it using the viscoelastic model.
 
   worldContactKine.position =
-      worldContactKine.orientation.toMatrix3() * linStiffness.inverse()
+      worldContactKine.position()
+      + worldContactKine.orientation.toMatrix3() * linStiffness.inverse()
           * (contactForceMeas
-             + worldContactKine.orientation.toMatrix3().transpose() * linDamping * worldContactKine.linVel())
-      + worldContactKine.position();
+               + linDamping * worldContactKine.orientation.toMatrix3().transpose() * worldContactKine.linVel());
 
-  /* We get the reference orientation of the contact by removing the contribution of the visco-elastic model */
-  // difference between the reference orientation and the real one, obtained from the visco-elastic model
   Vector3 flexRotDiff =
-      -2 * worldContactKine.orientation.toMatrix3() * angStiffness.inverse()
+      -2 * angStiffness.inverse()
       * (contactTorqueMeas
-         + worldContactKine.orientation.toMatrix3().transpose() * angDamping * worldContactKine.angVel());
+         + angDamping * worldContactKine.orientation.toMatrix3().transpose() * worldContactKine.angVel());
 
-  // axis of the rotation
+  Matrix3 flexRotMatrix = Matrix3::Identity();
+
+  if(flexRotDiff.norm() > cst::epsilonAngle)
+  {
   Vector3 flexRotAxis = flexRotDiff / flexRotDiff.norm();
-
-  double diffNorm = flexRotDiff.norm() / 2;
-
-  if(diffNorm > 1.0)
-  {
-    diffNorm = 1.0;
-  }
-  else if(diffNorm < -1.0)
-  {
-    diffNorm = -1.0;
-  }
-
+    double diffNorm = std::min(1.0, flexRotDiff.norm() / 2.0);
   double flexRotAngle = std::asin(diffNorm);
 
-  // angle axis representation of the rotation due to the visco-elastic model
   Eigen::AngleAxisd flexRotAngleAxis(flexRotAngle, flexRotAxis);
-  // matrix representation of the rotation due to the visco-elastic model
-  Matrix3 flexRotMatrix = kine::Orientation(flexRotAngleAxis).toMatrix3();
-  worldContactKine.orientation = Matrix3(flexRotMatrix.transpose() * worldContactKine.orientation.toMatrix3());
+    flexRotMatrix = kine::Orientation(flexRotAngleAxis).toMatrix3();
+  }
+
+  worldContactKine.orientation = Matrix3(worldContactKine.orientation.toMatrix3() * flexRotMatrix.transpose());
 
   if(flatOdometry)
   {

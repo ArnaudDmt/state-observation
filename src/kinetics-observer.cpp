@@ -827,6 +827,11 @@ Index KineticsObserver::setIMU(const Vector3 & accelero,
     }
   }
 
+  if(static_cast<size_t>(num) >= input_.imuSensors_.size())
+  {
+    return -1;
+  }
+
   BOOST_ASSERT(unsigned(num) < maxImuNumber_ && "The inserted IMU number exceeds the maximum number");
 
   Input::IMU & imu = input_.imuSensors_[static_cast<size_t>(num)]; /// reference

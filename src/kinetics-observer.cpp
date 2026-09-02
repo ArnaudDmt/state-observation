@@ -2608,16 +2608,18 @@ void KineticsObserver::computeContactWrench_(const Input::Contact & contact,
   Kinematics worldFkContactPose;
   worldFkContactPose.setToProductNoAlias(worldCentroidStateKinematics, centroidContactKine);
 
-  contactWrench.segment(0, 3) =
-      -(worldFkContactPose.orientation.toMatrix3().transpose()
-        * (contact.linearStiffness * (worldFkContactPose.position() - worldRestContactPose.position())
-           + contact.linearDamping * worldFkContactPose.linVel()));
+  const Vector3 posDiff = worldFkContactPose.orientation.toMatrix3().transpose()
+                          * (worldFkContactPose.position() - worldRestContactPose.position());
+  const Vector3 linVelDiff = worldFkContactPose.orientation.toMatrix3().transpose() * worldFkContactPose.linVel();
+  const Matrix3 oriDiff =
+      worldRestContactPose.orientation.toMatrix3().transpose() * worldFkContactPose.orientation.toMatrix3();
+  const Vector3 angVelDiff = worldFkContactPose.orientation.toMatrix3().transpose() * worldFkContactPose.angVel();
 
-  Matrix R = worldFkContactPose.orientation.toMatrix3() * worldRestContactPose.orientation.toMatrix3().transpose();
+  contactWrench.segment(0, 3) = -contact.linearStiffness * posDiff - contact.linearDamping * linVelDiff;
+
   contactWrench.segment(3, 3) =
-      -worldFkContactPose.orientation.toMatrix3().transpose()
-      * (0.5 * contact.angularStiffness * kine::skewSymmetricToRotationVector(R - R.transpose())
-         + contact.angularDamping * worldFkContactPose.angVel());
+      -0.5 * contact.angularStiffness * kine::skewSymmetricToRotationVector(oriDiff - oriDiff.transpose())
+      - contact.angularDamping * angVelDiff;
 }
 
 void KineticsObserver::computeContactForces_(LocalKinematics & worldCentroidStateKinematics,
@@ -2635,27 +2637,16 @@ void KineticsObserver::computeContactForces_(LocalKinematics & worldCentroidStat
 
       // the kinematics of the contact in the centroid's frame, expressed in the centroid's frame
       Kinematics & centroidContactKine = contact.centroidContactKine;
-      // the kinematics of the contact in the world frame, expressed in the world frame
-      Kinematics worldFkContactPose;
       // the rest kinematics of the contact in the world frame, expressed in the world frame
       Kinematics & worldRestContactPose = contact.worldRestPose;
 
-      worldFkContactPose.setToProductNoAlias(Kinematics(worldCentroidStateKinematics), centroidContactKine);
+      Kinematics globalWorldCentroidStateKinematics(worldCentroidStateKinematics);
+      Vector6 contactWrench;
+      computeContactWrench_(contact, globalWorldCentroidStateKinematics, worldRestContactPose, contactWrench);
 
-      Vector3 centroidContactForce =
-          worldCentroidStateKinematics.orientation.toMatrix3().transpose()
-          * (contact.linearStiffness * (worldRestContactPose.position() - worldFkContactPose.position())
-             - contact.linearDamping * worldFkContactPose.linVel());
-      contactForce += centroidContactForce;
-
-      Vector3 centroidContactTorque = worldCentroidStateKinematics.orientation.toMatrix3().transpose()
-                                      * (-0.5 * contact.angularStiffness
-                                             * (worldFkContactPose.orientation.toQuaternion()
-                                                * worldRestContactPose.orientation.toQuaternion().inverse())
-                                                   .vec()
-                                         - contact.angularDamping * worldFkContactPose.angVel());
-
-      contactTorque += centroidContactTorque + centroidContactKine.position().cross(centroidContactForce);
+      const Vector3 centroidContactForce = centroidContactKine.orientation * contactWrench.head<3>();
+      const Vector3 centroidContactTorque = centroidContactKine.orientation * contactWrench.tail<3>();
+      addContactWrench_(centroidContactKine, centroidContactForce, centroidContactTorque, contactForce, contactTorque);
     }
   }
 }

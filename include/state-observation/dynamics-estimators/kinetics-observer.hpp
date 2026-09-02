@@ -665,7 +665,7 @@ public:
   ///
   /// @param numberOfIMU number id of the IMU
   /// @param resetCovariance set if the covariance of the IMU bias should be reset
-  void setGyroBias(const Vector3 &, unsigned numberOfIMU = 1, bool resetCovariance = true);
+  void setGyroBias(const Vector3 &, unsigned numberOfIMU = 0, bool resetCovariance = true);
 
   /// @brief Set the State Unmodeled Wrench
   /// @details this modifies the current guess for external unmodeled Wrench. This is different from
@@ -1102,7 +1102,7 @@ protected:
 
       inline Vector extractFromVector(const Vector & v)
       {
-        return v.segment(size, measIndex);
+        return v.segment(measIndex, size);
       }
     };
 
@@ -1186,7 +1186,7 @@ protected:
 
     struct AbsoluteOriSensor : public Sensor
     {
-      AbsoluteOriSensor() : Sensor(sizePose) {}
+      AbsoluteOriSensor() : Sensor(sizeOri) {}
 
       Orientation ori;
       CheckedMatrix3 covMatrix;

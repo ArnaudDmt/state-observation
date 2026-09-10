@@ -1,4 +1,3 @@
 usr/include/*
-usr/lib/libstate-observation.so
-usr/lib/*/pkgconfig/state-observation.pc
-usr/lib/*/cmake/*
+usr/lib/*/libstate-observation.so
+usr/lib/cmake/*

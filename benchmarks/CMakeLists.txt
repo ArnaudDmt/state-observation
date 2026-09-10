@@ -10,7 +10,7 @@ macro(ADD_BENCHMARK name)
     COMMAND $<TARGET_FILE:${name}>
     WORKING_DIRECTORY $<TARGET_FILE_DIR:${name}>)
   # Adding a project configuration file (for MSVC only)
-  generate_msvc_dot_user_file(${name})
+  # generate_msvc_dot_user_file(${name})
 endmacro()
 
 add_benchmark(bench-covMultSpeed)

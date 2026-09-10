@@ -10,6 +10,9 @@ on:
       - devel
       - master
       - main
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   nix:
     runs-on: "${{ matrix.os }}-latest"
@@ -27,6 +30,14 @@ jobs:
           extraPullNames: "ros,gepetto"
       - run: nix flake check -L
       - run: nix build -L
+      - run: nix build -L .#state-observation.doc
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/master' && github.repository == 'jrl-umi3218/state-observation'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GH_PAGES_TOKEN }}
+          publish_dir: ./result-doc/share/doc/state-observation/doxygen-html
+          destination_dir: doxygen/HEAD
   check:
     if: always()
     name: check-macos-linux-nix

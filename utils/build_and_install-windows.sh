@@ -49,7 +49,7 @@ build_system_dependency()
 }
 
 
-build_system_dependency eigenteam/eigen-git-mirror 3.3.7 "$SOURCE_DIR/eigen"
+build_system_dependency eigen-mirror/eigen 3.4.1 "$SOURCE_DIR/eigen"
 cd $this_dir/..
 mkdir build
 cd build

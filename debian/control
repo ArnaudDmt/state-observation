@@ -1,4 +1,6 @@
 Source: state-observation
+Description: Implements some common observers (including linear and extended Kalman filters)
+ This package provides runtime libraries for state-observation, including linear and extended Kalman filters.
 Priority: optional
 Maintainer: Arnaud Tanguy <arn.tanguy+ppa@gmail.com>
 Standards-Version: 3.9.5
@@ -7,10 +9,11 @@ Homepage: http://github.com/jrl-umi3218/state-observation
 Vcs-Git: git://github.com/jrl-umi3218/state-observation
 Vcs-Browser: http://github.com/jrl-umi3218/state-observation
 Build-Depends: debhelper (>= 9),
- pkg-config,
  cmake,
  doxygen,
+ libjs-mathjax,
  graphviz,
+ libbenchmark-dev,
  libboost-chrono-dev,
  libboost-system-dev,
  libboost-timer-dev,
@@ -20,15 +23,17 @@ Package: libstate-observation-dev
 Section: libdevel
 Architecture: any
 Suggests: libstate-observation-doc
-Depends: pkg-config,
-         cmake,
+Depends: cmake,
+         libbenchmark-dev,
          libboost-chrono-dev,
          libboost-system-dev,
          libboost-timer-dev,
          libeigen3-dev (>= 3.2),
          libstate-observation (= ${binary:Version}),
          ${misc:Depends}
-Description: Describes interfaces for state observers, and implements some observers (including linear and extended Kalman filters)
+Description: Development files for state-observation observers and filters
+ This package provides headers and CMake files for state-observation, including
+ interfaces and implementations for linear and extended Kalman filters.
 
 Package: libstate-observation
 Section: libs
@@ -36,6 +41,8 @@ Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
 Description: Implements some common observers (including linear and extended Kalman filters)
+ This package provides runtime libraries for state-observation, including
+ implementations of linear and extended Kalman filters.
 
 Package: libstate-observation-doc
 Section: doc

@@ -8,14 +8,17 @@ on:
     branches:
       - '**'
 
+# cancel running workflows when pushing to the same branch/pr
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
-        # Github actions 26.04 image has not been released yet
-        # os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04, macos-latest, windows-latest]
-        os: [ubuntu-22.04, ubuntu-24.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04, macos-latest, windows-latest]
         build-type: [Debug, RelWithDebInfo]
         compiler: [gcc, clang]
         include:
@@ -46,13 +49,13 @@ jobs:
         compiler: ${{ matrix.compiler }}
         build-type: ${{ matrix.build-type }}
         ubuntu: |
-          apt: libeigen3-dev doxygen doxygen-latex libboost-all-dev
+          apt: libeigen3-dev doxygen doxygen-latex libboost-all-dev libbenchmark-dev
         macos: |
-          brew: eigen boost pkg-config doxygen
+          brew: eigen boost pkg-config doxygen google-benchmark
         windows: |
           github:
-            - path: eigenteam/eigen-git-mirror
-              ref: 3.3.7
+            - path: eigen-mirror/eigen
+              ref: 3.4.1
     - name: Build and test
       if: matrix.build-type != 'script'
       uses: jrl-umi3218/github-actions/build-cmake-project@master
@@ -69,13 +72,6 @@ jobs:
         then
           ./build_and_install-windows.sh
         fi
-    - name: Upload documentation
-      # Only run on master branch and for one configuration
-      if: matrix.os == 'ubuntu-24.04' && matrix.build-type == 'RelWithDebInfo' && matrix.compiler == 'gcc' && github.ref == 'refs/heads/master'
-      uses: jrl-umi3218/github-actions/upload-documentation@master
-      with:
-        GH_USER: gergondet
-        GH_PAGES_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}
     - name: Slack Notification
       if: failure()
       uses: archive/github-actions-slack@master

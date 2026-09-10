@@ -1,1 +1,1 @@
-usr/lib/libstate-observation.so.*
+usr/lib/*/libstate-observation.so.*

@@ -1,3 +1,4 @@
-build*
-result
-compile_commands.json
+/build*
+/result
+/result-doc
+/compile_commands.json

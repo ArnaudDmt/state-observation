@@ -1,6 +1,7 @@
 # Copyright 2013-2026, CNRS
 #
 # Author: Mehdi Benallegue
+# Author: Arnaud Tanguy
 #
 # This file is part of state-observation.
 # state-observation is free software: you can redistribute it and/or
@@ -20,51 +21,27 @@ if(POLICY CMP0063)
   cmake_policy(SET CMP0063 NEW)
 endif()
 
-set(PROJECT_NAME state-observation)
-set(PROJECT_DESCRIPTION "General implementation of observers.")
-set(PROJECT_URL "https://github.com/jrl-umi3218/state-observation")
-set(PROJECT_VERSION 1.7.0)
-set(CMAKE_CXX_STANDARD 17)
-set(CXX_DISABLE_WERROR TRUE)
-set(PROJECT_USE_CMAKE_EXPORT TRUE)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set_property(GLOBAL PROPERTY USE_FOLDERS OFF)
-
-# Check if the submodule cmake have been initialized
-set(JRL_CMAKE_MODULES "${CMAKE_CURRENT_LIST_DIR}/cmake")
-if(EXISTS "${JRL_CMAKE_MODULES}/base.cmake")
-  message(STATUS "JRL cmakemodules found in 'cmake/' git submodule")
-else()
-  find_package(jrl-cmakemodules QUIET CONFIG)
-  if(jrl-cmakemodules_FOUND)
-    get_property(
-      JRL_CMAKE_MODULES
-      TARGET jrl-cmakemodules::jrl-cmakemodules
-      PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
-    message(STATUS "JRL cmakemodules found on system at ${JRL_CMAKE_MODULES}")
-  else()
-    message(STATUS "JRL cmakemodules not found. Let's fetch it.")
-    include(FetchContent)
-    FetchContent_Declare("jrl-cmakemodules" GIT_REPOSITORY "https://github.com/jrl-umi3218/jrl-cmakemodules.git")
-    FetchContent_MakeAvailable("jrl-cmakemodules")
-    FetchContent_GetProperties("jrl-cmakemodules" SOURCE_DIR JRL_CMAKE_MODULES)
-  endif()
-endif()
-
-include(${JRL_CMAKE_MODULES}/base.cmake)
-include(${JRL_CMAKE_MODULES}/msvc-specific.cmake)
+include(cmake/get-jrl-cmakemodules.cmake)
 
 project(
-  ${PROJECT_NAME}
-  LANGUAGES CXX
-  VERSION ${PROJECT_VERSION})
+  state-observation
+  VERSION 1.7.0
+  DESCRIPTION "General implementation of observers."
+  HOMEPAGE_URL "https://github.com/jrl-umi3218/state-observation"
+  LANGUAGES CXX)
 
-set(DOXYGEN_USE_MATHJAX "YES")
-set(DOXYGEN_EXAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/doc")
+jrl_configure_defaults()
 
-option(BUILD_STATE_OBSERVATION_CSV_READERS "Build csv readers for standalone execution of estimators" OFF)
-option(BUILD_STATE_OBSERVATION_BENCHMARKS "Build state-observation benchmarks" OFF)
-option(BUILD_STATE_OBSERVATION_TOOLS "Build state-observation tools" ON)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+
+jrl_option(BUILD_STATE_OBSERVATION_BENCHMARKS "Build state-observation benchmarks" OFF)
+jrl_option(BUILD_STATE_OBSERVATION_TOOLS "Build state-observation tools" ON)
+jrl_option(BUILD_TESTING "Build and run unit tests" ON)
+jrl_option(INSTALL_DOCUMENTATION "Generate and install the documentation" OFF)
+
+if(INSTALL_DOCUMENTATION)
+  jrl_find_package(Doxygen REQUIRED COMPONENTS dot)
+endif()
 
 # For MSVC, set local environment variable to enable finding the built dll
 # of the main library when launching ctest with RUN_TESTS
@@ -72,13 +49,15 @@ if(MSVC)
   set(CMAKE_MSVCIDE_RUN_PATH "\$(SolutionDir)/src/\$(Configuration)")
 endif(MSVC)
 
-add_project_dependency(Boost REQUIRED COMPONENTS timer)
-add_project_dependency(Eigen3 QUIET NO_CMAKE_PACKAGE_REGISTRY)
-if(Eigen3_FOUND)
-  add_project_dependency(Eigen3 REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
-else()
-  add_project_dependency(Eigen3 MODULE REQUIRED)
-endif()
+jrl_find_package(
+  Boost
+  REQUIRED
+  COMPONENTS
+  timer
+  EXPECTED_TARGETS
+  Boost::timer
+  Boost::disable_autolinking)
+jrl_find_package(Eigen3 REQUIRED EXPECTED_TARGETS Eigen3::Eigen)
 
 set(TEST_COMPUTATION_TIME "OFF")
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/include/state-observation/config.h.in"
@@ -88,8 +67,7 @@ file(
   GENERATE
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/include/state-observation/config.h"
   INPUT "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/include/state-observation/config.h.in")
-install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/include/state-observation/config.h"
-        DESTINATION ${INCLUDE_INSTALL_DESTINATION})
+install(FILES "${CMAKE_BINARY_DIR}/$<CONFIG>/include/state-observation/config.h" DESTINATION include/state-observation/)
 
 add_subdirectory(src)
 
@@ -98,12 +76,20 @@ if(BUILD_STATE_OBSERVATION_BENCHMARKS)
 endif()
 
 if(BUILD_TESTING)
+  enable_testing()
   add_subdirectory(unit-testings)
 endif()
+
+if(INSTALL_DOCUMENTATION)
+  add_subdirectory(doc)
+endif()
+
 if(BUILD_STATE_OBSERVATION_TOOLS)
   add_subdirectory(misc-tools)
 endif()
 
-if(BUILD_STATE_OBSERVATION_CSV_READERS)
-  add_subdirectory(csv_readers)
-endif()
+# Export the package files (headers, targets, config files, etc.)
+jrl_export_package()
+# Print summaries
+jrl_print_dependencies_summary()
+jrl_print_options_summary()

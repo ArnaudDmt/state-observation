@@ -9,7 +9,7 @@ macro(ADD_SO_TEST name)
     #CONFIGURATIONS $<CONFIGURATION>
     WORKING_DIRECTORY $<TARGET_FILE_DIR:${name}>)
   # Adding a project configuration file (for MSVC only)
-  generate_msvc_dot_user_file(${name})
+  # generate_msvc_dot_user_file(${name})
 endmacro()
 
 add_so_test(test-kalman-filter)

@@ -16,7 +16,10 @@ add_library(state-observation SHARED)
 target_compile_features(state-observation PUBLIC cxx_std_17)
 target_sources(
   state-observation
-  PRIVATE tilt-estimator.cpp
+  PRIVATE delayed-measurements-observer.cpp
+          waiko-humanoid.cpp
+          legged-odometry-manager.cpp
+          tilt-estimator.cpp
           tilt-estimator-humanoid.cpp
           kalman-filter-base.cpp
           observer-base.cpp

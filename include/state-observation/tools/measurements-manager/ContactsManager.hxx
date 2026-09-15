@@ -17,7 +17,25 @@ void ContactsManager<ContactT>::updateContacts(const std::unordered_set<std::str
   std::string removed_contact_set;
   std::string new_contact_set;
 
-  for(auto & contactName : latestContactList)
+  std::vector<std::string> orderedContactList(latestContactList.begin(), latestContactList.end());
+  if(contactIds_.empty())
+  {
+    std::sort(orderedContactList.begin(), orderedContactList.end());
+  }
+  else
+  {
+    for(const auto & contactName : orderedContactList)
+    {
+      if(contactIds_.find(contactName) == contactIds_.end())
+      {
+        throw std::invalid_argument("contact is missing from the configured contact order: " + contactName);
+      }
+    }
+    std::sort(orderedContactList.begin(), orderedContactList.end(), [this](const auto & lhs, const auto & rhs)
+              { return contactIds_.at(lhs) < contactIds_.at(rhs); });
+  }
+
+  for(const auto & contactName : orderedContactList)
   {
     ContactT & contact = addContactToManager(contactName, onAddedContact);
     contactsDetected_ = true;
@@ -61,7 +79,8 @@ template<typename OnAddedContact>
 inline ContactT & ContactsManager<ContactT>::addContactToManager(const std::string & name,
                                                                  [[maybe_unused]] OnAddedContact onAddedContact)
 {
-  const auto [it, inserted] = listContacts_.insert({name, ContactT(idx_, name)});
+  const unsigned id = contactIds_.empty() ? idx_ : contactIds_.at(name);
+  const auto [it, inserted] = listContacts_.insert({name, ContactT(id, name)});
 
   ContactT & contact = (*it).second;
   if(!inserted)
@@ -73,7 +92,7 @@ inline ContactT & ContactsManager<ContactT>::addContactToManager(const std::stri
   {
     onAddedContact(contact);
   }
-  idx_++;
+  if(contactIds_.empty()) { idx_++; }
 
   return contact;
 }

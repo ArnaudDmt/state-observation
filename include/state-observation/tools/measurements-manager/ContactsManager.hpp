@@ -2,7 +2,11 @@
 #define CONTACTSMANAGERHPP
 #include <state-observation/api.h>
 #include <state-observation/tools/measurements-manager/Contact.hpp>
+#include <algorithm>
+#include <stdexcept>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace stateObservation
 {
@@ -25,6 +29,20 @@ protected:
   ContactT & addContactToManager(const std::string & name, OnAddedContact onAddedContact = nullptr);
 
 public:
+  // Configure the stable contact ID order shared by observer input pipelines.
+  inline void setContactOrder(const std::vector<std::string> & orderedContactNames)
+  {
+    contactIds_.clear();
+    for(unsigned id = 0; id < orderedContactNames.size(); ++id)
+    {
+      if(!contactIds_.emplace(orderedContactNames[id], id).second)
+      {
+        throw std::invalid_argument("duplicate contact name in contact order: " + orderedContactNames[id]);
+      }
+    }
+    idx_ = static_cast<unsigned>(orderedContactNames.size());
+  }
+
   /// @brief Updates the list of contacts to inform whether they are newly
   /// set, removed, etc., and execute actions accordingly
   /// @param latestContactList Set containing the names of all contacts detected on the latest iteration.
@@ -83,6 +101,9 @@ protected:
 
   // Index generator, incremented everytime a new contact is created
   unsigned idx_ = 0;
+  // Optional stable name-to-ID mapping. When empty, names are assigned in
+  // lexicographic order on first observation.
+  std::unordered_map<std::string, unsigned> contactIds_;
   /** True if any contact is detected, false otherwise */
   bool contactsDetected_ = false;
 };

@@ -126,6 +126,28 @@ public:
   /// @param b
   void setWithAdaptativeContactProcessCov(bool b = true);
 
+  /// @brief Weight the mean that the adaptive contact process covariance pins, by contact load.
+  /// @details The projector removes the *arithmetic* mean of the rest poses, so every contact
+  /// counts equally. Two consequences follow. A contact that slips cannot move its own anchor
+  /// without pushing the others by -delta/N, so a slipping foot corrupts the anchor of the foot
+  /// that is holding. And because a contact is created as soon as it carries 10% of the robot's
+  /// weight, a foot at 10% load has the same authority over the reference as one at 90%, which is
+  /// worst exactly at the gait transitions where anchors are created. Weighting by normal force
+  /// pins the load-weighted anchor centroid instead: the unobservable mode is still pinned, so the
+  /// observability argument is unchanged, but the reference is defined by the contacts that
+  /// actually carry the robot, and an unloading foot leaves the reference smoothly instead of
+  /// dropping out discontinuously.
+  /// @param exponent w_i proportional to f_i^exponent. 0 reproduces the arithmetic mean exactly,
+  /// 1 is proportional to normal force.
+  void setContactCovLoadWeightExponent(double exponent);
+  double getContactCovLoadWeightExponent() const;
+
+protected:
+  /// @brief Normalised per-contact weights, ordered as the set contacts are
+  Eigen::VectorXd contactLoadWeights_(Index nbContacts) const;
+
+public:
+
   /// @brief Set the total mass of the robot. This can be changed online
   ///
   /// @return sets
@@ -500,6 +522,9 @@ public:
   /// @param force
   /// @param torque
   void setAdditionalWrench(const Vector3 & force, const Vector3 & torque);
+
+  /// @brief Set an additional wrench already expressed at the centroid.
+  void setAdditionalWrenchInCentroidFrame(const Vector3 & force, const Vector3 & torque);
 
   /// @}
 
@@ -1488,6 +1513,7 @@ protected:
   bool withAccelerationEstimation_;
   bool withDampingInMatrixA_;
   bool withAdaptativeContactProcessCov_;
+  double contactCovLoadWeightExponent_;
 
   IndexedVector3 com_, comd_, comdd_;
   IndexedVector3 sigma_, sigmad_;

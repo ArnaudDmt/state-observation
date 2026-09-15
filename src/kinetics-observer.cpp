@@ -93,7 +93,7 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
   additionalForce_(Vector3::Zero()), additionalTorque_(Vector3::Zero()),
   ekf_(stateSize_, stateTangentSize_, measurementSizeBase, measurementSizeBase, false, false, nullptr),
   finiteDifferencesJacobians_(false), withGyroBias_(true), withUnmodeledWrench_(true),
-  withAccelerationEstimation_(false), withDampingInMatrixA_(true), withAdaptativeContactProcessCov_(true), k_est_(0),
+  withAccelerationEstimation_(false), withDampingInMatrixA_(true), withAdaptativeContactProcessCov_(true), contactCovLoadWeightExponent_(0.0), k_est_(0),
   k_data_(0), mass_(defaultMass), dt_(defaultdx), processNoise_(0x0), measurementNoise_(0x0),
   numberOfContactRealSensors_(0), currentIMUSensorNumber_(0),
   linearStiffnessMatDefault_(Matrix3::Identity() * linearStiffnessDefault),
@@ -690,6 +690,13 @@ void KineticsObserver::setAdditionalWrench(const Vector3 & forceUserFrame, const
   convertWrenchFromUserToCentroid(forceUserFrame, momentUserFrame, additionalForce_, additionalTorque_);
 }
 
+void KineticsObserver::setAdditionalWrenchInCentroidFrame(const Vector3 & force, const Vector3 & torque)
+{
+  startNewIteration_();
+  additionalForce_ = force;
+  additionalTorque_ = torque;
+}
+
 void KineticsObserver::convertWrenchFromUserToCentroid(const Vector3 & forceUserFrame,
                                                        const Vector3 & momentUserFrame,
                                                        Vector3 & forceCentroidFrame,
@@ -780,6 +787,33 @@ void KineticsObserver::setWithDampingInMatrixA(bool b)
 void KineticsObserver::setWithAdaptativeContactProcessCov(bool b)
 {
   withAdaptativeContactProcessCov_ = b;
+}
+
+void KineticsObserver::setContactCovLoadWeightExponent(double exponent)
+{
+  contactCovLoadWeightExponent_ = exponent;
+}
+
+double KineticsObserver::getContactCovLoadWeightExponent() const
+{
+  return contactCovLoadWeightExponent_;
+}
+
+Eigen::VectorXd KineticsObserver::contactLoadWeights_(Index nbContacts) const
+{
+  Eigen::VectorXd weights(nbContacts);
+  Index i = 0;
+  for(Input::VectorContactConstIterator it = input_.contacts_.begin(); it != input_.contacts_.end(); ++it)
+  {
+    if(!it->isSet) { continue; }
+    const double load = worldCentroidStateVector_.segment<sizeForce>(contactForceIndex(it)).norm();
+    weights(i++) = std::pow(std::max(load, 0.0) + 1e-6, contactCovLoadWeightExponent_);
+  }
+  const double total = weights.sum();
+  // Degenerate loads (all contacts unloaded) fall back to the arithmetic mean rather than
+  // producing an arbitrary reference.
+  if(!(total > 0.0) || !std::isfinite(total)) { return Eigen::VectorXd::Constant(nbContacts, 1.0 / double(nbContacts)); }
+  return weights / total;
 }
 
 bool KineticsObserver::getWithAdaptativeContactProcessCov() const
@@ -984,8 +1018,12 @@ void KineticsObserver::updateContactCovariances()
 {
   Index nbCurrentContacts = getNumberOfSetContacts();
 
-  if(((getNumberOfSetContacts() == nb_prevContacts_) && !contactRestPosProcessChanged_
-      && !contactRestOriProcessChanged_)
+  // With load weighting the projector depends on the contact forces, which change every step, so
+  // the "nothing changed" shortcut no longer holds.
+  const bool weightedByLoad = contactCovLoadWeightExponent_ > 0.0 && nbCurrentContacts >= 2;
+  if((((getNumberOfSetContacts() == nb_prevContacts_) && !contactRestPosProcessChanged_
+       && !contactRestOriProcessChanged_)
+      && !weightedByLoad)
      || getNumberOfSetContacts() == 0 || !withAdaptativeContactProcessCov_)
   {
     return;
@@ -1016,9 +1054,23 @@ void KineticsObserver::updateContactCovariances()
     }
   }
 
-  if(contactRestPosProcessChanged_ || nbCurrentContacts != nb_prevContacts_)
+  if(contactRestPosProcessChanged_ || nbCurrentContacts != nb_prevContacts_ || weightedByLoad)
   {
-    Eigen::MatrixXd & M = m_matrices_.at(nbCurrentContacts - 2);
+    // I - 1.w' annihilates the load-weighted mean; with uniform w it is the precomputed I - 1.1'/N.
+    Eigen::MatrixXd M_local;
+    if(weightedByLoad)
+    {
+      const Eigen::VectorXd w = contactLoadWeights_(nbCurrentContacts);
+      Eigen::MatrixXd ones = Eigen::MatrixXd::Zero(nbCurrentContacts * 3, 3);
+      Eigen::MatrixXd wt = Eigen::MatrixXd::Zero(3, nbCurrentContacts * 3);
+      for(Index k = 0; k < nbCurrentContacts; ++k)
+      {
+        ones.block(k * 3, 0, 3, 3) = Matrix3::Identity();
+        wt.block(0, k * 3, 3, 3) = w(k) * Matrix3::Identity();
+      }
+      M_local = Eigen::MatrixXd::Identity(nbCurrentContacts * 3, nbCurrentContacts * 3) - ones * wt;
+    }
+    Eigen::MatrixXd & M = weightedByLoad ? M_local : m_matrices_.at(nbCurrentContacts - 2);
 
     Eigen::MatrixXd posProcessCov = Eigen::MatrixXd::Zero(nbCurrentContacts * 3, nbCurrentContacts * 3);
 
@@ -1032,8 +1084,8 @@ void KineticsObserver::updateContactCovariances()
       }
     }
 
-    // cov(Mv) = M cov(v) M'. But here M is symmetric
-    Eigen::MatrixXd covMv = M * posProcessCov * M;
+    // cov(Mv) = M cov(v) M'. The uniform projector is symmetric; the load-weighted one is not.
+    Eigen::MatrixXd covMv = M * posProcessCov * M.transpose();
 
     i = 0;
     for(Input::VectorContactConstIterator contact1_it = input_.contacts_.begin(); contact1_it != input_.contacts_.end();
@@ -1056,9 +1108,24 @@ void KineticsObserver::updateContactCovariances()
       }
     }
   }
-  if(contactRestOriProcessChanged_ || nbCurrentContacts != nb_prevContacts_)
+  if(contactRestOriProcessChanged_ || nbCurrentContacts != nb_prevContacts_ || weightedByLoad)
   {
-    Eigen::MatrixXd & M_prime = m_prime_matrices_.at(nbCurrentContacts - 2);
+    // Same weighting for the mean yaw the orientation projector pins: a barely loaded contact
+    // should not define the yaw reference any more than it defines the position reference.
+    Eigen::MatrixXd M_prime_local;
+    if(weightedByLoad)
+    {
+      const Eigen::VectorXd w = contactLoadWeights_(nbCurrentContacts);
+      Eigen::MatrixXd z = Eigen::MatrixXd::Zero(nbCurrentContacts * 3, 3);
+      Eigen::MatrixXd wz = Eigen::MatrixXd::Zero(3, nbCurrentContacts * 3);
+      for(Index k = 0; k < nbCurrentContacts; ++k)
+      {
+        z(k * 3 + 2, 2) = 1.0;
+        wz(2, k * 3 + 2) = w(k);
+      }
+      M_prime_local = Eigen::MatrixXd::Identity(nbCurrentContacts * 3, nbCurrentContacts * 3) - z * wz;
+    }
+    Eigen::MatrixXd & M_prime = weightedByLoad ? M_prime_local : m_prime_matrices_.at(nbCurrentContacts - 2);
 
     Eigen::MatrixXd oriProcessCov = Eigen::MatrixXd::Zero(nbCurrentContacts * 3, nbCurrentContacts * 3);
 
@@ -1073,7 +1140,7 @@ void KineticsObserver::updateContactCovariances()
     }
 
     // cov(Mv) = M_prime cov(v) M_prime'. But here M_prime is symmetric
-    Eigen::MatrixXd covM_prime_v = M_prime * oriProcessCov * M_prime;
+    Eigen::MatrixXd covM_prime_v = M_prime * oriProcessCov * M_prime.transpose();
 
     i = 0;
     for(Input::VectorContactConstIterator contact1_it = input_.contacts_.begin(); contact1_it != input_.contacts_.end();

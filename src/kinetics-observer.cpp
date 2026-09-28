@@ -93,9 +93,9 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
   additionalForce_(Vector3::Zero()), additionalTorque_(Vector3::Zero()),
   ekf_(stateSize_, stateTangentSize_, measurementSizeBase, measurementSizeBase, false, false, nullptr),
   finiteDifferencesJacobians_(false), withGyroBias_(true), withUnmodeledWrench_(true),
-  withAccelerationEstimation_(false), withDampingInMatrixA_(true), withAdaptativeContactProcessCov_(true), contactCovLoadWeightExponent_(0.0), k_est_(0),
-  k_data_(0), mass_(defaultMass), dt_(defaultdx), processNoise_(0x0), measurementNoise_(0x0),
-  numberOfContactRealSensors_(0), currentIMUSensorNumber_(0),
+  withAccelerationEstimation_(false), withDampingInMatrixA_(true), withAdaptativeContactProcessCov_(true),
+  contactCovLoadWeightExponent_(0.0), k_est_(0), k_data_(0), mass_(defaultMass), dt_(defaultdx), processNoise_(0x0),
+  measurementNoise_(0x0), numberOfContactRealSensors_(0), currentIMUSensorNumber_(0),
   linearStiffnessMatDefault_(Matrix3::Identity() * linearStiffnessDefault),
   angularStiffnessMatDefault_(Matrix3::Identity() * angularStiffnessDefault),
   linearDampingMatDefault_(Matrix3::Identity() * linearDampingDefault),
@@ -734,21 +734,23 @@ void KineticsObserver::getOdometryWorldContactRest_(const Vector3 & contactForce
             * (contactForceMeas
                + linDamping * worldContactKine.orientation.toMatrix3().transpose() * worldContactKine.linVel());
 
-  Vector3 flexRotDiff =
-      -2 * angStiffness.inverse()
-      * (contactTorqueMeas
-         + angDamping * worldContactKine.orientation.toMatrix3().transpose() * worldContactKine.angVel());
-
   Matrix3 flexRotMatrix = Matrix3::Identity();
-
-  if(flexRotDiff.norm() > cst::epsilonAngle)
+  if(!angStiffness.isZero())
   {
-    Vector3 flexRotAxis = flexRotDiff / flexRotDiff.norm();
-    double diffNorm = std::min(1.0, flexRotDiff.norm() / 2.0);
-    double flexRotAngle = std::asin(diffNorm);
+    Vector3 flexRotDiff =
+        -2 * angStiffness.inverse()
+        * (contactTorqueMeas
+           + angDamping * worldContactKine.orientation.toMatrix3().transpose() * worldContactKine.angVel());
 
-    Eigen::AngleAxisd flexRotAngleAxis(flexRotAngle, flexRotAxis);
-    flexRotMatrix = kine::Orientation(flexRotAngleAxis).toMatrix3();
+    if(flexRotDiff.norm() > cst::epsilonAngle)
+    {
+      Vector3 flexRotAxis = flexRotDiff / flexRotDiff.norm();
+      double diffNorm = std::min(1.0, flexRotDiff.norm() / 2.0);
+      double flexRotAngle = std::asin(diffNorm);
+
+      Eigen::AngleAxisd flexRotAngleAxis(flexRotAngle, flexRotAxis);
+      flexRotMatrix = kine::Orientation(flexRotAngleAxis).toMatrix3();
+    }
   }
 
   worldContactKine.orientation = Matrix3(worldContactKine.orientation.toMatrix3() * flexRotMatrix.transpose());
@@ -805,14 +807,20 @@ Eigen::VectorXd KineticsObserver::contactLoadWeights_(Index nbContacts) const
   Index i = 0;
   for(Input::VectorContactConstIterator it = input_.contacts_.begin(); it != input_.contacts_.end(); ++it)
   {
-    if(!it->isSet) { continue; }
+    if(!it->isSet)
+    {
+      continue;
+    }
     const double load = worldCentroidStateVector_.segment<sizeForce>(contactForceIndex(it)).norm();
     weights(i++) = std::pow(std::max(load, 0.0) + 1e-6, contactCovLoadWeightExponent_);
   }
   const double total = weights.sum();
   // Degenerate loads (all contacts unloaded) fall back to the arithmetic mean rather than
   // producing an arbitrary reference.
-  if(!(total > 0.0) || !std::isfinite(total)) { return Eigen::VectorXd::Constant(nbContacts, 1.0 / double(nbContacts)); }
+  if(!(total > 0.0) || !std::isfinite(total))
+  {
+    return Eigen::VectorXd::Constant(nbContacts, 1.0 / double(nbContacts));
+  }
   return weights / total;
 }
 

@@ -1,4 +1,4 @@
-#include <unordered_set>
+#include <set>
 namespace stateObservation
 {
 namespace odometry
@@ -7,7 +7,7 @@ template<typename OnNewContactObserver,
          typename OnMaintainedContactObserver,
          typename OnRemovedContactObserver,
          typename OnAddedContactObserver>
-bool LeggedOdometryManager::initLoop(const std::unordered_set<std::string> & latestContactList,
+bool LeggedOdometryManager::initLoop(const std::set<std::string> & latestContactList,
                                      const ContactUpdateFunctions<OnNewContactObserver,
                                                                   OnMaintainedContactObserver,
                                                                   OnRemovedContactObserver,
@@ -35,7 +35,7 @@ template<typename OnNewContactObserver,
          typename OnMaintainedContactObserver,
          typename OnRemovedContactObserver,
          typename OnAddedContactObserver>
-bool LeggedOdometryManager::updateContacts(const std::unordered_set<std::string> & latestContactList,
+bool LeggedOdometryManager::updateContacts(const std::set<std::string> & latestContactList,
                                            const ContactUpdateFunctions<OnNewContactObserver,
                                                                         OnMaintainedContactObserver,
                                                                         OnRemovedContactObserver,

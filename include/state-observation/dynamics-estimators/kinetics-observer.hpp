@@ -126,6 +126,11 @@ public:
   /// @param b
   void setWithAdaptativeContactProcessCov(bool b = true);
 
+protected:
+  /// @brief Weights of the set contacts in the constrained process covariance computation.
+  Eigen::VectorXd contactLoadWeights_(Index nbContacts) const;
+
+public:
   /// @brief Set the total mass of the robot. This can be changed online
   ///
   /// @return sets
@@ -500,6 +505,11 @@ public:
   /// @param force
   /// @param torque
   void setAdditionalWrench(const Vector3 & force, const Vector3 & torque);
+
+  /// @brief Set an additional wrench already expressed at the centroid.
+  /// @param force
+  /// @param torque
+  void setAdditionalWrenchInCentroidFrame(const Vector3 & force, const Vector3 & torque);
 
   /// @}
 
@@ -1506,13 +1516,6 @@ protected:
   Index numberOfContactRealSensors_;
   Index currentIMUSensorNumber_;
 
-  // indicates if a contact has been added or removed since the last iteration
-  // bool contactsChanged_;
-  unsigned nb_prevContacts_ = 0;
-  // indicates if a contact's process covariance on the rest position has been modified since the last iteration
-  bool contactRestPosProcessChanged_;
-  // indicates if a contact's process covariance on the rest orientation has been modified since the last iteration
-  bool contactRestOriProcessChanged_;
 
   /// function to call before adding any measurement
   /// detects if there is a new estimation beginning and then
@@ -1693,13 +1696,6 @@ protected:
   Matrix12 stateKinematicsInitCovMat_;
   Matrix12 stateKinematicsProcessCovMat_;
 
-  // contains the M matrices for each possible number of contacts. The M matrix allows to associate a process covariance
-  // to the contact rest position while ensuring that their average position is associated with a zero covariance. In a
-  // simpler way, it allows the contacts rest position to move slightly over time, but we don't allow their average to
-  // move, thus preventing drift.
-  std::vector<Eigen::MatrixXd> m_matrices_;
-  // similar to m_matrices, but for the process on the rest orientation of the contacts.
-  std::vector<Eigen::MatrixXd> m_prime_matrices_;
 
   /// default derivation steps
   static const double defaultdx;

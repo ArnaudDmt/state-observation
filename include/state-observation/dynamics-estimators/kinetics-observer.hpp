@@ -139,8 +139,6 @@ public:
   /// dropping out discontinuously.
   /// @param exponent w_i proportional to f_i^exponent. 0 reproduces the arithmetic mean exactly,
   /// 1 is proportional to normal force.
-  void setContactCovLoadWeightExponent(double exponent);
-  double getContactCovLoadWeightExponent() const;
 
 protected:
   /// @brief Normalised per-contact weights, ordered as the set contacts are
@@ -1513,7 +1511,6 @@ protected:
   bool withAccelerationEstimation_;
   bool withDampingInMatrixA_;
   bool withAdaptativeContactProcessCov_;
-  double contactCovLoadWeightExponent_;
 
   IndexedVector3 com_, comd_, comdd_;
   IndexedVector3 sigma_, sigmad_;

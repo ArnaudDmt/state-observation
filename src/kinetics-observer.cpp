@@ -94,7 +94,7 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
   ekf_(stateSize_, stateTangentSize_, measurementSizeBase, measurementSizeBase, false, false, nullptr),
   finiteDifferencesJacobians_(false), withGyroBias_(true), withUnmodeledWrench_(true),
   withAccelerationEstimation_(false), withDampingInMatrixA_(true), withAdaptativeContactProcessCov_(true),
-  contactCovLoadWeightExponent_(0.0), k_est_(0), k_data_(0), mass_(defaultMass), dt_(defaultdx), processNoise_(0x0),
+  k_est_(0), k_data_(0), mass_(defaultMass), dt_(defaultdx), processNoise_(0x0),
   measurementNoise_(0x0), numberOfContactRealSensors_(0), currentIMUSensorNumber_(0),
   linearStiffnessMatDefault_(Matrix3::Identity() * linearStiffnessDefault),
   angularStiffnessMatDefault_(Matrix3::Identity() * angularStiffnessDefault),
@@ -791,16 +791,6 @@ void KineticsObserver::setWithAdaptativeContactProcessCov(bool b)
   withAdaptativeContactProcessCov_ = b;
 }
 
-void KineticsObserver::setContactCovLoadWeightExponent(double exponent)
-{
-  contactCovLoadWeightExponent_ = exponent;
-}
-
-double KineticsObserver::getContactCovLoadWeightExponent() const
-{
-  return contactCovLoadWeightExponent_;
-}
-
 Eigen::VectorXd KineticsObserver::contactLoadWeights_(Index nbContacts) const
 {
   Eigen::VectorXd weights(nbContacts);
@@ -812,7 +802,7 @@ Eigen::VectorXd KineticsObserver::contactLoadWeights_(Index nbContacts) const
       continue;
     }
     const double load = worldCentroidStateVector_.segment<sizeForce>(contactForceIndex(it)).norm();
-    weights(i++) = std::pow(std::max(load, 0.0) + 1e-6, contactCovLoadWeightExponent_);
+    weights(i++) = std::max(load, 0.0) + 1e-6;
   }
   const double total = weights.sum();
   // Degenerate loads (all contacts unloaded) fall back to the arithmetic mean rather than
@@ -1028,7 +1018,7 @@ void KineticsObserver::updateContactCovariances()
 
   // With load weighting the projector depends on the contact forces, which change every step, so
   // the "nothing changed" shortcut no longer holds.
-  const bool weightedByLoad = contactCovLoadWeightExponent_ > 0.0 && nbCurrentContacts >= 2;
+  const bool weightedByLoad = nbCurrentContacts >= 2;
   if((((getNumberOfSetContacts() == nb_prevContacts_) && !contactRestPosProcessChanged_
        && !contactRestOriProcessChanged_)
       && !weightedByLoad)

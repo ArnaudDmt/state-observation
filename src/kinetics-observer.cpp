@@ -179,29 +179,6 @@ KineticsObserver::KineticsObserver(unsigned maxContacts, unsigned maxNumberOfIMU
   resetProcessCovarianceMat();
 
   worldCentroidStateVectorDx_.setConstant(1e-6);
-
-  for(unsigned nbContacts = 2; nbContacts <= maxContacts_; nbContacts++)
-  {
-    Eigen::MatrixXd one_t(3, nbContacts * 3);
-    Eigen::MatrixXd z_t = Eigen::MatrixXd::Zero(3, nbContacts * 3);
-
-    for(unsigned i = 0; i < nbContacts; i++)
-    {
-      one_t.block(0, i * 3, 3, 3) = Eigen::Matrix3d::Identity();
-      z_t(2, (i * 3) + 2) = 1.0;
-    }
-
-    Eigen::MatrixXd one_t_pinv = (1.0 / nbContacts) * one_t.transpose();
-    Eigen::MatrixXd z_t_pinv = (1.0 / nbContacts) * z_t.transpose();
-
-    Eigen::MatrixXd M = Eigen::MatrixXd::Identity(nbContacts * 3, nbContacts * 3) - one_t_pinv * one_t;
-
-    m_matrices_.push_back(M);
-
-    Eigen::MatrixXd M_prime = Eigen::MatrixXd::Identity(nbContacts * 3, nbContacts * 3) - z_t_pinv * z_t;
-
-    m_prime_matrices_.push_back(M_prime);
-  }
 }
 
 KineticsObserver::~KineticsObserver() {}
@@ -376,7 +353,6 @@ void KineticsObserver::setContactProcessCovMat(Index contactNbr,
   Matrix processCovMat = ekf_.getQ();
   if(restPosProcessCov != nullptr)
   {
-    contactRestPosProcessChanged_ = true;
     input_.contacts_[contactNbr].restPosProcessCovMat = *restPosProcessCov;
     if(!withAdaptativeContactProcessCov_)
     {
@@ -385,7 +361,6 @@ void KineticsObserver::setContactProcessCovMat(Index contactNbr,
   }
   if(restOriProcessCov != nullptr)
   {
-    contactRestOriProcessChanged_ = true;
     input_.contacts_[contactNbr].restOriProcessCovMat = *restOriProcessCov;
     if(!withAdaptativeContactProcessCov_)
     {
@@ -690,6 +665,13 @@ void KineticsObserver::setAdditionalWrench(const Vector3 & forceUserFrame, const
   convertWrenchFromUserToCentroid(forceUserFrame, momentUserFrame, additionalForce_, additionalTorque_);
 }
 
+void KineticsObserver::setAdditionalWrenchInCentroidFrame(const Vector3 & force, const Vector3 & torque)
+{
+  startNewIteration_();
+  additionalForce_ = force;
+  additionalTorque_ = torque;
+}
+
 void KineticsObserver::convertWrenchFromUserToCentroid(const Vector3 & forceUserFrame,
                                                        const Vector3 & momentUserFrame,
                                                        Vector3 & forceCentroidFrame,
@@ -727,21 +709,23 @@ void KineticsObserver::getOdometryWorldContactRest_(const Vector3 & contactForce
             * (contactForceMeas
                + linDamping * worldContactKine.orientation.toMatrix3().transpose() * worldContactKine.linVel());
 
-  Vector3 flexRotDiff =
-      -2 * angStiffness.inverse()
-      * (contactTorqueMeas
-         + angDamping * worldContactKine.orientation.toMatrix3().transpose() * worldContactKine.angVel());
-
   Matrix3 flexRotMatrix = Matrix3::Identity();
-
-  if(flexRotDiff.norm() > cst::epsilonAngle)
+  if(!angStiffness.isZero())
   {
-    Vector3 flexRotAxis = flexRotDiff / flexRotDiff.norm();
-    double diffNorm = std::min(1.0, flexRotDiff.norm() / 2.0);
-    double flexRotAngle = std::asin(diffNorm);
+    Vector3 flexRotDiff =
+        -2 * angStiffness.inverse()
+        * (contactTorqueMeas
+           + angDamping * worldContactKine.orientation.toMatrix3().transpose() * worldContactKine.angVel());
 
-    Eigen::AngleAxisd flexRotAngleAxis(flexRotAngle, flexRotAxis);
-    flexRotMatrix = kine::Orientation(flexRotAngleAxis).toMatrix3();
+    if(flexRotDiff.norm() > cst::epsilonAngle)
+    {
+      Vector3 flexRotAxis = flexRotDiff / flexRotDiff.norm();
+      double diffNorm = std::min(1.0, flexRotDiff.norm() / 2.0);
+      double flexRotAngle = std::asin(diffNorm);
+
+      Eigen::AngleAxisd flexRotAngleAxis(flexRotAngle, flexRotAxis);
+      flexRotMatrix = kine::Orientation(flexRotAngleAxis).toMatrix3();
+    }
   }
 
   worldContactKine.orientation = Matrix3(worldContactKine.orientation.toMatrix3() * flexRotMatrix.transpose());
@@ -780,6 +764,28 @@ void KineticsObserver::setWithDampingInMatrixA(bool b)
 void KineticsObserver::setWithAdaptativeContactProcessCov(bool b)
 {
   withAdaptativeContactProcessCov_ = b;
+}
+
+Eigen::VectorXd KineticsObserver::contactLoadWeights_(Index nbContacts) const
+{
+  Eigen::VectorXd weights(nbContacts);
+  Index i = 0;
+  for(Input::VectorContactConstIterator it = input_.contacts_.begin(); it != input_.contacts_.end(); ++it)
+  {
+    if(!it->isSet)
+    {
+      continue;
+    }
+    const double load = worldCentroidStateVector_.segment<sizeForce>(contactForceIndex(it)).norm();
+    weights(i++) = std::max(load, 0.0) + 1e-6;
+  }
+  const double total = weights.sum();
+
+  if(!(total > 0.0) || !std::isfinite(total))
+  {
+    return Eigen::VectorXd::Constant(nbContacts, 1.0 / double(nbContacts));
+  }
+  return weights / total;
 }
 
 bool KineticsObserver::getWithAdaptativeContactProcessCov() const
@@ -982,122 +988,52 @@ void KineticsObserver::setContactWrenchSensorDefaultCovarianceMatrix(const Matri
 
 void KineticsObserver::updateContactCovariances()
 {
-  Index nbCurrentContacts = getNumberOfSetContacts();
-
-  if(((getNumberOfSetContacts() == nb_prevContacts_) && !contactRestPosProcessChanged_
-      && !contactRestOriProcessChanged_)
-     || getNumberOfSetContacts() == 0 || !withAdaptativeContactProcessCov_)
+  const Index nbContacts = getNumberOfSetContacts();
+  if(!withAdaptativeContactProcessCov_ || nbContacts == 0)
   {
     return;
   }
 
+  std::vector<Input::VectorContactConstIterator> contacts;
+  for(Input::VectorContactConstIterator it = input_.contacts_.begin(); it != input_.contacts_.end(); ++it)
+  {
+    if(it->isSet)
+    {
+      contacts.push_back(it);
+    }
+  }
+  const Eigen::VectorXd w = contactLoadWeights_(nbContacts);
+
+  // With M = I - 1 w^T and Q = diag(Q_k): (M Q M^T)_ij = delta_ij Q_i - w_i Q_i - w_j Q_j + sum_k w_k^2 Q_k.
+  // Only the yaw of the rest orientations receives process noise.
+  Matrix3 posSum = Matrix3::Zero();
+  double yawSum = 0.0;
+  for(Index k = 0; k < nbContacts; ++k)
+  {
+    posSum += w(k) * w(k) * contacts[size_t(k)]->restPosProcessCovMat;
+    yawSum += w(k) * w(k) * contacts[size_t(k)]->restOriProcessCovMat(2, 2);
+  }
+
   Matrix processCovMat = ekf_.getQ();
-
-  // exceptional case if there is only one contact!
-  if(nbCurrentContacts == 1)
+  for(Index i = 0; i < nbContacts; ++i)
   {
-    for(Input::VectorContactConstIterator contact_it = input_.contacts_.begin(); contact_it != input_.contacts_.end();
-        ++contact_it)
+    const Input::VectorContactConstIterator ci = contacts[size_t(i)];
+    for(Index j = 0; j < nbContacts; ++j)
     {
-      if(contact_it->isSet)
+      const Input::VectorContactConstIterator cj = contacts[size_t(j)];
+      Matrix3 posBlock = posSum - w(i) * ci->restPosProcessCovMat - w(j) * cj->restPosProcessCovMat;
+      double yaw = yawSum - w(i) * ci->restOriProcessCovMat(2, 2) - w(j) * cj->restOriProcessCovMat(2, 2);
+      if(i == j)
       {
-        processCovMat
-            .block(contactPosIndexTangent(contact_it), contactPosIndexTangent(contact_it), sizePosTangent,
-                   sizePosTangent)
-            .setZero();
-        processCovMat
-            .block(contactOriIndexTangent(contact_it), contactOriIndexTangent(contact_it), sizeOriTangent,
-                   sizeOriTangent)
-            .setZero();
-
-        ekf_.setQ(processCovMat);
-        return;
+        posBlock += ci->restPosProcessCovMat;
+        yaw += ci->restOriProcessCovMat(2, 2);
       }
-    }
-  }
-
-  if(contactRestPosProcessChanged_ || nbCurrentContacts != nb_prevContacts_)
-  {
-    Eigen::MatrixXd & M = m_matrices_.at(nbCurrentContacts - 2);
-
-    Eigen::MatrixXd posProcessCov = Eigen::MatrixXd::Zero(nbCurrentContacts * 3, nbCurrentContacts * 3);
-
-    int i = 0;
-    for(auto & contact : input_.contacts_)
-    {
-      if(contact.isSet)
-      {
-        posProcessCov.block(i * 3, i * 3, 3, 3) = contact.restPosProcessCovMat;
-        i++;
-      }
-    }
-
-    // cov(Mv) = M cov(v) M'. But here M is symmetric
-    Eigen::MatrixXd covMv = M * posProcessCov * M;
-
-    i = 0;
-    for(Input::VectorContactConstIterator contact1_it = input_.contacts_.begin(); contact1_it != input_.contacts_.end();
-        ++contact1_it)
-    {
-      if(contact1_it->isSet)
-      {
-        int j = 0;
-        for(Input::VectorContactConstIterator contact2_it = input_.contacts_.begin();
-            contact2_it != input_.contacts_.end(); ++contact2_it)
-        {
-          if(contact2_it->isSet)
-          {
-            processCovMat.block(contactPosIndexTangent(contact1_it), contactPosIndexTangent(contact2_it),
-                                sizePosTangent, sizePosTangent) = covMv.block(i * 3, j * 3, 3, 3);
-            j++;
-          }
-        }
-        i++;
-      }
-    }
-  }
-  if(contactRestOriProcessChanged_ || nbCurrentContacts != nb_prevContacts_)
-  {
-    Eigen::MatrixXd & M_prime = m_prime_matrices_.at(nbCurrentContacts - 2);
-
-    Eigen::MatrixXd oriProcessCov = Eigen::MatrixXd::Zero(nbCurrentContacts * 3, nbCurrentContacts * 3);
-
-    int i = 0;
-    for(auto & contact : input_.contacts_)
-    {
-      if(contact.isSet)
-      {
-        oriProcessCov.block(i * 3, i * 3, 3, 3) = contact.restOriProcessCovMat;
-        i++;
-      }
-    }
-
-    // cov(Mv) = M_prime cov(v) M_prime'. But here M_prime is symmetric
-    Eigen::MatrixXd covM_prime_v = M_prime * oriProcessCov * M_prime;
-
-    i = 0;
-    for(Input::VectorContactConstIterator contact1_it = input_.contacts_.begin(); contact1_it != input_.contacts_.end();
-        ++contact1_it)
-    {
-      if(contact1_it->isSet)
-      {
-        int j = 0;
-        for(Input::VectorContactConstIterator contact2_it = input_.contacts_.begin();
-            contact2_it != input_.contacts_.end(); ++contact2_it)
-        {
-          if(contact2_it->isSet)
-          {
-            processCovMat.block(contactOriIndexTangent(contact1_it), contactOriIndexTangent(contact2_it), 3, 3)
-                .setZero();
-            // we select only the elements of the resulting matrix associated to the yaw as we add no process on the
-            // roll and the pitch of the rest pose
-            processCovMat(contactOriIndexTangent(contact1_it) + 2, contactOriIndexTangent(contact2_it) + 2) =
-                covM_prime_v((i * 3) + 2, (j * 3) + 2);
-            j++;
-          }
-        }
-        i++;
-      }
+      processCovMat.block<sizePosTangent, sizePosTangent>(contactPosIndexTangent(ci), contactPosIndexTangent(cj)) =
+          posBlock;
+      auto oriBlock =
+          processCovMat.block<sizeOriTangent, sizeOriTangent>(contactOriIndexTangent(ci), contactOriIndexTangent(cj));
+      oriBlock.setZero();
+      oriBlock(2, 2) = yaw;
     }
   }
   ekf_.setQ(processCovMat);
@@ -1452,10 +1388,7 @@ void KineticsObserver::clearContacts()
   input_.contacts_.clear();
   input_.contacts_.resize(maxContacts_);
   numberOfContactRealSensors_ = 0;
-  nb_prevContacts_ = 0;
   removedContacts_.clear();
-  contactRestPosProcessChanged_ = false;
-  contactRestOriProcessChanged_ = false;
 }
 
 Index KineticsObserver::getNumberOfSetContacts() const
@@ -1627,8 +1560,6 @@ void KineticsObserver::setContactProcessCovMat(Index contactNbr, const Matrix12 
   Input::Contact & contact = input_.contacts_[static_cast<size_t>(contactNbr)];
   contact.restPosProcessCovMat = contactCovMat.block<sizePosTangent, sizePosTangent>(0, 0);
   contact.restOriProcessCovMat = contactCovMat.block<sizeOriTangent, sizeOriTangent>(sizePosTangent, sizePosTangent);
-  contactRestPosProcessChanged_ = true;
-  contactRestOriProcessChanged_ = true;
 
   Matrix P = ekf_.getProcessCovariance();
   setBlockStateCovariance<sizeContactTangent>(P, contactCovMat, contactIndexTangent(contactNbr));
@@ -1896,8 +1827,6 @@ void KineticsObserver::startNewIteration_()
     }
     additionalForce_.setZero();
     additionalTorque_.setZero();
-    contactRestPosProcessChanged_ = false;
-    contactRestOriProcessChanged_ = false;
   }
 }
 
@@ -1906,8 +1835,6 @@ void KineticsObserver::endIteration_()
   if(k_est_ != k_data_)
   {
     ++k_est_; // the timestamp of the state we estimated
-
-    nb_prevContacts_ = getNumberOfSetContacts();
 
     removedContacts_.clear();
   }

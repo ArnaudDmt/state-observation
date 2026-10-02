@@ -71,7 +71,7 @@ int testLeggedOdometry(int errorcode)
     Kinematics zeroKine = Kinematics::zeroKinematics(Kinematics::Flags::pose);
     stateObservation::odometry::LeggedOdometryManager::ContactInputData test(zeroKine, 1.0);
 
-    std::unordered_set<std::string> contactList;
+    std::set<std::string> contactList;
     if(i % 2 == 0)
     {
       contactList.insert("Contact1");

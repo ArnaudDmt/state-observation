@@ -8,7 +8,7 @@ namespace measurements
 
 template<typename ContactT>
 template<typename OnNewContact, typename OnMaintainedContact, typename OnRemovedContact, typename OnAddedContact>
-void ContactsManager<ContactT>::updateContacts(const std::unordered_set<std::string> & latestContactList,
+void ContactsManager<ContactT>::updateContacts(const std::set<std::string> & latestContactList,
                                                OnNewContact onNewContact,
                                                OnMaintainedContact onMaintainedContact,
                                                OnRemovedContact onRemovedContact,

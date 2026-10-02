@@ -445,7 +445,7 @@ public:
            typename OnMaintainedContactObserver = std::nullptr_t,
            typename OnRemovedContactObserver = std::nullptr_t,
            typename OnAddedContactObserver = std::nullptr_t>
-  bool initLoop(const std::unordered_set<std::string> & latestContactList,
+  bool initLoop(const std::set<std::string> & latestContactList,
                 const ContactUpdateFunctions<OnNewContactObserver,
                                              OnMaintainedContactObserver,
                                              OnRemovedContactObserver,
@@ -530,7 +530,7 @@ private:
            typename OnMaintainedContactObserver = std::nullptr_t,
            typename OnRemovedContactObserver = std::nullptr_t,
            typename OnAddedContactObserver = std::nullptr_t>
-  bool updateContacts(const std::unordered_set<std::string> & latestContactList,
+  bool updateContacts(const std::set<std::string> & latestContactList,
                       const ContactUpdateFunctions<OnNewContactObserver,
                                                    OnMaintainedContactObserver,
                                                    OnRemovedContactObserver,

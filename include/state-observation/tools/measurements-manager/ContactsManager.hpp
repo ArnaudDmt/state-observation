@@ -2,7 +2,7 @@
 #define CONTACTSMANAGERHPP
 #include <state-observation/api.h>
 #include <state-observation/tools/measurements-manager/Contact.hpp>
-#include <unordered_set>
+#include <set>
 
 namespace stateObservation
 {
@@ -39,7 +39,7 @@ public:
            typename OnMaintainedContact,
            typename OnRemovedContact,
            typename OnAddedContact = std::nullptr_t>
-  void updateContacts(const std::unordered_set<std::string> & latestContactList,
+  void updateContacts(const std::set<std::string> & latestContactList,
                       OnNewContact onNewContact,
                       OnMaintainedContact onMaintainedContact,
                       OnRemovedContact onRemovedContact,
@@ -79,7 +79,7 @@ protected:
   std::unordered_map<std::string, ContactT> listContacts_;
 
   // vector containing the name of all the currently set contacts
-  std::unordered_set<std::string> currentContactsList_;
+  std::set<std::string> currentContactsList_;
 
   // Index generator, incremented everytime a new contact is created
   unsigned idx_ = 0;

@@ -526,8 +526,8 @@ public:
   void setAdditionalWrench(const Vector3 & force, const Vector3 & torque);
 
   /// @brief Set an additional wrench already expressed at the centroid.
-  /// @param force
-  /// @param torque
+  /// @param force additional force expressed in the centroid frame
+  /// @param torque additional torque expressed in the centroid frame
   void setAdditionalWrenchInCentroidFrame(const Vector3 & force, const Vector3 & torque);
 
   /// @}

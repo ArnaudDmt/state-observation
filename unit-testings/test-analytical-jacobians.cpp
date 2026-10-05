@@ -20,8 +20,6 @@ const double h_ = 1e-5;
 
 /// relative tolerance on each coefficient, w.r.t. the largest coefficient of its row
 const double relTol_ = 1e-5;
-/// absolute floor, below which a coefficient is considered numerically zero
-const double absTol_ = 2e-7;
 
 std::mt19937 gen_;
 std::uniform_real_distribution<double> uniform_(-1.0, 1.0);
@@ -66,11 +64,11 @@ int compareJacobians(const std::string & name,
   int mismatches = 0;
   for(Index i = 0; i < analytic.rows(); ++i)
   {
+    const double scale = std::max(analytic.row(i).cwiseAbs().maxCoeff(), fd.row(i).cwiseAbs().maxCoeff());
     for(Index j = 0; j < analytic.cols(); ++j)
     {
       const double error = std::abs(analytic(i, j) - fd(i, j));
-      const double scale = std::max(std::abs(analytic(i, j)), std::abs(fd(i, j)));
-      if(error > relTol_ * scale + absTol_)
+      if(error > relTol_ * scale)
       {
         if(mismatches < 20)
         {

@@ -690,14 +690,14 @@ void KineticsObserver::convertWrenchFromCentroidToUser(const Vector3 & forceCent
   momentUserFrame = momentCentroidFrame + com_().cross(forceCentroidFrame);
 }
 
-void KineticsObserver::getOdometryWorldContactRest_(const Vector3 & contactForceMeas,
-                                                    const Vector3 & contactTorqueMeas,
-                                                    const Matrix3 & linStiffness,
-                                                    const Matrix3 & linDamping,
-                                                    const Matrix3 & angStiffness,
-                                                    const Matrix3 & angDamping,
-                                                    bool flatOdometry,
-                                                    Kinematics & worldContactKine)
+void KineticsObserver::getOdometryWorldContactRest(const Vector3 & contactForceMeas,
+                                                   const Vector3 & contactTorqueMeas,
+                                                   const Matrix3 & linStiffness,
+                                                   const Matrix3 & linDamping,
+                                                   const Matrix3 & angStiffness,
+                                                   const Matrix3 & angDamping,
+                                                   bool flatOdometry,
+                                                   Kinematics & worldContactKine)
 {
   // we get the kinematics of the contact in the real world from the ones of the centroid estimated by the Kinetics
   // Observer. These kinematics are not the reference kinematics of the contact as they are affected by the contact
@@ -1250,8 +1250,8 @@ Index KineticsObserver::addContact(Kinematics & worldContactKine,
                                    const Vector3 & contactTorqueMeas,
                                    bool flatOdometry)
 {
-  getOdometryWorldContactRest_(contactForceMeas, contactTorqueMeas, linStiffness, linDamping, angStiffness, angDamping,
-                               flatOdometry, worldContactKine);
+  getOdometryWorldContactRest(contactForceMeas, contactTorqueMeas, linStiffness, linDamping, angStiffness, angDamping,
+                              flatOdometry, worldContactKine);
   return addContact(worldContactKine, initialCovarianceMatrix, processCovarianceMatrix, contactNumber, linStiffness,
                     linDamping, angStiffness, angDamping);
 }

@@ -279,6 +279,25 @@ public:
   // ///////////////////////////////////////////////////////////
   /// @{
 
+  /// @brief Removes the contact flexibility from the contact kinematics to obtain the contact rest pose.
+  /// @param contactForceMeas force measurement at the contact
+  /// @param contactTorqueMeas torque measurement at the contact
+  /// @param linStiffness linear stiffness of the contact viscoelastic model
+  /// @param linDamping linear damping of the contact viscoelastic model
+  /// @param angStiffness angular stiffness of the contact viscoelastic model
+  /// @param angDamping angular damping of the contact viscoelastic model
+  /// @param flatOdometry Indicates if the odometry is performed on flat ground. The contact rest height is then zero.
+  /// @param worldContactKine Kinematics of the contact in the world, affected by the flexibility, replaced by the rest
+  /// pose.
+  void getOdometryWorldContactRest(const Vector3 & contactForceMeas,
+                                   const Vector3 & contactTorqueMeas,
+                                   const Matrix3 & linStiffness,
+                                   const Matrix3 & linDamping,
+                                   const Matrix3 & angStiffness,
+                                   const Matrix3 & angDamping,
+                                   bool flatOdometry,
+                                   Kinematics & worldContactKine);
+
   /// @brief Set a new contact with the environment
   /// @details Version for contacts with a force sensor, when performing odometry. The rest pose is corrected by
   /// removing the contact flexibility contribution.
@@ -1290,29 +1309,6 @@ protected:
   void computeContactForces_(LocalKinematics & worldCentroidStateKinematics,
                              Vector3 & contactForce,
                              Vector3 & contactTorque);
-
-  /// @brief removes the contact flexibility to obtain the contact rest pose when performing odometry.
-  /// @param contactForceMeas force measurement at the contact
-  /// @param contactTorqueMeas torque measurement at the contact
-  /// @param linearStiffness the linear stiffness of the contact viscoelastic model, if unknown, set to
-  /// Matrix3::Constant(-1) (default) to use the default one
-  /// @param linearDamping  the linear damping of the contact viscoelastic model, if unknown, set to
-  /// Matrix3::Constant(-1) (default) to use the default one
-  /// @param angularStiffness the angular stiffness of the contact viscoelastic model, if unknown, set to
-  /// Matrix3::Constant(-1) (default) to use the default one
-  /// @param angularDamping the angular damping of the contact viscoelastic model, if unknown, set to
-  /// Matrix3::Constant(-1) (default) to use the default one
-  /// @param flatOdometry Indicates if the odometry is performed on flat ground. The contact rest height is then zero.
-  /// @param worldContactKine Kinematics of the contact in the world, initially affected by the flexbility, and
-  /// corrected.
-  void getOdometryWorldContactRest_(const Vector3 & contactForceMeas,
-                                    const Vector3 & contactTorqueMeas,
-                                    const Matrix3 & linStiffness,
-                                    const Matrix3 & linDamping,
-                                    const Matrix3 & angStiffness,
-                                    const Matrix3 & angDamping,
-                                    bool flatOdometry,
-                                    Kinematics & worldContactKine);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);

@@ -23,14 +23,20 @@ int main(int argc, char * argv[])
   }
   else
   {
-    IndexedVectorArray y, u, numberOfContacts;
+    IndexedVectorArray y, input, numberOfContacts;
+    IndexedInputVectorArray u;
 
     std::cout << "Read Sensors filename: " << argv[1] << std::endl;
     y.readVectorsFromFile(argv[1]);
     std::cout << "Sensors loaded, size:" << y.size() << std::endl;
     std::cout << "Read Inputs, filename: " << argv[2] << std::endl;
-    u.readVectorsFromFile(argv[2]);
-    std::cout << "Inputs loaded, size:" << u.size() << std::endl;
+    input.readVectorsFromFile(argv[2]);
+    std::cout << "Inputs loaded, size:" << input.size() << std::endl;
+
+    for(TimeIndex k = input.getFirstIndex(); k < input.getLastIndex(); k++)
+    {
+      u.setValue(VectorInput(input[k]), k);
+    }
 
     std::cout << "Read contact number, filename: " << argv[3] << std::endl;
     numberOfContacts.readVectorsFromFile(argv[3]);

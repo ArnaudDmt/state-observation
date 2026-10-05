@@ -42,13 +42,11 @@ public:
   virtual ~IMUFixedContactDynamicalSystem();
 
   /// Description of the state dynamics
-  virtual stateObservation::Vector stateDynamics(const stateObservation::Vector & x,
-                                                 const stateObservation::Vector & u,
-                                                 TimeIndex k);
+  virtual stateObservation::Vector stateDynamics(const stateObservation::Vector & x, const InputBase & u, TimeIndex k);
 
   /// Description of the sensor's dynamics
   virtual stateObservation::Vector measureDynamics(const stateObservation::Vector & x,
-                                                   const stateObservation::Vector & u,
+                                                   const InputBase & u,
                                                    TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
@@ -86,6 +84,15 @@ public:
   virtual void setContactPosition(unsigned i, const Vector3 & position);
 
 protected:
+  /// Gives a boolean answer on whether or not the vector is correctly sized to be an input vector
+  virtual bool checkInputvector(const Vector &);
+
+  inline void assertInputVector_(const Vector & v)
+  {
+    (void)v; // avoid warning
+    BOOST_ASSERT(checkInputvector(v) && "ERROR: The input vector has the wrong size");
+  }
+
   typedef kine::indexes<kine::rotationVector> indexes;
 
   stateObservation::AccelerometerGyrometer sensor_;

@@ -1,5 +1,5 @@
 IndexedVectorArray imuAttitudeTrajectoryReconstruction(const IndexedVectorArray & y,
-                                                       const IndexedVectorArray & u,
+                                                       const IndexedInputVectorArray & u,
                                                        const Vector & xh0,
                                                        const Matrix & p,
                                                        const Matrix & q,
@@ -23,7 +23,8 @@ IndexedVectorArray imuAttitudeTrajectoryReconstruction(const IndexedVectorArray 
   typedef kine::indexes<kine::rotationVector> indexes;
 
   /// initialization of the extended Kalman filter
-  ExtendedKalmanFilter filter(stateSize, measurementSize, inputSize, false);
+  ExtendedKalmanFilter filter(stateSize, measurementSize, false, true,
+                              std::make_shared<stateObservation::IndexedInputVectorArray>());
 
   /// initalization of the functor
   IMUDynamicalSystem imuFunctor(withGyroBias);
@@ -95,10 +96,11 @@ IndexedVectorArray imuAttitudeTrajectoryReconstruction(const IndexedVectorArray 
   const Index inputSize = 6;
 
   /// initialization of a zero input
-  IndexedVectorArray u;
+  IndexedInputVectorArray u;
   for(TimeIndex k = y.getFirstIndex() - 1; k < y.getNextIndex(); ++k)
   {
-    u.setValue(Vector::Zero(inputSize, 1), k);
+    VectorInput uk = VectorInput::Zero(inputSize, 1);
+    u.setValue(uk, k);
   }
 
   return imuAttitudeTrajectoryReconstruction(y, u, xh0, p, q, r, dt, withGyroBias);

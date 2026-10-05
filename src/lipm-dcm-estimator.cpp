@@ -232,7 +232,8 @@ void LipmDcmEstimator::setInputs(const Vector2 & dcm,
       update(); /// update the estimation of the state to synchronize with the measurements
     }
 
-    Vector4 u;
+    VectorInput u;
+    u.resize(previousZmp_.size() + gamma_.size());
     Vector2 y;
 
     y = dcm;

@@ -16,6 +16,7 @@
 #include <state-observation/api.h>
 #include <state-observation/dynamical-system/dynamical-system-functor-base.hpp>
 #include <state-observation/noise/noise-base.hpp>
+#include <state-observation/tools/definitions.hpp>
 
 namespace stateObservation
 {
@@ -30,6 +31,9 @@ namespace stateObservation
 class STATE_OBSERVATION_DLLAPI BidimElasticInvPendulum : public DynamicalSystemFunctorBase
 {
 public:
+  class BidimElasticInvPendulumInput : public InputBase, public Vector1
+  {
+  };
   /// The constructor
   BidimElasticInvPendulum();
 
@@ -37,10 +41,10 @@ public:
   virtual ~BidimElasticInvPendulum();
 
   /// Description of the state dynamics
-  virtual Vector stateDynamics(const Vector & x, const Vector & u, TimeIndex k);
+  virtual Vector stateDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// Description of the sensor's dynamics
-  virtual Vector measureDynamics(const Vector & x, const Vector & u, TimeIndex k);
+  virtual Vector measureDynamics(const Vector & x, const InputBase & u, TimeIndex k);
 
   /// Sets a noise which disturbs the state dynamics
   virtual void setProcessNoise(NoiseBase *);

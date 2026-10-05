@@ -1127,6 +1127,63 @@ int testKinematics(int errcode)
   return 0;
 }
 
+int testSE3_Integration(int errcode)
+{
+  double threshold = 1e-4;
+  double err = 0;
+
+  double dt = 0.001;
+  int steps = 100;
+
+  for(int i = 0; i < 10; i++)
+  { // two different variables to also test when vl and omega_l are not zero at the same time.
+    for(int j = 0; j < 10; j++)
+    {
+      Kinematics k;
+      Vector3 pos = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+      kine::Orientation ori = kine::Orientation::randomRotation();
+      Vector3 vl = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>();
+      Vector3 omega_l = tools::ProbabilityLawSimulation::getGaussianMatrix<Vector3>();
+
+      pos *= i;
+      vl *= i;
+      omega_l *= j;
+
+      k.position = pos;
+      k.orientation = ori;
+
+      Kinematics euler_IntegartionResult(k);
+      Kinematics se3_IntegartionResult(k);
+
+      se3_IntegartionResult.SE3_integration(vl * dt, omega_l * dt);
+      for(int l = 0; l < steps; l++)
+      {
+        euler_IntegartionResult.position() += euler_IntegartionResult.orientation * vl * dt / steps;
+        euler_IntegartionResult.orientation.integrateRightSide(omega_l * dt / steps);
+      }
+
+      Kinematics diff = se3_IntegartionResult * euler_IntegartionResult.getInverse();
+
+      if(diff.position.isSet())
+      {
+        err += diff.position().squaredNorm();
+      }
+      if(diff.orientation.isSet())
+      {
+        err += diff.orientation.toRotationVector().squaredNorm();
+      }
+    }
+  }
+
+  std::cout << "Error between Euler integration and SE3 integration: " << err << std::endl;
+
+  if(err > threshold)
+  {
+    return errcode;
+  }
+  return 0;
+}
+
 int main()
 {
   int returnVal;
@@ -1154,7 +1211,7 @@ int main()
 
   if((returnVal = testOrientation(++errorcode))) /// it is not an equality check
   {
-    std::cout << "Orientation test failed, code : 1" << std::endl;
+    std::cout << "Orientation test failed, code :" << std::endl;
     return returnVal;
   }
   else
@@ -1164,7 +1221,17 @@ int main()
 
   if((returnVal = testKinematics(++errorcode))) /// it is not an equality check
   {
-    std::cout << "Kinematics test failed, code : 2" << std::endl;
+    std::cout << "Kinematics test failed, code :" << std::endl;
+    return returnVal;
+  }
+  else
+  {
+    std::cout << "Kinematics test succeeded" << std::endl;
+  }
+
+  if((returnVal = testSE3_Integration(++errorcode))) /// it is not an equality check
+  {
+    std::cout << "SE3 integration test failed, code :" << std::endl;
     return returnVal;
   }
   else

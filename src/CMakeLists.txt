@@ -16,7 +16,10 @@ add_library(state-observation SHARED)
 target_compile_features(state-observation PUBLIC cxx_std_17)
 target_sources(
   state-observation
-  PRIVATE tilt-estimator.cpp
+  PRIVATE legged-odometry-manager.cpp
+          waiko-humanoid.cpp
+          delayed-measurements-observer.cpp
+          tilt-estimator.cpp
           tilt-estimator-humanoid.cpp
           kalman-filter-base.cpp
           observer-base.cpp
@@ -57,6 +60,10 @@ jrl_target_headers(
   state-observation
   PUBLIC
   HEADERS
+  ../include/state-observation/observer/delayed-measurements-observer.hpp
+  ../include/state-observation/observer/delayed-measurements-observer.hxx
+  ../include/state-observation/observer/delayed-measurements-complem-filter.hpp
+  ../include/state-observation/observer/waiko-humanoid.hpp
   ../include/state-observation/observer/tilt-estimator.hpp
   ../include/state-observation/observer/tilt-estimator-humanoid.hpp
   ../include/state-observation/observer/extended-kalman-filter.hpp
@@ -83,6 +90,13 @@ jrl_target_headers(
   ../include/state-observation/tools/rigid-body-kinematics.hxx
   ../include/state-observation/tools/logger.hpp
   ../include/state-observation/tools/logger.hxx
+  ../include/state-observation/tools/odometry/legged-odometry-manager.hpp
+  ../include/state-observation/tools/odometry/legged-odometry-manager.hxx
+  ../include/state-observation/tools/measurements-manager/Contact.hpp
+  ../include/state-observation/tools/measurements-manager/ContactsManager.hpp
+  ../include/state-observation/tools/measurements-manager/ContactsManager.hxx
+  ../include/state-observation/tools/measurements-manager/IMU.hpp
+  ../include/state-observation/tools/measurements-manager/Sensor.hpp
   ../include/state-observation/tools/state-vector-arithmetics.hpp
   ../include/state-observation/dynamical-system/dynamical-system-functor-base.hpp
   ../include/state-observation/dynamical-system/dynamical-system-simulator.hpp

@@ -6,10 +6,10 @@ namespace stateObservation
 
 ObserverBase::ObserverBase()
 {
-  n_ = m_ = p_ = 0;
+  n_ = m_ = 0;
 }
 
-ObserverBase::ObserverBase(Index n, Index m, Index p) : n_(n), m_(m), p_(p) {}
+ObserverBase::ObserverBase(Index n, Index m) : n_(n), m_(m) {}
 
 ObserverBase::StateVector ObserverBase::stateVectorConstant(double c) const
 {
@@ -51,26 +51,6 @@ bool ObserverBase::checkMeasureVector(const MeasureVector & v) const
   return (v.rows() == m_ && v.cols() == 1);
 }
 
-ObserverBase::InputVector ObserverBase::inputVectorConstant(double c) const
-{
-  return InputVector::Constant(p_, 1, c);
-}
-
-ObserverBase::InputVector ObserverBase::inputVectorRandom() const
-{
-  return tools::ProbabilityLawSimulation::getUniformMatrix<InputVector>(p_);
-}
-
-ObserverBase::InputVector ObserverBase::inputVectorZero() const
-{
-  return InputVector::Zero(p_, 1);
-}
-
-bool ObserverBase::checkInputVector(const InputVector & v) const
-{
-  return (v.rows() == p_ && v.cols() == 1);
-}
-
 void ObserverBase::clearInputsAndMeasurements()
 {
   clearMeasurements();
@@ -102,16 +82,6 @@ void ObserverBase::setMeasureSize(Index m)
 Index ObserverBase::getMeasureSize() const
 {
   return m_;
-}
-
-void ObserverBase::setInputSize(Index p)
-{
-  p_ = p;
-}
-
-Index ObserverBase::getInputSize() const
-{
-  return p_;
 }
 
 } // namespace stateObservation

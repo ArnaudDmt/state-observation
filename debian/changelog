@@ -1,3 +1,9 @@
+state-observation (1.7.2-1debian1) unstable; urgency=medium
+
+  * New release: version 1.7.2
+
+ -- Arnaud TANGUY <arn.tanguy@gmail.com>  Tue, 29 Sep 2026 14:14:56 +0200
+
 state-observation (1.7.1-1debian1) unstable; urgency=medium
 
   * New release: version 1.7.1

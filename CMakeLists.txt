@@ -25,7 +25,7 @@ include(cmake/get-jrl-cmakemodules.cmake)
 
 project(
   state-observation
-  VERSION 1.7.0
+  VERSION 1.7.2
   DESCRIPTION "General implementation of observers."
   HOMEPAGE_URL "https://github.com/jrl-umi3218/state-observation"
   LANGUAGES CXX)

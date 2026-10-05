@@ -95,7 +95,7 @@ public:
   DelayedMeasurementObserver() = delete;
 
   /// Destructor
-  virtual ~DelayedMeasurementObserver() {};
+  virtual ~DelayedMeasurementObserver(){};
 
   // inline const IndexedVector & getPastState(size_t nbIters)
   // {

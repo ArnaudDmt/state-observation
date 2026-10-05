@@ -12,7 +12,7 @@ struct Traj
   struct Iteration
   {
   protected:
-    Iteration() {};
+    Iteration(){};
 
   public:
     Iteration(int id, double t, LocalKinematics kine) : id_(id), t_(t), kine_(kine) {}
@@ -79,7 +79,7 @@ struct Traj
     LocalKinematics kine_;
   };
 
-  Traj() {};
+  Traj(){};
   void init(double dt, double duration)
   {
     dt_ = dt;

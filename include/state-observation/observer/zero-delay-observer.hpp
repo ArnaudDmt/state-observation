@@ -73,7 +73,7 @@ public:
   }
 
   /// Destructor
-  virtual ~ZeroDelayObserver() {};
+  virtual ~ZeroDelayObserver(){};
 
   /// @brief Set the value of the state vector at time index k.
   ///

@@ -45,9 +45,7 @@ Orientation randOri()
 /// @param analytic the analytical Jacobian matrix
 /// @param fd the finite differences Jacobian matrix
 /// @return the number of mismatching coefficients
-int compareJacobians(const std::string & name,
-                     const Matrix & analytic,
-                     const Matrix & fd)
+int compareJacobians(const std::string & name, const Matrix & analytic, const Matrix & fd)
 {
   if(analytic.rows() != fd.rows() || analytic.cols() != fd.cols())
   {

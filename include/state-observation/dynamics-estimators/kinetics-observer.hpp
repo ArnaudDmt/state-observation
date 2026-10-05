@@ -1512,7 +1512,6 @@ protected:
   Index numberOfContactRealSensors_;
   Index currentIMUSensorNumber_;
 
-
   /// function to call before adding any measurement
   /// detects if there is a new estimation beginning and then
   /// calls the reset of the iteration
@@ -1691,7 +1690,6 @@ protected:
 
   Matrix12 stateKinematicsInitCovMat_;
   Matrix12 stateKinematicsProcessCovMat_;
-
 
   /// default derivation steps
   static const double defaultdx;

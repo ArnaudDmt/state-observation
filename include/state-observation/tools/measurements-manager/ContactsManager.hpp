@@ -1,7 +1,7 @@
 #ifndef CONTACTSMANAGERHPP
 #define CONTACTSMANAGERHPP
-#include <state-observation/tools/measurements-manager/Contact.hpp>
 #include <set>
+#include <state-observation/tools/measurements-manager/Contact.hpp>
 
 namespace stateObservation
 {

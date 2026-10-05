@@ -177,18 +177,18 @@ int testWithDelayedInput(int errorcode)
   return 0;
 }
 
+struct DelayedTestData : public AsynchronousDataBase, public InputBase
+{
+public:
+  DelayedTestData() : data_(0.5) {}
+  ~DelayedTestData() {}
+  inline void merge(const AsynchronousDataBase &) override {}
+
+  double data_;
+};
+
 int testWithDelayedInputAndMeas(int errorcode)
 {
-  struct TestData : public AsynchronousDataBase, public InputBase
-  {
-  public:
-    TestData() : data_(0.5) {}
-    ~TestData() {}
-    inline void merge(const AsynchronousDataBase &) override {}
-
-    double data_;
-  };
-
   struct TestObserver : DelayedMeasurementObserver
   {
     TestObserver(double dt,
@@ -210,19 +210,19 @@ int testWithDelayedInputAndMeas(int errorcode)
       const ObserverBase::StateVector & x_hat = (*prevIter)();
 
       Vector meas = getMeasurement(k);
-      TestData & input = convert_input<TestData>((*u_)[k - 1]);
+      DelayedTestData & input = convert_input<DelayedTestData>((*u_)[k - 1]);
 
       (*it)().x() = x_hat.x() + meas[0];
       (*it)().x() += input.data_;
 
       if(u_asynchronous_->checkIndex(k - 1))
       {
-        TestData & delayed_input = convert_async_data<TestData>(u_asynchronous_->getElement(k - 1));
+        DelayedTestData & delayed_input = convert_async_data<DelayedTestData>(u_asynchronous_->getElement(k - 1));
         (*it)().x() += delayed_input.data_;
       }
       if(y_asynchronous_->checkIndex(k))
       {
-        TestData & delayed_meas = convert_async_data<TestData>(y_asynchronous_->getElement(k));
+        DelayedTestData & delayed_meas = convert_async_data<DelayedTestData>(y_asynchronous_->getElement(k));
         (*it)().x() += delayed_meas.data_;
       }
 
@@ -231,15 +231,15 @@ int testWithDelayedInputAndMeas(int errorcode)
     void startNewIteration_() override {}
   };
 
-  TestObserver obs(1.0, 3, 1, 50, std::make_shared<IndexedInputArrayT<TestData>>(),
-                   std::make_shared<AsynchronousDataMapT<TestData>>(),
-                   std::make_shared<AsynchronousDataMapT<TestData>>());
+  TestObserver obs(1.0, 3, 1, 50, std::make_shared<IndexedInputArrayT<DelayedTestData>>(),
+                   std::make_shared<AsynchronousDataMapT<DelayedTestData>>(),
+                   std::make_shared<AsynchronousDataMapT<DelayedTestData>>());
 
   obs.initEstimator(Vector3::Zero());
 
   for(int i = 0; i < 15; i++)
   {
-    obs.setInput(TestData(), i);
+    obs.setInput(DelayedTestData(), i);
     obs.setMeasurement(Vector1::Identity() * 0.5, i + 1);
   }
   Vector state = obs.getEstimatedState(10);
@@ -248,8 +248,8 @@ int testWithDelayedInputAndMeas(int errorcode)
   // we now add asynchronous input and measurements a-posteriori
   for(int i = 0; i < 5; i++)
   {
-    obs.pushAsyncInput(TestData(), i);
-    obs.pushAsyncMeasurement(TestData(), i + 1);
+    obs.pushAsyncInput(DelayedTestData(), i);
+    obs.pushAsyncMeasurement(DelayedTestData(), i + 1);
   }
   state = obs.getEstimatedState(15);
 
@@ -258,18 +258,18 @@ int testWithDelayedInputAndMeas(int errorcode)
   return 0;
 }
 
+struct IntermittentTestData : public AsynchronousDataBase
+{
+public:
+  IntermittentTestData() : data_(0.5) {}
+  ~IntermittentTestData() {}
+  inline void merge(const AsynchronousDataBase &) override {}
+
+  double data_;
+};
+
 int testWithIntermittentInputAndMeas(int errorcode)
 {
-  struct TestData : public AsynchronousDataBase
-  {
-  public:
-    TestData() : data_(0.5) {}
-    ~TestData() {}
-    inline void merge(const AsynchronousDataBase &) override {}
-
-    double data_;
-  };
-
   struct TestObserver : DelayedMeasurementObserver
   {
     TestObserver(double dt,
@@ -288,8 +288,9 @@ int testWithIntermittentInputAndMeas(int errorcode)
 
       if(u_asynchronous_->checkIndex(k - 1) && y_asynchronous_->checkIndex(k))
       {
-        TestData & delayed_input = convert_async_data<TestData>(u_asynchronous_->getElement(k - 1));
-        TestData & delayed_meas = convert_async_data<TestData>(y_asynchronous_->getElement(k));
+        IntermittentTestData & delayed_input =
+            convert_async_data<IntermittentTestData>(u_asynchronous_->getElement(k - 1));
+        IntermittentTestData & delayed_meas = convert_async_data<IntermittentTestData>(y_asynchronous_->getElement(k));
 
         (*it)().x() += delayed_input.data_;
         (*it)().x() += delayed_meas.data_;
@@ -300,8 +301,8 @@ int testWithIntermittentInputAndMeas(int errorcode)
     void startNewIteration_() override {}
   };
 
-  TestObserver obs(1.0, 3, 1, 50, nullptr, std::make_shared<AsynchronousDataMapT<TestData>>(),
-                   std::make_shared<AsynchronousDataMapT<TestData>>());
+  TestObserver obs(1.0, 3, 1, 50, nullptr, std::make_shared<AsynchronousDataMapT<IntermittentTestData>>(),
+                   std::make_shared<AsynchronousDataMapT<IntermittentTestData>>());
 
   obs.initEstimator(Vector3::Zero());
 
@@ -309,8 +310,8 @@ int testWithIntermittentInputAndMeas(int errorcode)
   {
     if(i % 2 == 0)
     {
-      obs.pushAsyncInput(TestData(), i);
-      obs.pushAsyncMeasurement(TestData(), i + 1);
+      obs.pushAsyncInput(IntermittentTestData(), i);
+      obs.pushAsyncMeasurement(IntermittentTestData(), i + 1);
     }
   }
   if(std::abs(obs.getEstimatedState(10).x() - 5) > 1e-15) return errorcode;

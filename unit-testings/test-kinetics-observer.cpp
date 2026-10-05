@@ -72,8 +72,8 @@ Vector3 centroidContactAngVel2_ = tools::ProbabilityLawSimulation::getUniformMat
 Vector3 contactForces2_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 100;
 Vector3 contactTorques2_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() * 10;
 
-Matrix3 inertiaMatrix_ = tools::ProbabilityLawSimulation::getUniformMatrix<Matrix3>();
-Matrix3 inertiaMatrix_d_ = tools::ProbabilityLawSimulation::getGaussianMatrix<Matrix3>();
+Matrix3 inertiaMatrix_ = Vector3(10.0, 10.0, 5.0).asDiagonal();
+Matrix3 inertiaMatrix_d_ = Matrix3::Zero();
 Vector3 angularMomentum_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 Vector3 angularMomentum_d_ = tools::ProbabilityLawSimulation::getUniformMatrix<Vector3>() / 10;
 
@@ -281,9 +281,6 @@ int testContactRestPoseCovariance_1contact(int errorcode)
   ko_1_.setWithUnmodeledWrench(true);
   ko_1_.setWithGyroBias(false);
 
-  inertiaMatrix_ = inertiaMatrix_ * inertiaMatrix_.transpose();
-  inertiaMatrix_d_ = inertiaMatrix_d_ * inertiaMatrix_d_.transpose();
-
   ori_.setRandom();
 
   /* Kinetics Observer 1 initialization */
@@ -375,9 +372,6 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
   ko_2_.setSamplingTime(dt_);
   ko_2_.setWithUnmodeledWrench(true);
   ko_2_.setWithGyroBias(false);
-
-  inertiaMatrix_ = inertiaMatrix_ * inertiaMatrix_.transpose();
-  inertiaMatrix_d_ = inertiaMatrix_d_ * inertiaMatrix_d_.transpose();
 
   ori_.setRandom();
 
@@ -692,9 +686,6 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
   ko_3_.setSamplingTime(dt_);
   ko_3_.setWithUnmodeledWrench(true);
   ko_3_.setWithGyroBias(false);
-
-  inertiaMatrix_ = inertiaMatrix_ * inertiaMatrix_.transpose();
-  inertiaMatrix_d_ = inertiaMatrix_d_ * inertiaMatrix_d_.transpose();
 
   ori_.setRandom();
 

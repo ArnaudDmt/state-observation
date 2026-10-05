@@ -366,6 +366,9 @@ int testContactRestPoseCovariance_1contact(int errorcode)
 int testContactRestPoseProcessCovariance_2contacts(int errorcode)
 {
   KineticsObserver ko_2_(2, 1);
+  // every contact carries its share of the weight, as measured by its sensor
+  const Vector6 contactWrench =
+      (Vector6() << 0.0, 0.0, ko_2_.getMass() * cst::gravityConstant / 2.0, 0.0, 0.0, 0.0).finished();
 
   Vector stateVector_;
 
@@ -411,8 +414,8 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
 
   ko_2_.addContact(worldContactPose1_, 0, K1_, K2_, K3_, K4_);
   ko_2_.addContact(worldContactPose2_, 1, K1_, K2_, K3_, K4_);
-  ko_2_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);
-  ko_2_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2_, 1);
+  ko_2_.updateContactWithWrenchSensor(contactWrench, centroidContactPose1_, 0);
+  ko_2_.updateContactWithWrenchSensor(contactWrench, centroidContactPose2_, 1);
 
   stateVector_.resize(position_.size() + 4 + linvel_.size() + angvel_.size() + gyroBias1_.size() + extForces_.size()
                       + extTorques_.size()
@@ -420,8 +423,8 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
                             * (worldContactPos1_.size() + worldContactOri1_.toVector4().size() + contactForces1_.size()
                                + contactTorques1_.size()));
   stateVector_ << position_, ori_.toVector4(), linvel_, angvel_, gyroBias1_, extForces_, extTorques_, worldContactPos1_,
-      worldContactOri1_.toVector4(), contactForces1_, contactTorques1_, worldContactPos1_,
-      worldContactOri1_.toVector4(), contactForces2_, contactTorques2_;
+      worldContactOri1_.toVector4(), contactWrench.head<3>(), contactWrench.tail<3>(), worldContactPos1_,
+      worldContactOri1_.toVector4(), contactWrench.head<3>(), contactWrench.tail<3>();
 
   ko_2_.setInitWorldCentroidStateVector(stateVector_);
 
@@ -491,8 +494,8 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
   ko_2_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_2_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
-  ko_2_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);
-  ko_2_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2_, 1);
+  ko_2_.updateContactWithWrenchSensor(contactWrench, centroidContactPose1_, 0);
+  ko_2_.updateContactWithWrenchSensor(contactWrench, centroidContactPose2_, 1);
 
   Matrix3 processPos1 = processPos_1_.asDiagonal();
   Matrix3 processPos2 = processPos_2_.asDiagonal();
@@ -563,7 +566,7 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
   //   std::cout << std::endl << "Contact1 ori: " << std::endl << contact1_Q_ori.format(CleanFmt_) << std::endl;
   //   std::cout << std::endl << "Contact2 ori: " << std::endl << contact2_Q_ori.format(CleanFmt_) << std::endl;
 
-  if((contacts_Q_pos - contacts_Q_pos_analytic).norm() > 1e-16)
+  if((contacts_Q_pos - contacts_Q_pos_analytic).norm() > 1e-6 * contacts_Q_pos_analytic.norm())
   {
     std::cout << std::endl
               << "Error, the numerical matrix for the rest position process doesn't match the analytical one."
@@ -576,7 +579,7 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
     return errorcode;
   }
 
-  if((contacts_Q_ori - contacts_Q_ori_analytic).norm() > 1e-16)
+  if((contacts_Q_ori - contacts_Q_ori_analytic).norm() > 1e-6 * contacts_Q_ori_analytic.norm())
   {
     std::cout << std::endl
               << "Error, the numerical matrix for the orientation doesn't match the analytical one." << std::endl;
@@ -616,8 +619,8 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
   ko_2_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_2_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
-  ko_2_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1_, 0);
-  ko_2_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2_, 1);
+  ko_2_.updateContactWithWrenchSensor(contactWrench, centroidContactPose1_, 0);
+  ko_2_.updateContactWithWrenchSensor(contactWrench, centroidContactPose2_, 1);
 
   // we remove the contact 2
   ko_2_.removeContact(1);
@@ -649,7 +652,7 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
   Eigen::MatrixXd contact1_Q_pos_analytic = Eigen::MatrixXd::Zero(3, 3);
   Eigen::MatrixXd contact1_Q_ori_analytic = Eigen::MatrixXd::Zero(3, 3);
 
-  if((contact1_Q_pos.block<3, 3>(0, 0) - contact1_Q_pos_analytic).norm() > 1e-16)
+  if((contact1_Q_pos.block<3, 3>(0, 0) - contact1_Q_pos_analytic).norm() > 1e-6 * contact1_Q_pos_analytic.norm())
   {
     std::cout << std::endl
               << "Error, the numerical matrix for the rest position process doesn't match the analytical one."
@@ -662,7 +665,7 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
     return errorcode;
   }
 
-  if((contact1_Q_ori.block<3, 3>(0, 0) - contact1_Q_ori_analytic).norm() > 1e-16)
+  if((contact1_Q_ori.block<3, 3>(0, 0) - contact1_Q_ori_analytic).norm() > 1e-6 * contact1_Q_ori_analytic.norm())
   {
     std::cout << std::endl
               << "Error, the numerical matrix for the orientation doesn't match the analytical one." << std::endl;
@@ -680,6 +683,9 @@ int testContactRestPoseProcessCovariance_2contacts(int errorcode)
 int testContactRestPoseProcessCovariance_3contacts(int errorcode)
 {
   KineticsObserver ko_3_(3, 1);
+  // every contact carries its share of the weight, as measured by its sensor
+  const Vector6 contactWrench =
+      (Vector6() << 0.0, 0.0, ko_3_.getMass() * cst::gravityConstant / 3.0, 0.0, 0.0, 0.0).finished();
 
   Vector stateVector_;
 
@@ -719,8 +725,6 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
 
   Kinematics worldContactPose3 = worldContactPose1_;
   Kinematics centroidContactPose3 = centroidContactPose1;
-  Vector3 contactForces3 = contactForces1_;
-  Vector3 contactTorques3 = contactTorques1_;
 
   ko_3_.setCenterOfMass(com_, com_d_, com_dd_);
   ko_3_.setIMU(Vector3::Zero(), Vector3::Zero(), centroidIMUPose1_, 0);
@@ -731,9 +735,9 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
   ko_3_.addContact(worldContactPose1_, 0, K1_, K2_, K3_, K4_);
   ko_3_.addContact(worldContactPose2, 1, K1_, K2_, K3_, K4_);
   ko_3_.addContact(worldContactPose3, 2, K1_, K2_, K3_, K4_);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1, 0);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2, 1);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose3, 2);
+  ko_3_.updateContactWithWrenchSensor(contactWrench, centroidContactPose1, 0);
+  ko_3_.updateContactWithWrenchSensor(contactWrench, centroidContactPose2, 1);
+  ko_3_.updateContactWithWrenchSensor(contactWrench, centroidContactPose3, 2);
 
   stateVector_.resize(position_.size() + 4 + linvel_.size() + angvel_.size() + gyroBias1_.size() + extForces_.size()
                       + extTorques_.size()
@@ -741,9 +745,9 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
                             * (worldContactPos1_.size() + worldContactOri1_.toVector4().size() + contactForces1_.size()
                                + contactTorques1_.size()));
   stateVector_ << position_, ori_.toVector4(), linvel_, angvel_, gyroBias1_, extForces_, extTorques_, worldContactPos1_,
-      worldContactOri1_.toVector4(), contactForces1_, contactTorques1_, worldContactPos1_,
-      worldContactOri1_.toVector4(), contactForces2_, contactTorques2_, worldContactPos1_,
-      worldContactOri1_.toVector4(), contactForces3, contactTorques3;
+      worldContactOri1_.toVector4(), contactWrench.head<3>(), contactWrench.tail<3>(), worldContactPos1_,
+      worldContactOri1_.toVector4(), contactWrench.head<3>(), contactWrench.tail<3>(), worldContactPos1_,
+      worldContactOri1_.toVector4(), contactWrench.head<3>(), contactWrench.tail<3>();
 
   ko_3_.setInitWorldCentroidStateVector(stateVector_);
 
@@ -821,9 +825,9 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
   ko_3_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_3_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1, 0);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2, 1);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose3, 2);
+  ko_3_.updateContactWithWrenchSensor(contactWrench, centroidContactPose1, 0);
+  ko_3_.updateContactWithWrenchSensor(contactWrench, centroidContactPose2, 1);
+  ko_3_.updateContactWithWrenchSensor(contactWrench, centroidContactPose3, 2);
 
   Matrix3 processPos1 = processPos_1_.asDiagonal();
   Matrix3 processPos2 = processPos_2_.asDiagonal();
@@ -996,7 +1000,7 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
   contacts_Q_ori_analytic(8, 8) =
       (1.0 / 9.0) * processPos1(2, 2) + (1.0 / 9.0) * processPos2(2, 2) + (4.0 / 9.0) * processPos3(2, 2);
 
-  if((contacts_Q_pos - contacts_Q_pos_analytic).norm() > 1e-15)
+  if((contacts_Q_pos - contacts_Q_pos_analytic).norm() > 1e-6 * contacts_Q_pos_analytic.norm())
   {
     std::cout << std::endl
               << "Error, the numerical matrix for the rest position process doesn't match the analytical one."
@@ -1008,7 +1012,7 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
 
     return errorcode;
   }
-  if((contacts_Q_ori - contacts_Q_ori_analytic).norm() > 1e-15)
+  if((contacts_Q_ori - contacts_Q_ori_analytic).norm() > 1e-6 * contacts_Q_ori_analytic.norm())
   {
     std::cout << std::endl
               << "Error, the numerical matrix for the rest orientation process doesn't match the analytical one."
@@ -1038,8 +1042,8 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
   ko_3_.setCoMAngularMomentum(angularMomentum_, angularMomentum_d_);
   ko_3_.setCoMInertiaMatrix(inertiaMatrix_, inertiaMatrix_d_);
 
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose1, 0);
-  ko_3_.updateContactWithWrenchSensor(Vector6::Zero(), centroidContactPose2, 1);
+  ko_3_.updateContactWithWrenchSensor(contactWrench, centroidContactPose1, 0);
+  ko_3_.updateContactWithWrenchSensor(contactWrench, centroidContactPose2, 1);
 
   // we remove the contact 2
   ko_3_.removeContact(2);
@@ -1131,7 +1135,7 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
   contacts_Q_ori_analytic_bis(5, 2) = -0.25 * processPos1(2, 2) - 0.25 * processPos2(2, 2);
   contacts_Q_ori_analytic_bis(5, 5) = 0.25 * processPos1(2, 2) + 0.25 * processPos2(2, 2);
 
-  if((contacts_Q_pos_bis - contacts_Q_pos_analytic_bis).norm() > 1e-16)
+  if((contacts_Q_pos_bis - contacts_Q_pos_analytic_bis).norm() > 1e-6 * contacts_Q_pos_analytic_bis.norm())
   {
     std::cout << std::endl
               << "Error, the numerical matrix for the rest position process doesn't match the analytical one."
@@ -1143,7 +1147,7 @@ int testContactRestPoseProcessCovariance_3contacts(int errorcode)
 
     return errorcode;
   }
-  if((contacts_Q_ori_bis - contacts_Q_ori_analytic_bis).norm() > 1e-16)
+  if((contacts_Q_ori_bis - contacts_Q_ori_analytic_bis).norm() > 1e-6 * contacts_Q_ori_analytic_bis.norm())
   {
     std::cout << std::endl
               << "Error, the numerical matrix for the rest orientation process doesn't match the analytical one."

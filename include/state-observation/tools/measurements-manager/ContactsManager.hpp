@@ -1,6 +1,5 @@
 #ifndef CONTACTSMANAGERHPP
 #define CONTACTSMANAGERHPP
-#include <state-observation/api.h>
 #include <state-observation/tools/measurements-manager/Contact.hpp>
 #include <set>
 
@@ -13,7 +12,7 @@ namespace measurements
 /// them.
 /// @details The template allows to define other kinds of contacts and thus add custom parameters to them.
 template<typename ContactT>
-struct STATE_OBSERVATION_DLLAPI ContactsManager
+struct ContactsManager
 {
 
 protected:

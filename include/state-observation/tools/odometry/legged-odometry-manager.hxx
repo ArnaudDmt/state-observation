@@ -87,8 +87,15 @@ bool LeggedOdometryManager::updateContacts(const std::set<std::string> & latestC
   };
 
   // detects the contacts currently set with the environment
-  contactsManager().updateContacts(latestContactList, onNewContact, onMaintainedContact, onRemovedContact,
-                                   *updateFunctions.onAddedContactFn);
+  if constexpr(std::is_same_v<OnAddedContactObserver, std::nullptr_t>)
+  {
+    contactsManager().updateContacts(latestContactList, onNewContact, onMaintainedContact, onRemovedContact);
+  }
+  else
+  {
+    contactsManager().updateContacts(latestContactList, onNewContact, onMaintainedContact, onRemovedContact,
+                                     *updateFunctions.onAddedContactFn);
+  }
 
   for(auto * mContact : maintainedContacts_)
   {

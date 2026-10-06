@@ -77,11 +77,13 @@ void WaikoHumanoid::addContactPosInput(const Vector3 & refPose,
   const Matrix3 R_hat = state_ori_.toMatrix3();
   const Vector3 anchoredRefPose = refPose - positionAnchor_;
   const Vector3 posMeas = R_hat.transpose() * anchoredRefPose - imuContactPos;
-  const Vector3 jacobian = -R_hat.transpose() * Vector3::UnitZ().cross(anchoredRefPose);
 
-  input.contact_pos_input_->pos_meas_.push_back(posMeas);
-  input.contact_pos_input_->jacobians_.push_back(jacobian);
-  input.contact_pos_input_->lambdas_.push_back(lambda);
+  if(withOriCorrectFromContactPos_)
+  {
+    input.contact_pos_input_->pos_meas_.push_back(posMeas);
+    input.contact_pos_input_->jacobians_.push_back(-R_hat.transpose() * Vector3::UnitZ().cross(anchoredRefPose));
+    input.contact_pos_input_->lambdas_.push_back(lambda);
+  }
 
   input.contact_pos_input_->pos_meas_from_contacts_ += lambda * posMeas;
 }

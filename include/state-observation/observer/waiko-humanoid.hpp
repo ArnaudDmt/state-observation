@@ -90,8 +90,9 @@ public:
   ///  \li rho  : parameter related to the correction of the position by the
   ///  position measurement
   ///  \li mu  : parameter related to the correction of the orientation by the orientation measurement
-  ///  \li psi : gain of the yaw correction from contact positions.
-  WaikoHumanoid(double alpha, double beta, double gamma, double rho, double mu, double psi);
+  ///  \li psi : gain of the yaw correction from contact positions, only used if enabled with
+  ///  setWithOriCorrectFromContactPos.
+  WaikoHumanoid(double alpha, double beta, double gamma, double rho, double mu, double psi = 0.0);
 
   /// @brief Destroys the observer
   ///

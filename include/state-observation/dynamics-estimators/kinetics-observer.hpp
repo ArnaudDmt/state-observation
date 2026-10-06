@@ -109,6 +109,9 @@ public:
   /// @return True if the process covariance is adapted. Returns false otherwise.
   bool getWithAdaptativeContactProcessCov() const;
 
+  /// @brief Returns if the contacts are observed through their kinematics instead of the visco-elastic model.
+  bool getWithContactKinematicsMeasurement() const;
+
   /// @brief Set if the gyrometers bias is computed or not.
   ///        This parameter is global for all the IMUs.
   ///
@@ -126,22 +129,47 @@ public:
   /// @param b
   void setWithAdaptativeContactProcessCov(bool b = true);
 
-  /// @brief Weight the mean that the adaptive contact process covariance pins, by contact load.
-  /// @details The projector removes the *arithmetic* mean of the rest poses, so every contact
-  /// counts equally. Two consequences follow. A contact that slips cannot move its own anchor
-  /// without pushing the others by -delta/N, so a slipping foot corrupts the anchor of the foot
-  /// that is holding. And because a contact is created as soon as it carries 10% of the robot's
-  /// weight, a foot at 10% load has the same authority over the reference as one at 90%, which is
-  /// worst exactly at the gait transitions where anchors are created. Weighting by normal force
-  /// pins the load-weighted anchor centroid instead: the unobservable mode is still pinned, so the
-  /// observability argument is unchanged, but the reference is defined by the contacts that
-  /// actually carry the robot, and an unloading foot leaves the reference smoothly instead of
-  /// dropping out discontinuously.
-  /// @param exponent w_i proportional to f_i^exponent. 0 reproduces the arithmetic mean exactly,
-  /// 1 is proportional to normal force.
+  /// @brief Observe the contacts through their kinematics instead of the visco-elastic model.
+  /// @details The contact wrench states no longer act on the dynamics, which receive the measured wrenches through
+  /// the additional wrench input. Each contact is corrected by updateContactWithKinematicSensor(), which measures the
+  /// pose of the contact in the centroid frame against the pose of the contact in the state.
+  ///
+  /// @param b
+  void setWithContactKinematicsMeasurement(bool b = true);
+
+  /// @brief With setWithContactKinematicsMeasurement(), keep the contact wrenches as states measured by the wrench
+  /// sensors instead of inputs. With no visco-elastic law, the wrench prediction is the previous estimate.
+  ///
+  /// @param b
+  void setWithContactWrenchCorrection(bool b = true);
+
+  /// @brief With setWithContactKinematicsMeasurement(), the measured contact pose is the rest pose left by the
+  /// spring alone; the prediction adds the damping part of the visco-elastic law, from the predicted contact velocity.
+  ///
+  /// @param b
+  void setWithContactKinematicsDamping(bool b = true);
+
+  /// @brief With setWithContactKinematicsMeasurement(), the measured contact pose is the forward kinematics and the
+  /// prediction applies the whole visco-elastic law, the wrench of updateContactWithKinematicSensor() as input.
+  ///
+  /// @param b
+  void setWithContactKinematicsDeflection(bool b = true);
+
+  /// @brief With setWithContactKinematicsDeflection(), the contact wrench stays in the state but its prediction is the
+  /// measured wrench of updateContactWithKinematicSensor(), without process noise, so it is never corrected.
+  ///
+  /// @param b
+  void setWithContactWrenchFeedForward(bool b = true);
+
+  /// @brief With setWithContactWrenchFeedForward(), keep the contact wrench process covariance given to addContact(),
+  /// i.e. the sensor noise of the fed-forward wrench, instead of zeroing it.
+  ///
+  /// @param b
+  void setWithContactWrenchFeedForwardNoise(bool b = true);
 
 protected:
-  /// @brief Normalised per-contact weights, ordered as the set contacts are
+  /// @brief Weights of the set contacts in the mean pinned by the adaptive contact process covariance, proportional
+  /// to their normal force.
   Eigen::VectorXd contactLoadWeights_(Index nbContacts) const;
 
 public:
@@ -423,6 +451,27 @@ public:
   /// @param contactNumber The number id of the contact
   void updateContactWithNoSensor(const Kinematics & localKine, unsigned contactNumber);
 
+  /// @brief Update the contact and measure its pose, used with setWithContactKinematicsMeasurement()
+  /// @param localKine the kinematics of the contact in the user frame, as in updateContactWithNoSensor()
+  /// @param poseCovariance covariance of the measured contact pose (position, then orientation)
+  /// @param contactNumber The number id of the contact
+  void updateContactWithKinematicSensor(const Kinematics & localKine,
+                                        const Matrix6 & poseCovariance,
+                                        unsigned contactNumber);
+
+  /// @brief As above, with the measured contact wrench (contact frame) deflecting the predicted pose
+  void updateContactWithKinematicSensor(const Kinematics & localKine,
+                                        const Matrix6 & poseCovariance,
+                                        const Vector6 & deflectionWrench,
+                                        unsigned contactNumber);
+
+  /// @brief Update the contact with both its measured wrench and its measured pose
+  void updateContactWithWrenchAndKinematicSensors(const Vector6 & wrenchMeasurement,
+                                                  const Matrix6 & wrenchCovariance,
+                                                  const Kinematics & localKine,
+                                                  const Matrix6 & poseCovariance,
+                                                  unsigned contactNumber);
+
   /// @brief Update the contact when it is equipped with wrench sensor
   ///
   /// @param wrenchMeasurement wrenchMeasurement is the measurment vector composed with 3D forces and 3D torques
@@ -674,6 +723,11 @@ public:
   /// @param worldContactRestPose new state rest pose of the contact
   /// @param wrench new state wrench of the contact
   /// @param resetCovariance set if the associated part of the state covariance matrix should be reset
+  /// @brief Sets the wrench of an existing contact in the state, leaving its rest pose and covariance unchanged
+  /// @param index The number id of the contact
+  /// @param wrench The contact wrench, in the contact frame
+  void setStateContactWrench(Index index, const Vector6 & wrench);
+
   void setStateContact(Index index,
                        Kinematics worldContactRestPose,
                        const Vector6 & wrench,
@@ -1152,7 +1206,9 @@ protected:
 
     struct Contact : public Sensor
     {
-      Contact() : Sensor(sizeWrench), isSet(false), withRealSensor(false), stateIndex(-1), stateIndexTangent(-1)
+      Contact()
+      : Sensor(sizeWrench), isSet(false), withRealSensor(false), withKinematicSensor(false), stateIndex(-1),
+        stateIndexTangent(-1)
       {
         worldRestPose.angVel = worldRestPose.linVel = Vector3::Zero();
       }
@@ -1169,6 +1225,8 @@ protected:
       Kinematics userContactKine; /// Describes the kinematics of the contact point in the centroid's frame.
       Kinematics centroidContactKine; /// Describes the kinematics of the contact point in the centroid's frame.
       CheckedMatrix6 sensorCovMatrix; /// measurement covariance matrix of the wrench sensor attached to the contact.
+      Matrix6 kinematicCovMatrix; /// measurement covariance matrix of the contact pose.
+      Vector6 deflectionWrench = Vector6::Zero(); /// measured wrench deflecting the predicted contact pose.
 
       // process covariance associated to the rest position of the contact.
       Matrix3 restPosProcessCovMat;
@@ -1184,6 +1242,7 @@ protected:
 
       bool isSet;
       bool withRealSensor;
+      bool withKinematicSensor;
       Index stateIndex;
       Index stateIndexTangent;
 
@@ -1511,6 +1570,12 @@ protected:
   bool withAccelerationEstimation_;
   bool withDampingInMatrixA_;
   bool withAdaptativeContactProcessCov_;
+  bool withContactKinematicsMeasurement_;
+  bool withContactWrenchCorrection_;
+  bool withContactKinematicsDamping_;
+  bool withContactKinematicsDeflection_ = false;
+  bool withContactWrenchFeedForward_ = false;
+  bool withContactWrenchFeedForwardNoise_ = false;
 
   IndexedVector3 com_, comd_, comdd_;
   IndexedVector3 sigma_, sigmad_;
@@ -1527,6 +1592,7 @@ protected:
   NoiseBase * measurementNoise_;
 
   Index numberOfContactRealSensors_;
+  Index numberOfContactKinematicSensors_;
   Index currentIMUSensorNumber_;
 
   // indicates if a contact has been added or removed since the last iteration

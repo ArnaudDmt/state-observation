@@ -1609,25 +1609,31 @@ public: ///////////SIZE OF VECTORS
   ////////////DEFAULT VALUES //////
   static const double defaultMass;
 
-  static const double statePoseInitVarianceDefault;
-  static const double stateOriInitVarianceDefault;
-  static const double stateLinVelInitVarianceDefault;
-  static const double stateAngVelInitVarianceDefault;
-  static const double gyroBiasInitVarianceDefault;
-  static const double unmodeledWrenchInitVarianceDefault;
-  static const double contactForceInitVarianceDefault;
-  static const double contactTorqueInitVarianceDefault;
+  // diagonals of the default initial state covariance matrices
+  static const Vector3 statePoseInitVarianceDefault;
+  static const Vector3 stateOriInitVarianceDefault;
+  static const Vector3 stateLinVelInitVarianceDefault;
+  static const Vector3 stateAngVelInitVarianceDefault;
+  static const Vector3 gyroBiasInitVarianceDefault;
+  static const Vector3 unmodeledForceInitVarianceDefault;
+  static const Vector3 unmodeledTorqueInitVarianceDefault;
+  static const Vector3 contactPositionInitVarianceDefault;
+  static const Vector3 contactOrientationInitVarianceDefault;
+  static const Vector3 contactForceInitVarianceDefault;
+  static const Vector3 contactTorqueInitVarianceDefault;
 
-  static const double statePoseProcessVarianceDefault;
-  static const double stateOriProcessVarianceDefault;
-  static const double stateLinVelProcessVarianceDefault;
-  static const double stateAngVelProcessVarianceDefault;
-  static const double gyroBiasProcessVarianceDefault;
-  static const double unmodeledWrenchProcessVarianceDefault;
-  static const double contactPositionProcessVarianceDefault;
-  static const double contactOrientationProcessVarianceDefault;
-  static const double contactForceProcessVarianceDefault;
-  static const double contactTorqueProcessVarianceDefault;
+  // diagonals of the default process covariance matrices
+  static const Vector3 statePoseProcessVarianceDefault;
+  static const Vector3 stateOriProcessVarianceDefault;
+  static const Vector3 stateLinVelProcessVarianceDefault;
+  static const Vector3 stateAngVelProcessVarianceDefault;
+  static const Vector3 gyroBiasProcessVarianceDefault;
+  static const Vector3 unmodeledForceProcessVarianceDefault;
+  static const Vector3 unmodeledTorqueProcessVarianceDefault;
+  static const Vector3 contactPositionProcessVarianceDefault;
+  static const Vector3 contactOrientationProcessVarianceDefault;
+  static const Vector3 contactForceProcessVarianceDefault;
+  static const Vector3 contactTorqueProcessVarianceDefault;
 
   static const double acceleroVarianceDefault;
   static const double gyroVarianceDefault;

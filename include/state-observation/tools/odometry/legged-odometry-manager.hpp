@@ -71,9 +71,10 @@ typedef Eigen::Matrix<double, 7, 1> Vector7;
  * One can decide to perform flat or 6D odometry. The flat odometry considers that the robot walks on a flat
  * ground and corrects the estimated height accordingly, it is preferable in this use case.
  *
- * The odometry manager must be initialized once all the configuration parameters are retrieved using the init function,
- * and called on every iteration with \ref LeggedOdometryManager::run(const mc_control::MCController & ctl,
- * mc_rtc::Logger & logger, sva::PTransformd & pose, sva::MotionVecd & vel, sva::MotionVecd & acc).
+ * The odometry manager must be initialized once all the configuration parameters are retrieved using
+ * \ref LeggedOdometryManager::init(const Configuration &, const Vector7 &). Then, on every iteration,
+ * \ref LeggedOdometryManager::initLoop must be called with the list of currently detected contacts, followed by
+ * \ref LeggedOdometryManager::run(KineParams &).
  **/
 
 ///////////////////////////////////////////////////////////////////////
@@ -379,8 +380,7 @@ public:
   ////////////////////////////////////////////////////////////////////
 
   /// @brief Configuration structure that helps setting up the odometry parameters
-  /// @details The configuration is used once passed in the @ref init(const mc_control::MCController &, Configuration,
-  /// ContactsManagerConfiguration) function
+  /// @details The configuration is used once passed in the @ref init(const Configuration &, const Vector7 &) function
   struct Configuration
   {
     /// @brief Configuration's constructor
@@ -420,7 +420,7 @@ public:
   };
 
   /**
-   * @brief  Returns a list of pointers to the contacts maintained during the current iteration.
+   * @brief  Returns a list of pointers to the contacts created on the current iteration.
    *
    * @return const std::vector<LoContact *>&
    */
@@ -429,7 +429,7 @@ public:
     return newContacts_;
   }
   /**
-   * @brief  Returns a list of pointers to the contacts created on the current iteration.
+   * @brief  Returns a list of pointers to the contacts maintained during the current iteration.
    *
    * @return const std::vector<LoContact *>&
    */
@@ -595,10 +595,10 @@ protected:
   // contacts maintained during the current iteration
   std::vector<LoContact *> maintainedContacts_;
   // time constant defining how fast the contact reference poses are corrected by the one of the body
-  double kappa_ = 1 / (2 * M_PI);
+  double kappa_ = 10;
   // gain allowing for the contribution of the contact pose measurement into the reference pose even after a long
   // contact's lifetime.
-  double lambdaInf_ = 0.02;
+  double lambdaInf_ = 0.001;
   // timestep used in the controller
   double ctl_dt_ = 0.0;
 

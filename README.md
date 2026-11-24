@@ -29,13 +29,13 @@ The library provides tools to perform leg odometry, i.e. estimate the pose of a 
 
 ### Legged odometry manager
 
-`odometry::LeggedOdometryManager` uses a `ContactsManager<LoContact>` and estimates the position and the yaw of a body of the robot (e.g. its IMU) after being provided a tilt estimation.  
+`odometry::LeggedOdometryManager` uses a `ContactsManager<LoContact>` and estimates the position and the yaw of a body of the robot (e.g. its IMU) after being provided a tilt estimation.
 
 Principle:
 - When a contact is created, its reference pose in the world is computed from the current estimated pose of the body and the kinematics of the contact in the body frame. It is then considered fixed.
 - While the contact is maintained, its reference pose and its kinematics in the body frame give a measurement of the pose of the body. The measurements of all the maintained contacts are averaged with the weights `lambda` given by the user (they are normalized by the manager).
 - The yaw is obtained from the orientation of the contacts (at most two contacts are used, the ones with the highest weights, and contacts at the hands are not considered as not always reliable).
-- If enabled with `correctContacts`, the reference pose of each contact is decreasingly corrected by its current estimate, allowing to correct partially wrong initializations, slippage, etc.  
+- If enabled with `correctContacts`, the reference pose of each contact is decreasingly corrected by its current estimate, allowing to correct partially wrong initializations, slippage, etc.
 
 Types of odometry (`OdometryType`):
 - `Odometry6d` (`"6D"`): 3D position and orientation.
